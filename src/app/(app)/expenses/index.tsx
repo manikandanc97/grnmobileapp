@@ -19,6 +19,9 @@ import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { useExpenses } from '@/hooks/useExpenses';
 import { getExpenseSiteName } from '@/services/expenses';
 
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+
 const CATEGORIES: ('All' | ExpenseCategory)[] = ['All', 'Materials', 'Labor', 'Transport', 'Equipment', 'Other'];
 const PERIODS = ['All Time', 'This Month', 'Last Month'];
 
@@ -112,20 +115,14 @@ export default function ExpensesScreen() {
   }, [mappedExpenses]);
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable
-            style={({ pressed }) => [styles.backIcon, pressed && styles.backIconPressed]}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color="#0F354A" />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Expenses</Text>
-            <Text style={styles.headerSubtitle}>Track project spending</Text>
-          </View>
+      <ScreenHeader
+        title="Expenses"
+        subtitle="Track project spending"
+        showBorder={false}
+        showBack={true}
+        actionButton={
           <Pressable
             style={styles.addButton}
             onPress={() => router.push('/(app)/expenses/add')}
@@ -133,8 +130,9 @@ export default function ExpensesScreen() {
             <Plus size={20} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Add Expense</Text>
           </Pressable>
-        </View>
-
+        }
+      />
+      <View style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEF2F6', paddingBottom: 16 }}>
         <View style={styles.searchContainer}>
           <Search size={20} color="#8A99A4" style={styles.searchIcon} />
           <TextInput
@@ -209,7 +207,7 @@ export default function ExpensesScreen() {
           </View>
         </ScrollView>
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 

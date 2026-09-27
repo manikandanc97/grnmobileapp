@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E8ECEF',
-    shadowColor: '#0F354A',
+    shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   siteName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
     letterSpacing: -0.2,
     marginBottom: 4,
   },
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   progressPercentage: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0F354A',
+    color: '#07566A',
   },
   progressTrack: {
     height: 7,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#F2A619',
+    backgroundColor: '#E79524',
     borderRadius: 4,
   },
   footerRow: {

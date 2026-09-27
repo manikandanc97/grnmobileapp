@@ -18,6 +18,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+
 export default function MoreScreen() {
   const { session } = useAuth();
   const router = useRouter();
@@ -74,13 +77,13 @@ export default function MoreScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenWrapper>
       <View style={styles.webContainer}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>More</Text>
-          <Text style={styles.headerSubtitle}>Manage your account and app</Text>
-        </View>
+        <ScreenHeader
+          title="More"
+          subtitle="Manage your account and app"
+        />
 
         <ScrollView
           style={styles.scroll}
@@ -143,7 +146,7 @@ export default function MoreScreen() {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 

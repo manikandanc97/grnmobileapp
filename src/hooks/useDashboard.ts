@@ -22,7 +22,12 @@ export function useDashboard() {
       setActivities(fetchedActivities);
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
-      setError(err.message || 'Failed to fetch dashboard data');
+      const isMissingTable = err?.code === 'PGRST205' || err?.message?.includes('schema cache');
+      setError(
+        isMissingTable
+          ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
+          : (err?.message || 'Failed to fetch dashboard data')
+      );
     } finally {
       setLoading(false);
     }
@@ -43,7 +48,12 @@ export function useDashboard() {
       } catch (err: any) {
         if (isMounted) {
           console.error('Error fetching dashboard data:', err);
-          setError(err.message || 'Failed to fetch dashboard data');
+          const isMissingTable = err?.code === 'PGRST205' || err?.message?.includes('schema cache');
+          setError(
+            isMissingTable
+              ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
+              : (err?.message || 'Failed to fetch dashboard data')
+          );
         }
       } finally {
         if (isMounted) {

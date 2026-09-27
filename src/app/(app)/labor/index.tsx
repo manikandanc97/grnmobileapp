@@ -20,6 +20,9 @@ import { useWorkers } from '@/hooks/useWorkers';
 import { useAttendance } from '@/hooks/useAttendance';
 import { getSiteName } from '@/services/workers';
 
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+
 const ROLES: ('All' | WorkerRole)[] = [
   'All',
   'Mason',
@@ -125,11 +128,13 @@ export default function LaborScreen() {
   const error = workersError || attendanceError;
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Labor</Text>
+      <ScreenHeader
+        title="Labor"
+        subtitle="Track your workforce and attendance"
+        showBorder={false}
+        actionButton={
           <Pressable
             style={styles.addButton}
             onPress={() => router.push('/(app)/labor/add')}
@@ -137,9 +142,9 @@ export default function LaborScreen() {
             <Plus size={20} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Add Worker</Text>
           </Pressable>
-        </View>
-        <Text style={styles.headerSubtitle}>Track your workforce and attendance</Text>
-      </View>
+        }
+      />
+      <View style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEF2F6', paddingBottom: 16 }}>
 
       {/* Date Selector */}
       <View style={styles.dateSelectorContainer}>
@@ -219,7 +224,8 @@ export default function LaborScreen() {
           </View>
         </ScrollView>
       )}
-    </View>
+      </View>
+    </ScreenWrapper>
   );
 }
 

@@ -54,7 +54,8 @@ export function RecentActivitySection({
       <View style={styles.card}>
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No recent activity</Text>
+            <Text style={styles.emptyStateTitle}>No recent activity</Text>
+            <Text style={styles.emptyStateText}>Your latest updates will appear here.</Text>
           </View>
         ) : (
           activities.map((item, index) => {
@@ -96,21 +97,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
     letterSpacing: -0.2,
     marginBottom: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#E8ECEF',
-    shadowColor: '#0F354A',
+    shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     elevation: 1,
   },
   activityRow: {
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 18, // Make it circular avatar-like
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F354A',
+    color: '#123746',
     marginBottom: 2,
   },
   metaRow: {
@@ -148,23 +149,31 @@ const styles = StyleSheet.create({
   siteName: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7A85',
+    color: '#71808A',
   },
   dotSeparator: {
     fontSize: 10,
-    color: '#A0AAB2',
+    color: '#E8ECEF',
   },
   timestamp: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#8A99A4',
+    color: '#71808A',
   },
   emptyState: {
-    paddingVertical: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     alignItems: 'center',
   },
+  emptyStateTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#123746',
+    marginBottom: 4,
+  },
   emptyStateText: {
-    fontSize: 14,
-    color: '#8A99A4',
+    fontSize: 13,
+    color: '#71808A',
+    textAlign: 'center',
   },
 });

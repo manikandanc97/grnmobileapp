@@ -8,9 +8,11 @@
     "scheme": "grnconstruction",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.grnconstruction.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.grnconstruction.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,11 +35,19 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c846f7f6-5101-4e25-b4b0-c4fb3b4bb4fe"
+      }
+    },
+    "owner": "grnconstruction"
   }
 }

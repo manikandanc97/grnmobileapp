@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { AuthHeader } from '@/components/auth/AuthHeader';
@@ -14,24 +15,10 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
-// Complete the auth session if the app returns from a WebBrowser redirect
-WebBrowser.maybeCompleteAuthSession();
-
-// Helper to manually extract tokens from URL fragment for React Native
-const extractParams = (url: string) => {
-  const fragment = url.split('#')[1];
-  if (!fragment) return null;
-  const parts = fragment.split('&');
-  const params: Record<string, string> = {};
-  for (const part of parts) {
-    const [key, val] = part.split('=');
-    params[key] = decodeURIComponent(val);
-  }
-  return {
-    access_token: params['access_token'],
-    refresh_token: params['refresh_token'],
-  };
-};
+// Configure Google Sign-In with the Web OAuth Client ID
+GoogleSignin.configure({
+  webClientId: '527081633062-rda933l9me8ev46nd8olcjventdeb40k.apps.googleusercontent.com',
+});
 
 export default function LoginScreen() {
   const [mobileNumber, setMobileNumber] = useState('');
@@ -54,7 +41,17 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Error', error.message || 'Failed to send OTP. Please try again.');
+      if (
+        error.message?.toLowerCase().includes('phone provider') ||
+        error.message?.toLowerCase().includes('sms')
+      ) {
+        Alert.alert(
+          'SMS Gateway Required',
+          'Phone OTP requires an SMS provider configured in Supabase (Auth > Providers > Phone) or adding a test phone number in Supabase Dashboard. Please use Google Login or add test credentials.'
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to send OTP. Please try again.');
+      }
       return;
     }
 
@@ -67,9 +64,11 @@ export default function LoginScreen() {
   const handleContinueWithGoogle = async () => {
     setGoogleLoading(true);
 
-    const redirectUrl = Linking.createURL('/(auth)/');
-
     if (Platform.OS === 'web') {
+      const redirectUrl = typeof window !== 'undefined' && window.location?.origin
+        ? `${window.location.origin}/(auth)/`
+        : Linking.createURL('/(auth)/');
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -85,44 +84,45 @@ export default function LoginScreen() {
     }
 
     // Native implementation
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        skipBrowserRedirect: true,
-      },
-    });
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      
+      if (response.type === 'success') {
+        const idToken = response.data.idToken;
+        if (idToken) {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: idToken,
+          });
 
-    if (error) {
-      Alert.alert('Error', error.message);
-      setGoogleLoading(false);
-      return;
-    }
-
-    if (data?.url) {
-      try {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-        if (result.type === 'success' && result.url) {
-          const params = extractParams(result.url);
-          
-          if (params?.access_token && params?.refresh_token) {
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: params.access_token,
-              refresh_token: params.refresh_token,
-            });
-            
-            if (sessionError) {
-              Alert.alert('Error', sessionError.message);
-            }
+          if (error) {
+            Alert.alert('Error', error.message);
           }
+        } else {
+          throw new Error('No ID token present!');
         }
-      } catch {
-        Alert.alert('Error', 'An error occurred during Google authentication.');
+      } else if (response.type === 'cancelled') {
+        // user cancelled the login flow silently
       }
+    } catch (error: any) {
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Alert.alert('Error', 'Google Play Services not available or outdated.');
+            break;
+          case statusCodes.IN_PROGRESS:
+            Alert.alert('Error', 'Google Sign-In is already in progress.');
+            break;
+          default:
+            Alert.alert('Error', error.message || 'An error occurred during Google authentication.');
+        }
+      } else {
+        Alert.alert('Error', error?.message || 'An error occurred during Google authentication.');
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-    
-    setGoogleLoading(false);
   };
 
   return (

@@ -14,6 +14,8 @@ import { router } from 'expo-router';
 import { SiteItem, SiteType } from '@/types/dashboard';
 import { SiteCard } from '@/components/dashboard/SiteCard';
 import { SearchFilters } from '@/components/sites/SearchFilters';
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useSites } from '@/hooks/useSites';
 
 type FilterOption = 'All' | SiteType;
@@ -49,24 +51,23 @@ export default function SitesListScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Sites</Text>
-          <Text style={styles.headerSubtitle}>Manage your construction projects</Text>
-        </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
-          ]}
-          onPress={handleAddSitePress}
-        >
-          <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
-          <Text style={styles.addButtonText}>Add Site</Text>
-        </Pressable>
-      </View>
+    <ScreenWrapper>
+      <ScreenHeader
+        title="Sites"
+        subtitle="Manage your construction projects"
+        actionButton={
+          <Pressable
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && styles.addButtonPressed,
+            ]}
+            onPress={handleAddSitePress}
+          >
+            <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
+            <Text style={styles.addButtonText}>Add Site</Text>
+          </Pressable>
+        }
+      />
 
       {/* Search & Filters */}
       <SearchFilters
@@ -124,7 +125,7 @@ export default function SitesListScreen() {
           )}
         />
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 

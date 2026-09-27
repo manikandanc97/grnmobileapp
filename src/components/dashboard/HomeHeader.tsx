@@ -35,7 +35,7 @@ export function HomeHeader({ onProfilePress }: HomeHeaderProps) {
       <View style={styles.leftColumn}>
         <View style={styles.brandRow}>
           <View style={styles.brandIconWrapper}>
-            <HardHat size={16} color="#0F354A" strokeWidth={2.4} />
+            <HardHat size={16} color="#07566A" strokeWidth={2.4} />
           </View>
           <Text style={styles.brandText}>GRN CONSTRUCTIONS</Text>
         </View>
@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEF2F6',
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 6,
-    backgroundColor: '#F2A619',
+    backgroundColor: '#E79524',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
-    color: '#0F354A',
+    color: '#07566A',
     textTransform: 'uppercase',
   },
   greetingText: {
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   userNameText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
     letterSpacing: -0.3,
     marginTop: 1,
   },
@@ -132,11 +132,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#0F354A',
+    backgroundColor: '#07566A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#F2A619',
+    borderColor: '#E79524',
   },
   avatarText: {
     color: '#FFFFFF',

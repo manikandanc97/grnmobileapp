@@ -4,12 +4,12 @@ import {
   View,
   ScrollView,
   RefreshControl,
-  SafeAreaView,
   Platform,
   Text,
   ActivityIndicator,
   Button
 } from 'react-native';
+
 import { useRouter } from 'expo-router';
 import { HomeHeader } from '@/components/dashboard/HomeHeader';
 import { OverviewSection } from '@/components/dashboard/OverviewSection';
@@ -20,6 +20,8 @@ import { ProfileModal } from '@/components/dashboard/ProfileModal';
 import { QuickActionItem, SiteItem, MetricItem } from '@/types/dashboard';
 import { useSites } from '@/hooks/useSites';
 import { useDashboard } from '@/hooks/useDashboard';
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+
 export default function HomeDashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +87,7 @@ export default function HomeDashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenWrapper>
       <View style={styles.webContainer}>
         {/* Top Header */}
         <HomeHeader onProfilePress={() => setProfileVisible(true)} />
@@ -108,24 +110,29 @@ export default function HomeDashboardScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#F2A619"
-              colors={['#F2A619']}
+              tintColor="#E79524"
+              colors={['#E79524']}
             />
           }
         >
           {/* Overview Metrics */}
           {loading && !refreshing ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#0F354A" />
+              <ActivityIndicator size="large" color="#07566A" />
             </View>
           ) : error ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: 'red', marginBottom: 10 }}>{error}</Text>
-              <Button title="Retry" onPress={onRefresh} color="#0F354A" />
+            <View style={{ padding: 20 }}>
+              <View style={styles.errorCard}>
+                <Text style={styles.errorTitle}>Database Setup Required</Text>
+                <Text style={styles.errorMessage}>{error}</Text>
+                <View style={{ marginTop: 14 }}>
+                  <Button title="Retry Connection" onPress={onRefresh} color="#07566A" />
+                </View>
+              </View>
             </View>
           ) : (
             <>
-              <OverviewSection metricsData={metrics} onCardPress={handleMetricPress} />
+              <OverviewSection metricsData={metrics} sites={sites} onCardPress={handleMetricPress} />
 
               {/* Quick Actions */}
               <QuickActionsSection onActionPress={handleQuickAction} />
@@ -149,24 +156,24 @@ export default function HomeDashboardScreen() {
           onClose={() => setProfileVisible(false)}
         />
       </View>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F7F9FA',
   },
   webContainer: {
     flex: 1,
     width: '100%',
     maxWidth: 540,
     alignSelf: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F7F9FA',
     ...(Platform.OS === 'web'
       ? {
-          shadowColor: '#0F354A',
+          shadowColor: '#07566A',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.08,
           shadowRadius: 16,
@@ -207,5 +214,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  errorCard: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 14,
+    padding: 18,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  errorTitle: {
+    color: '#991B1B',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  errorMessage: {
+    color: '#7F1D1D',
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

@@ -40,7 +40,8 @@ export function ActiveSitesSection({
       <View style={styles.list}>
         {sites.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No active sites</Text>
+            <Text style={styles.emptyStateTitle}>No active sites yet</Text>
+            <Text style={styles.emptyStateText}>Create your first construction site to get started.</Text>
           </View>
         ) : (
           sites.map((site) => (
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
     letterSpacing: -0.2,
   },
   countBadge: {
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
   },
   viewAllButton: {
     paddingVertical: 4,
@@ -96,21 +97,34 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#D97706',
+    color: '#E79524',
   },
   list: {
     gap: 12,
   },
   emptyState: {
-    paddingVertical: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E8ECEF',
+    shadowColor: '#07566A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  emptyStateTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#123746',
+    marginBottom: 4,
   },
   emptyStateText: {
-    fontSize: 14,
-    color: '#8A99A4',
+    fontSize: 13,
+    color: '#71808A',
+    textAlign: 'center',
   },
 });

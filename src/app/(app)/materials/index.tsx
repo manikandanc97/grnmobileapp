@@ -24,6 +24,9 @@ import {
 import { MaterialCategory } from '@/types/dashboard';
 import { useMaterials } from '@/hooks/useMaterials';
 
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+
 const CATEGORIES: ('All' | MaterialCategory)[] = ['All', 'Cement', 'Sand', 'Bricks', 'Steel', 'Other'];
 
 export default function MaterialsScreen() {
@@ -68,16 +71,13 @@ export default function MaterialsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Materials</Text>
-            <Text style={styles.headerSubtitle}>
-              {siteId ? 'Materials for selected site' : 'Track materials across your sites'}
-            </Text>
-          </View>
+      <ScreenHeader
+        title="Materials"
+        subtitle={siteId ? 'Materials for selected site' : 'Track materials across your sites'}
+        showBorder={false}
+        actionButton={
           <Pressable
             style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
             onPress={() => router.push('/(app)/materials/add')}
@@ -85,7 +85,9 @@ export default function MaterialsScreen() {
             <Plus size={20} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Add Material</Text>
           </Pressable>
-        </View>
+        }
+      />
+      <View style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEF2F6', paddingBottom: 16 }}>
 
         {/* Search */}
         <View style={styles.searchContainer}>
@@ -239,7 +241,7 @@ export default function MaterialsScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 }
 

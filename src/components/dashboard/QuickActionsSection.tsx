@@ -21,33 +21,33 @@ export function QuickActionsSection({
     switch (iconName) {
       case 'Building2':
         return {
-          icon: <Building2 size={22} color="#0F354A" strokeWidth={2.2} />,
-          bg: '#F2A619', // Primary brand color
-          iconColor: '#0F354A',
+          icon: <Building2 size={20} color="#07566A" strokeWidth={2.2} />,
+          bg: '#FFF4E5', // Orange tint
+          iconColor: '#07566A',
         };
       case 'PackagePlus':
         return {
-          icon: <PackagePlus size={22} color="#1D4ED8" strokeWidth={2.2} />,
+          icon: <PackagePlus size={20} color="#1D4ED8" strokeWidth={2.2} />,
           bg: '#EFF6FF',
           iconColor: '#1D4ED8',
         };
       case 'UserCheck':
         return {
-          icon: <UserCheck size={22} color="#059669" strokeWidth={2.2} />,
+          icon: <UserCheck size={20} color="#059669" strokeWidth={2.2} />,
           bg: '#ECFDF5',
           iconColor: '#059669',
         };
       case 'Receipt':
         return {
-          icon: <Receipt size={22} color="#9333EA" strokeWidth={2.2} />,
+          icon: <Receipt size={20} color="#9333EA" strokeWidth={2.2} />,
           bg: '#FAF5FF',
           iconColor: '#9333EA',
         };
       default:
         return {
-          icon: <Building2 size={22} color="#0F354A" />,
-          bg: '#F2A619',
-          iconColor: '#0F354A',
+          icon: <Building2 size={20} color="#07566A" />,
+          bg: '#FFF4E5',
+          iconColor: '#07566A',
         };
     }
   };
@@ -65,8 +65,8 @@ export function QuickActionsSection({
               accessibilityRole="button"
               accessibilityLabel={action.title}
               style={({ pressed }) => [
-                styles.actionItem,
-                pressed && styles.actionItemPressed,
+                styles.actionTile,
+                pressed && styles.actionTilePressed,
               ]}
               onPress={() => onActionPress?.(action)}
             >
@@ -92,38 +92,39 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0F354A',
+    color: '#07566A',
     letterSpacing: -0.2,
     marginBottom: 12,
   },
   grid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  actionTile: {
+    flexBasis: '22%',
+    flexGrow: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E8ECEF',
-    shadowColor: '#0F354A',
+    shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 1,
   },
-  actionItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  actionItemPressed: {
-    transform: [{ scale: 0.95 }],
-    opacity: 0.8,
+  actionTilePressed: {
+    transform: [{ scale: 0.96 }],
+    backgroundColor: '#FAFCFD',
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A2B35',
+    color: '#123746',
     textAlign: 'center',
     lineHeight: 15,
   },
