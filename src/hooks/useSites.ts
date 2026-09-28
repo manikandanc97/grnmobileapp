@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { SiteItem } from '@/types/dashboard';
 import { SiteRow } from '@/types/database';
 import { getSites, getSiteById, transformSiteRow } from '@/services/sites';
+import { dataSync } from '@/lib/dataSync';
 
 export interface UseSitesResult {
   sites: SiteItem[];
@@ -9,7 +11,7 @@ export interface UseSitesResult {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (silent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
@@ -20,9 +22,16 @@ export function useSites(): UseSitesResult {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async (isRefresh: boolean) => {
+  const isFetchingRef = useRef(false);
+
+  const loadData = useCallback(async (isRefresh = false, isSilent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     if (isRefresh) {
       setRefreshing(true);
+    } else if (!isSilent) {
+      setLoading(true);
     }
     setError(null);
 
@@ -30,15 +39,18 @@ export function useSites(): UseSitesResult {
       const data = await getSites();
       setRawSites(data);
       setSites(data.map(transformSiteRow));
+      dataSync.markClean('sites');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to load sites.';
       setError(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -47,11 +59,11 @@ export function useSites(): UseSitesResult {
         if (isMounted) {
           setRawSites(data);
           setSites(data.map(transformSiteRow));
+          dataSync.markClean('sites');
         }
       } catch (err) {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Unable to load sites.';
-          setError(message);
+          setError(err instanceof Error ? err.message : 'Unable to load sites.');
         }
       } finally {
         if (isMounted) {
@@ -65,14 +77,67 @@ export function useSites(): UseSitesResult {
     };
   }, []);
 
-  const onRefresh = useCallback(async () => {
-    await loadData(true);
+
+  // Live synchronization subscription
+  useEffect(() => {
+    const unsubscribe = dataSync.subscribe('sites', (event) => {
+      if (event.action === 'create') {
+        const newRow = event.payload;
+        const newItem = transformSiteRow(newRow);
+        setRawSites((prev) => {
+          const exists = prev.some((s) => s.id === newRow.id);
+          if (exists) {
+            return prev.map((s) => (s.id === newRow.id ? newRow : s));
+          }
+          return [newRow, ...prev];
+        });
+        setSites((prev) => {
+          const exists = prev.some((s) => s.id === newItem.id);
+          if (exists) {
+            return prev.map((s) => (s.id === newItem.id ? newItem : s));
+          }
+          return [newItem, ...prev];
+        });
+      } else if (event.action === 'update') {
+        const updatedRow = event.payload;
+        const updatedItem = transformSiteRow(updatedRow);
+        setRawSites((prev) =>
+          prev.map((s) => (s.id === updatedRow.id ? updatedRow : s))
+        );
+        setSites((prev) =>
+          prev.map((s) => (s.id === updatedItem.id ? updatedItem : s))
+        );
+      } else if (event.action === 'delete') {
+        setRawSites((prev) => prev.filter((s) => s.id !== event.payload.id));
+        setSites((prev) => prev.filter((s) => s.id !== event.payload.id));
+      } else if (event.action === 'invalidate') {
+        loadData(false, true);
+      }
+    });
+
+    return unsubscribe;
   }, [loadData]);
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    await loadData(false);
+  // Intelligent navigation focus revalidation (only if marked stale)
+  useFocusEffect(
+    useCallback(() => {
+      if (dataSync.isStale('sites')) {
+        loadData(false, true);
+      }
+    }, [loadData])
+  );
+
+  const onRefresh = useCallback(async () => {
+    await loadData(true, false);
   }, [loadData]);
+
+  const refetch = useCallback(
+    async (silent?: boolean) => {
+      const shouldBeSilent = silent ?? (sites.length > 0);
+      await loadData(false, shouldBeSilent);
+    },
+    [loadData, sites.length],
+  );
 
   return {
     sites,
@@ -90,7 +155,7 @@ export interface UseSiteDetailsResult {
   rawSite: SiteRow | null;
   loading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (isSilent?: boolean) => Promise<void>;
 }
 
 export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
@@ -99,7 +164,15 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
   const [loading, setLoading] = useState<boolean>(Boolean(id));
   const [error, setError] = useState<string | null>(id ? null : 'Invalid site ID provided.');
 
-  const loadDetail = useCallback(async (targetId: string) => {
+  const isFetchingRef = useRef(false);
+
+  const loadDetail = useCallback(async (targetId: string, isSilent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    if (!isSilent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -117,15 +190,14 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
       setError(message);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
   useEffect(() => {
-    if (!id) {
-      return;
-    }
-
+    if (!id) return;
     let isMounted = true;
+
     (async () => {
       try {
         const data = await getSiteById(id);
@@ -141,8 +213,7 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
         }
       } catch (err) {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Unable to load site details.';
-          setError(message);
+          setError(err instanceof Error ? err.message : 'Unable to load site details.');
         }
       } finally {
         if (isMounted) {
@@ -156,11 +227,44 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
     };
   }, [id]);
 
-  const refetch = useCallback(async () => {
+
+  // Live synchronization for detail view
+  useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    await loadDetail(id);
+
+    const unsubscribe = dataSync.subscribe('sites', (event) => {
+      if (event.action === 'update' && event.payload.id === id) {
+        setRawSite(event.payload);
+        setSite(transformSiteRow(event.payload));
+      } else if (event.action === 'delete' && event.payload.id === id) {
+        setRawSite(null);
+        setSite(null);
+        setError('Site has been deleted.');
+      } else if (event.action === 'invalidate') {
+        loadDetail(id, true);
+      }
+    });
+
+    return unsubscribe;
   }, [id, loadDetail]);
+
+  // Revalidate on focus if stale
+  useFocusEffect(
+    useCallback(() => {
+      if (id && dataSync.isStale('sites')) {
+        loadDetail(id, true);
+      }
+    }, [id, loadDetail])
+  );
+
+  const refetch = useCallback(
+    async (silent?: boolean) => {
+      if (!id) return;
+      const shouldBeSilent = silent ?? (site !== null);
+      await loadDetail(id, shouldBeSilent);
+    },
+    [id, loadDetail, site],
+  );
 
   return {
     site,
@@ -170,3 +274,5 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
     refetch,
   };
 }
+
+

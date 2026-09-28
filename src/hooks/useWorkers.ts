@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { WorkerWithSite, getWorkers, getWorkerById } from '@/services/workers';
+import { dataSync } from '@/lib/dataSync';
 
 export interface UseWorkersResult {
   workers: WorkerWithSite[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (isSilent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
@@ -16,41 +18,54 @@ export function useWorkers(siteId?: string): UseWorkersResult {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isFetchingRef = useRef(false);
+
   const loadData = useCallback(
-    async (isRefresh: boolean) => {
-      if (isRefresh) setRefreshing(true);
+    async (isRefresh = false, isSilent = false) => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
         const data = await getWorkers(siteId);
         setWorkers(data);
+        dataSync.markClean('workers');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unable to load workers.';
         setError(message);
       } finally {
         setLoading(false);
         setRefreshing(false);
+        isFetchingRef.current = false;
       }
     },
     [siteId],
   );
 
+  // Initial load
   useEffect(() => {
     let isMounted = true;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     (async () => {
       try {
         const data = await getWorkers(siteId);
-        if (isMounted) setWorkers(data);
+        if (isMounted) {
+          setWorkers(data);
+          dataSync.markClean('workers');
+        }
       } catch (err) {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Unable to load workers.';
-          setError(message);
+          setError(err instanceof Error ? err.message : 'Unable to load workers.');
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     })();
 
@@ -59,14 +74,61 @@ export function useWorkers(siteId?: string): UseWorkersResult {
     };
   }, [siteId]);
 
+
+
+  // Live data synchronization subscription
+  useEffect(() => {
+    const unsubscribe = dataSync.subscribe('workers', (event) => {
+      if (event.action === 'create') {
+        const newWorker = event.payload;
+        if (!siteId || newWorker.site_id === siteId) {
+          setWorkers((prev) => {
+            const exists = prev.some((w) => w.id === newWorker.id);
+            if (exists) {
+              return prev.map((w) => (w.id === newWorker.id ? newWorker : w));
+            }
+            return [newWorker, ...prev];
+          });
+        }
+      } else if (event.action === 'update') {
+        const updated = event.payload;
+        if (!siteId || updated.site_id === siteId) {
+          setWorkers((prev) =>
+            prev.map((w) => (w.id === updated.id ? updated : w))
+          );
+        } else {
+          setWorkers((prev) => prev.filter((w) => w.id !== updated.id));
+        }
+      } else if (event.action === 'delete') {
+        setWorkers((prev) => prev.filter((w) => w.id !== event.payload.id));
+      } else if (event.action === 'invalidate') {
+        loadData(false, true);
+      }
+    });
+
+    return unsubscribe;
+  }, [siteId, loadData]);
+
+  // Intelligent navigation focus revalidation (only if marked stale)
+  useFocusEffect(
+    useCallback(() => {
+      if (dataSync.isStale('workers')) {
+        loadData(false, true);
+      }
+    }, [loadData])
+  );
+
   const onRefresh = useCallback(async () => {
-    await loadData(true);
+    await loadData(true, false);
   }, [loadData]);
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    await loadData(false);
-  }, [loadData]);
+  const refetch = useCallback(
+    async (isSilent?: boolean) => {
+      const silent = isSilent ?? (workers.length > 0);
+      await loadData(false, silent);
+    },
+    [loadData, workers.length],
+  );
 
   return { workers, loading, refreshing, error, refetch, onRefresh };
 }
@@ -75,7 +137,7 @@ export interface UseWorkerDetailsResult {
   worker: WorkerWithSite | null;
   loading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (isSilent?: boolean) => Promise<void>;
 }
 
 export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult {
@@ -83,30 +145,41 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
   const [loading, setLoading] = useState<boolean>(Boolean(id));
   const [error, setError] = useState<string | null>(id ? null : 'Invalid worker ID.');
 
-  const loadDetail = useCallback(async (targetId: string) => {
-    setError(null);
-    try {
-      const data = await getWorkerById(targetId);
-      if (!data) {
-        setWorker(null);
-        setError('Worker not found.');
-      } else {
-        setWorker(data);
+  const isFetchingRef = useRef(false);
+
+  const loadDetail = useCallback(
+    async (targetId: string, isSilent = false) => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      if (!isSilent) {
+        setLoading(true);
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load worker details.';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      setError(null);
+
+      try {
+        const data = await getWorkerById(targetId);
+        if (!data) {
+          setWorker(null);
+          setError('Worker not found.');
+        } else {
+          setWorker(data);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to load worker details.';
+        setError(message);
+      } finally {
+        setLoading(false);
+        isFetchingRef.current = false;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!id) return;
     let isMounted = true;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     (async () => {
       try {
         const data = await getWorkerById(id);
@@ -120,11 +193,12 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
         }
       } catch (err) {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Unable to load worker details.';
-          setError(message);
+          setError(err instanceof Error ? err.message : 'Unable to load worker details.');
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     })();
 
@@ -133,11 +207,44 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
     };
   }, [id]);
 
-  const refetch = useCallback(async () => {
+
+
+  // Live synchronization for detail view
+  useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    await loadDetail(id);
+
+    const unsubscribe = dataSync.subscribe('workers', (event) => {
+      if (event.action === 'update' && event.payload.id === id) {
+        setWorker(event.payload);
+      } else if (event.action === 'delete' && event.payload.id === id) {
+        setWorker(null);
+        setError('Worker has been deleted.');
+      } else if (event.action === 'invalidate') {
+        loadDetail(id, true);
+      }
+    });
+
+    return unsubscribe;
   }, [id, loadDetail]);
+
+  // Revalidate on focus if stale
+  useFocusEffect(
+    useCallback(() => {
+      if (id && dataSync.isStale('workers')) {
+        loadDetail(id, true);
+      }
+    }, [id, loadDetail])
+  );
+
+  const refetch = useCallback(
+    async (isSilent?: boolean) => {
+      if (!id) return;
+      const silent = isSilent ?? (worker !== null);
+      await loadDetail(id, silent);
+    },
+    [id, loadDetail, worker],
+  );
 
   return { worker, loading, error, refetch };
 }
+

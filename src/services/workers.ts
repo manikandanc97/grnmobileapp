@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Database, WorkerRow } from '@/types/database';
 import { formatDatabaseError } from './sites';
+import { dataSync } from '@/lib/dataSync';
 
 export type WorkerInsert = Database['public']['Tables']['workers']['Insert'];
 export type WorkerUpdate = Database['public']['Tables']['workers']['Update'];
@@ -91,7 +92,36 @@ export async function createWorker(params: CreateWorkerParams): Promise<WorkerWi
     throw new Error(formatDatabaseError(error, 'Failed to create new worker.'));
   }
 
-  return data as WorkerWithSite;
+  const created = data as WorkerWithSite;
+  dataSync.notify({ entity: 'workers', action: 'create', payload: created });
+  return created;
+}
+
+/**
+ * Update an existing worker.
+ */
+export async function updateWorker(
+  id: string,
+  params: Partial<CreateWorkerParams>,
+): Promise<WorkerWithSite> {
+  const updatePayload: WorkerUpdate = {
+    ...params,
+  };
+
+  const { data, error } = await supabase
+    .from('workers')
+    .update(updatePayload)
+    .eq('id', id)
+    .select('*, sites(name)')
+    .single();
+
+  if (error) {
+    throw new Error(formatDatabaseError(error, 'Failed to update worker.'));
+  }
+
+  const updated = data as WorkerWithSite;
+  dataSync.notify({ entity: 'workers', action: 'update', payload: updated });
+  return updated;
 }
 
 /**
@@ -106,6 +136,8 @@ export async function softDeleteWorker(id: string): Promise<void> {
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to delete worker.'));
   }
+
+  dataSync.notify({ entity: 'workers', action: 'delete', payload: { id } });
 }
 
 /**
@@ -114,3 +146,4 @@ export async function softDeleteWorker(id: string): Promise<void> {
 export function getSiteName(worker: WorkerWithSite): string {
   return worker.sites?.name ?? 'Unknown Site';
 }
+

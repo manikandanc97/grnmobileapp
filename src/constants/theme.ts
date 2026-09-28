@@ -64,6 +64,7 @@ export const Fonts = Platform.select({
 });
 
 export const Spacing = {
+  // Legacy mappings
   half: 2,
   one: 4,
   two: 8,
@@ -71,6 +72,15 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+
+  // Modern design tokens
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  '2xl': 48,
+  '3xl': 64,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

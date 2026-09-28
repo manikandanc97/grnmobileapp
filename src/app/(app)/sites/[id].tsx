@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   MapPin,
@@ -26,6 +26,7 @@ import { useExpenses } from '@/hooks/useExpenses';
 
 export default function SiteDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { site, loading, error } = useSiteDetails(id);
   const { materials, loading: materialsLoading } = useMaterials(id);
 
@@ -88,7 +89,7 @@ export default function SiteDetailsScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 16 }]}>
         <Pressable
           style={({ pressed }) => [
             styles.backIcon,
@@ -113,7 +114,7 @@ export default function SiteDetailsScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
         {/* Overview Section */}
         <View style={styles.section}>
           <View style={styles.overviewGrid}>
@@ -349,7 +350,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -394,7 +394,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
   },
   section: {
     marginBottom: 24,

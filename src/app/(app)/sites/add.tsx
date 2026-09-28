@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  ScrollView,
   Pressable,
-  Platform,
-  KeyboardAvoidingView,
-  ActivityIndicator,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, Check } from 'lucide-react-native';
+import { MapPin, Check } from 'lucide-react-native';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { SiteType } from '@/types/dashboard';
 import { createSite } from '@/services/sites';
+import { Spacing } from '@/constants/theme';
+
+// Shared UI Architecture
+import { FormScreen } from '@/components/ui/FormScreen';
+import { FormField } from '@/components/ui/FormField';
+import { TextField } from '@/components/ui/TextField';
+import { DateField } from '@/components/ui/DateField';
+import { BottomActionBar } from '@/components/ui/BottomActionBar';
+import { Button } from '@/components/ui/Button';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+
+dayjs.extend(customParseFormat);
 
 const PROJECT_TYPES: SiteType[] = ['Residential', 'Commercial', 'Renovation'];
 
@@ -24,19 +35,47 @@ export default function AddSiteScreen() {
   const [startDate, setStartDate] = useState('');
   const [expectedCompletion, setExpectedCompletion] = useState('');
   const [budget, setBudget] = useState('');
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [createdSiteName, setCreatedSiteName] = useState('');
+
+  // Field refs for focus chaining
+  const locationInputRef = useRef<TextInput>(null);
+  const budgetInputRef = useRef<TextInput>(null);
+
+  const parsedStartDate = useMemo(
+    () => (startDate ? dayjs(startDate, 'DD/MM/YYYY').toDate() : undefined),
+    [startDate]
+  );
+  const parsedExpectedCompletion = useMemo(
+    () => (expectedCompletion ? dayjs(expectedCompletion, 'DD/MM/YYYY').toDate() : undefined),
+    [expectedCompletion]
+  );
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = 'Site Name is required';
+    if (!location.trim()) newErrors.location = 'Location is required';
+    if (budget.trim() && isNaN(Number(budget))) {
+      newErrors.budget = 'Please enter a valid numeric budget';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleCreate = async () => {
-    if (!name.trim() || !location.trim() || isSubmitting) return;
-    
+    if (!validate() || isSubmitting) return;
+
     setIsSubmitting(true);
     setErrorMessage(null);
+    const siteName = name.trim();
 
     try {
       await createSite({
-        name: name.trim(),
+        name: siteName,
         location: location.trim(),
         type: projectType,
         startDate: startDate.trim() || undefined,
@@ -44,85 +83,90 @@ export default function AddSiteScreen() {
         budget: budget.trim() || undefined,
       });
 
-      router.back();
+      Keyboard.dismiss();
+      setIsSubmitting(false);
+      setCreatedSiteName(siteName);
+      setShowSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create site.';
       setErrorMessage(msg);
-    } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    router.back();
+  };
+
+  const isFormValid = name.trim().length > 0 && location.trim().length > 0;
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <FormScreen
+      title="Create Site"
+      subtitle="Set up the basic information for your construction site."
+      showBack
+      bottomBar={
+        <BottomActionBar>
+          <Button
+            title="Cancel"
+            variant="secondary"
+            onPress={() => router.back()}
+            disabled={isSubmitting}
+          />
+          <Button
+            title="Create Site"
+            variant="primary"
+            icon={<Check size={18} color="#FFFFFF" />}
+            onPress={handleCreate}
+            loading={isSubmitting}
+            disabled={!isFormValid || isSubmitting}
+            style={styles.createBtn}
+          />
+        </BottomActionBar>
+      }
     >
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Add New Site</Text>
+      {errorMessage && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{errorMessage}</Text>
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.closeIcon,
-            pressed && styles.closeIconPressed,
-          ]}
-          onPress={() => router.back()}
-        >
-          <X size={24} color="#8A99A4" />
-        </Pressable>
-      </View>
+      )}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {errorMessage && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          </View>
-        )}
+      {/* PROJECT DETAILS */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>PROJECT DETAILS</Text>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Site Name <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
+        <FormField id="name" label="Site Name" required error={errors.name}>
+          <TextField
+            id="name"
             placeholder="e.g. Green Villa Phase 2"
-            placeholderTextColor="#A0AAB2"
             value={name}
-            onChangeText={setName}
+            onChangeText={(v) => {
+              setName(v);
+              if (errors.name) setErrors((e) => ({ ...e, name: '' }));
+            }}
             editable={!isSubmitting}
+            returnKeyType="next"
+            nextFieldRef={locationInputRef}
+            error={errors.name}
           />
-        </View>
+        </FormField>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Location <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Coimbatore"
-            placeholderTextColor="#A0AAB2"
-            value={location}
-            onChangeText={setLocation}
-            editable={!isSubmitting}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Type</Text>
+        <FormField label="Project Type">
           <View style={styles.typeSelector}>
             {PROJECT_TYPES.map((type) => {
               const isActive = type === projectType;
               return (
                 <Pressable
                   key={type}
-                  style={[
-                    styles.typeOption,
-                    isActive && styles.typeOptionActive
-                  ]}
+                  style={[styles.typeOption, isActive && styles.typeOptionActive]}
                   onPress={() => setProjectType(type)}
                   disabled={isSubmitting}
                 >
                   <Text
                     style={[
                       styles.typeOptionText,
-                      isActive && styles.typeOptionTextActive
+                      isActive && styles.typeOptionTextActive,
                     ]}
                   >
                     {type}
@@ -131,233 +175,156 @@ export default function AddSiteScreen() {
               );
             })}
           </View>
-        </View>
+        </FormField>
+      </View>
+
+      {/* LOCATION */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>LOCATION</Text>
+
+        <FormField id="location" label="Location" required error={errors.location}>
+          <TextField
+            ref={locationInputRef}
+            id="location"
+            placeholder="Enter site location / address"
+            value={location}
+            onChangeText={(v) => {
+              setLocation(v);
+              if (errors.location) setErrors((e) => ({ ...e, location: '' }));
+            }}
+            leftIcon={<MapPin size={18} color="#71808A" />}
+            editable={!isSubmitting}
+            error={errors.location}
+          />
+        </FormField>
+      </View>
+
+      {/* TIMELINE & BUDGET */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>PROJECT INFORMATION</Text>
 
         <View style={styles.row}>
-          <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Start Date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor="#A0AAB2"
-              value={startDate}
-              onChangeText={setStartDate}
-              editable={!isSubmitting}
-            />
+          <View style={styles.col}>
+            <FormField id="startDate" label="Start Date">
+              <DateField
+                value={startDate}
+                placeholder="DD/MM/YYYY"
+                onChange={(_date, formatted) => {
+                  setStartDate(formatted);
+                  if (
+                    parsedExpectedCompletion &&
+                    dayjs(formatted, 'DD/MM/YYYY').isAfter(dayjs(parsedExpectedCompletion), 'day')
+                  ) {
+                    setExpectedCompletion('');
+                  }
+                }}
+              />
+            </FormField>
           </View>
 
-          <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>Expected End</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor="#A0AAB2"
-              value={expectedCompletion}
-              onChangeText={setExpectedCompletion}
-              editable={!isSubmitting}
-            />
+          <View style={styles.col}>
+            <FormField id="expectedCompletion" label="Expected End">
+              <DateField
+                value={expectedCompletion}
+                minDate={parsedStartDate}
+                placeholder="DD/MM/YYYY"
+                onChange={(_date, formatted) => {
+                  setExpectedCompletion(formatted);
+                }}
+              />
+            </FormField>
           </View>
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Estimated Budget</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. ₹50L"
-            placeholderTextColor="#A0AAB2"
+        <FormField id="budget" label="Budget (₹)" error={errors.budget}>
+          <TextField
+            ref={budgetInputRef}
+            id="budget"
+            placeholder="e.g. 5000000"
             value={budget}
-            onChangeText={setBudget}
+            onChangeText={(v) => {
+              setBudget(v);
+              if (errors.budget) setErrors((e) => ({ ...e, budget: '' }));
+            }}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            onSubmitEditing={handleCreate}
             editable={!isSubmitting}
+            error={errors.budget}
           />
-        </View>
-
-      </ScrollView>
-
-      {/* Footer / Actions */}
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [styles.cancelButton, pressed && styles.buttonPressed]}
-          onPress={() => router.back()}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </Pressable>
-        
-        <Pressable
-          style={({ pressed }) => [
-            styles.createButton,
-            pressed && styles.buttonPressed,
-            (!name.trim() || !location.trim() || isSubmitting) && styles.createButtonDisabled
-          ]}
-          onPress={handleCreate}
-          disabled={!name.trim() || !location.trim() || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" style={styles.createIcon} />
-          ) : (
-            <Check size={18} color="#FFFFFF" strokeWidth={2.5} style={styles.createIcon} />
-          )}
-          <Text style={styles.createButtonText}>
-            {isSubmitting ? 'Creating...' : 'Create Site'}
-          </Text>
-        </Pressable>
+        </FormField>
       </View>
-    </KeyboardAvoidingView>
+
+      <SuccessDialog
+        visible={showSuccess}
+        title="Site Created"
+        message={`"${createdSiteName || 'Site'}" has been successfully created.`}
+        buttonText="Done"
+        onClose={handleSuccessClose}
+      />
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-  },
-  closeIcon: {
-    padding: 4,
-  },
-  closeIconPressed: {
-    opacity: 0.5,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   errorBanner: {
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   errorBannerText: {
     color: '#DC2626',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  formGroup: {
-    marginBottom: 20,
+  section: {
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#71808A',
+    letterSpacing: 0.8,
+    marginBottom: Spacing.md,
   },
   row: {
     flexDirection: 'row',
+    gap: Spacing.md,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B5C68',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#EF4444',
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 52,
-    fontSize: 15,
-    color: '#0F354A',
-    fontWeight: '500',
+  col: {
+    flex: 1,
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 10,
-    padding: 4,
+    gap: Spacing.sm,
   },
   typeOption: {
     flex: 1,
-    paddingVertical: 10,
+    height: 48,
     alignItems: 'center',
-    borderRadius: 8,
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#EEF2F6',
+    backgroundColor: '#FFFFFF',
   },
   typeOptionActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#E79524',
+    backgroundColor: '#FFF8F0',
   },
   typeOptionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: '#71808A',
   },
   typeOptionTextActive: {
-    color: '#0F354A',
+    color: '#E79524',
     fontWeight: '700',
   },
-  footer: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#F3F6F8',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#4B5C68',
-  },
-  createButton: {
+  createBtn: {
     flex: 2,
-    flexDirection: 'row',
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#F2A619',
-    shadowColor: '#F2A619',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  createButtonDisabled: {
-    backgroundColor: '#FCD893',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  createIcon: {
-    marginRight: 8,
-  },
-  createButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  buttonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
   },
 });

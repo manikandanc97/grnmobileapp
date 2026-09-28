@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, Redirect } from 'expo-router';
+import { Tabs, useRouter, usePathname, useSegments } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import {
   Home,
@@ -25,33 +25,46 @@ function TabIcon({ focused, IconComponent }: { focused: boolean, IconComponent: 
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const segments = useSegments();
 
-  if (loading) return null;
+  React.useEffect(() => {
+    if (!loading && !session) {
+      router.replace('/(auth)');
+    }
+  }, [session, loading, router]);
 
-  if (!session) {
-    return <Redirect href="/(auth)" />;
-  }
+  if (loading || !session) return null;
+
+  const isFormScreen =
+    segments[segments.length - 1] === 'add' ||
+    pathname.endsWith('/add') ||
+    pathname.includes('/add');
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: '#07566A',
         tabBarInactiveTintColor: '#71808A',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#EEF2F6',
-          borderTopWidth: 1,
-          height: 64 + insets.bottom,
-          paddingBottom: insets.bottom || 12,
-          paddingTop: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          elevation: 5,
-        },
+        tabBarStyle: isFormScreen
+          ? { display: 'none' }
+          : {
+              backgroundColor: '#FFFFFF',
+              borderTopColor: '#EEF2F6',
+              borderTopWidth: 1,
+              minHeight: 64 + (insets.bottom || 0),
+              paddingBottom: insets.bottom || 12,
+              paddingTop: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 5,
+            },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',

@@ -1,36 +1,48 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Pressable,
-  Platform,
-  KeyboardAvoidingView,
-} from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, Alert, TextInput, Keyboard } from 'react-native';
 import { router } from 'expo-router';
-import { X, ChevronDown, Check } from 'lucide-react-native';
-import { MaterialCategory, MaterialUnit, MaterialStatus } from '@/types/dashboard';
+import { Check } from 'lucide-react-native';
 import { useSites } from '@/hooks/useSites';
 import { createMaterial } from '@/services/materials';
+import { useMasterData } from '@/hooks/useMasterData';
+import { Spacing } from '@/constants/theme';
 
-
+// Shared UI Architecture
+import { FormScreen } from '@/components/ui/FormScreen';
+import { FormField } from '@/components/ui/FormField';
+import { TextField } from '@/components/ui/TextField';
+import { SelectField, SelectOption } from '@/components/ui/SelectField';
+import { DateField } from '@/components/ui/DateField';
+import { BottomActionBar } from '@/components/ui/BottomActionBar';
+import { Button } from '@/components/ui/Button';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
 
 export default function AddMaterialScreen() {
   const { sites, loading: sitesLoading } = useSites();
-  
+  const {
+    categories,
+    units,
+    addCategory,
+    deleteCategory,
+  } = useMasterData();
+
   const [name, setName] = useState('');
-  const [category] = useState<MaterialCategory>('Cement');
+  const [category, setCategory] = useState('');
   const [siteId, setSiteId] = useState<string>('');
   const [quantity, setQuantity] = useState('');
-  const [unit] = useState<MaterialUnit>('Bags');
-  const [status] = useState<MaterialStatus>('Available');
-  const [purchaseDate, setPurchaseDate] = useState('');
+  const [unit, setUnit] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState<Date>(new Date());
   const [supplier, setSupplier] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [createdMaterialName, setCreatedMaterialName] = useState('');
+
+  // Input refs for focus chaining
+  const quantityInputRef = useRef<TextInput>(null);
+  const supplierInputRef = useRef<TextInput>(null);
+  const notesInputRef = useRef<TextInput>(null);
 
   // Set default site when sites load
   React.useEffect(() => {
@@ -40,286 +52,254 @@ export default function AddMaterialScreen() {
     }
   }, [sites, siteId]);
 
-  const handleSave = async () => {
-    if (!name || !siteId || !quantity) {
-      setError('Name, Site, and Quantity are required.');
-      return;
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = 'Material Name is required';
+    if (!category) newErrors.category = 'Category is required';
+    if (!unit) newErrors.unit = 'Unit is required';
+    if (!siteId) newErrors.siteId = 'Site is required';
+    if (!quantity || isNaN(Number(quantity)) || Number(quantity) <= 0) {
+      newErrors.quantity = 'Enter a valid positive quantity';
     }
-    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm() || isSaving) return;
+
     setIsSaving(true);
-    setError(null);
-    
+    const materialName = name.trim();
+
     try {
       await createMaterial({
-        name,
+        name: materialName,
         category,
         site_id: siteId,
         quantity: Number(quantity),
         unit,
-        status,
-        received: Number(quantity), // Initially received equals quantity
+        status: 'Available',
+        received: Number(quantity),
         used: 0,
       });
-      router.back();
+
+      Keyboard.dismiss();
+      setIsSaving(false);
+      setCreatedMaterialName(materialName);
+      setShowSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save material');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save material');
       setIsSaving(false);
     }
   };
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    router.back();
+  };
+
+  const handleAddCategory = () => {
+    Alert.prompt(
+      'New Category',
+      'Enter category name:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Add',
+          onPress: (text?: string) => {
+            if (text) {
+              addCategory(text);
+              setCategory(text);
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  };
+
+  const handleDeleteCategory = async (cat: string) => {
+    const result = await deleteCategory(cat);
+    if (!result.success) {
+      Alert.alert('Cannot Delete', result.message);
+    } else {
+      if (category === cat) setCategory('');
+    }
+  };
+
+  const siteOptions: SelectOption[] = sites.map((s) => ({ label: s.name, value: s.id }));
+  const categoryOptions: SelectOption[] = categories.map((c) => ({ label: c, value: c }));
+  const unitOptions: SelectOption[] = units.map((u) => ({ label: u, value: u }));
+
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Add Material</Text>
-          <Pressable
-            style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}
+    <FormScreen
+      title="Add Material"
+      showBack
+      bottomBar={
+        <BottomActionBar>
+          <Button
+            title="Cancel"
+            variant="secondary"
             onPress={() => router.back()}
-          >
-            <X size={24} color="#0F354A" />
-          </Pressable>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          
-          {/* Form Fields */}
-          {error && (
-            <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
-              <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
-            </View>
-          )}
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Material Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Ramco Cement Grade 43"
-              placeholderTextColor="#8A99A4"
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
-
-          <View style={styles.formRow}>
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Category</Text>
-              <View style={styles.pickerContainer}>
-                {/* Simulated picker for brevity */}
-                <Text style={styles.pickerText}>{category}</Text>
-                <ChevronDown size={20} color="#8A99A4" />
-              </View>
-            </View>
-
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Unit</Text>
-              <View style={styles.pickerContainer}>
-                <Text style={styles.pickerText}>{unit}</Text>
-                <ChevronDown size={20} color="#8A99A4" />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Site</Text>
-            <View style={styles.pickerContainer}>
-              <Text style={styles.pickerText}>
-                {sitesLoading ? 'Loading sites...' : (sites.find(s => s.id === siteId)?.name || 'Select Site')}
-              </Text>
-              <ChevronDown size={20} color="#8A99A4" />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Quantity</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              placeholderTextColor="#8A99A4"
-              keyboardType="numeric"
-              value={quantity}
-              onChangeText={setQuantity}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Purchase Date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor="#8A99A4"
-              value={purchaseDate}
-              onChangeText={setPurchaseDate}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Supplier</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Supplier Name"
-              placeholderTextColor="#8A99A4"
-              value={supplier}
-              onChangeText={setSupplier}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Notes</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Any additional notes..."
-              placeholderTextColor="#8A99A4"
-              multiline
-              numberOfLines={4}
-              value={notes}
-              onChangeText={setNotes}
-            />
-          </View>
-
-        </ScrollView>
-
-        {/* Footer Actions */}
-        <View style={styles.footer}>
-          <Pressable
-            style={({ pressed }) => [styles.cancelButton, pressed && styles.buttonPressed]}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveButton, 
-              (pressed || isSaving) && styles.buttonPressed,
-              isSaving && { opacity: 0.7 }
-            ]}
-            onPress={handleSave}
             disabled={isSaving}
-          >
-            <Check size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Material'}</Text>
-          </Pressable>
+          />
+          <Button
+            title="Save Material"
+            variant="primary"
+            icon={<Check size={18} color="#FFFFFF" />}
+            onPress={handleSave}
+            loading={isSaving}
+            disabled={isSaving}
+            style={styles.saveBtn}
+          />
+        </BottomActionBar>
+      }
+    >
+      {/* MATERIAL DETAILS */}
+      <View style={styles.section}>
+        <FormField id="name" label="Material Name" required error={errors.name}>
+          <TextField
+            id="name"
+            placeholder="e.g. Ramco Cement Grade 43"
+            value={name}
+            onChangeText={(v) => {
+              setName(v);
+              if (errors.name) setErrors((e) => ({ ...e, name: '' }));
+            }}
+            error={errors.name}
+            returnKeyType="next"
+          />
+        </FormField>
+
+        <View style={styles.row}>
+          <View style={styles.flex1}>
+            <FormField id="category" label="Category" required error={errors.category}>
+              <SelectField
+                value={category}
+                options={categoryOptions}
+                onChange={(v) => {
+                  setCategory(v);
+                  if (errors.category) setErrors((e) => ({ ...e, category: '' }));
+                }}
+                placeholder="Select Category"
+                onAddOption={handleAddCategory}
+                onDeleteOption={handleDeleteCategory}
+                manageLabel="Add Category"
+                error={errors.category}
+              />
+            </FormField>
+          </View>
+
+          <View style={styles.flex1}>
+            <FormField id="unit" label="Unit" required error={errors.unit}>
+              <SelectField
+                value={unit}
+                options={unitOptions}
+                onChange={(v) => {
+                  setUnit(v);
+                  if (errors.unit) setErrors((e) => ({ ...e, unit: '' }));
+                }}
+                placeholder="Select Unit"
+                error={errors.unit}
+              />
+            </FormField>
+          </View>
         </View>
       </View>
-    </KeyboardAvoidingView>
+
+      {/* PROJECT */}
+      <View style={styles.section}>
+        <FormField id="siteId" label="Site" required error={errors.siteId}>
+          <SelectField
+            value={siteId}
+            options={siteOptions}
+            onChange={(v) => {
+              setSiteId(v);
+              if (errors.siteId) setErrors((e) => ({ ...e, siteId: '' }));
+            }}
+            placeholder={sitesLoading ? 'Loading sites...' : 'Select Site'}
+            error={errors.siteId}
+          />
+        </FormField>
+      </View>
+
+      {/* QUANTITY & PROCUREMENT */}
+      <View style={styles.section}>
+        <FormField id="quantity" label="Quantity" required error={errors.quantity}>
+          <TextField
+            ref={quantityInputRef}
+            id="quantity"
+            placeholder="0.00"
+            keyboardType="numeric"
+            value={quantity}
+            onChangeText={(v) => {
+              setQuantity(v);
+              if (errors.quantity) setErrors((e) => ({ ...e, quantity: '' }));
+            }}
+            returnKeyType="next"
+            nextFieldRef={supplierInputRef}
+            error={errors.quantity}
+          />
+        </FormField>
+
+        <FormField id="purchaseDate" label="Purchase Date">
+          <DateField
+            value={purchaseDate}
+            onChange={(d) => setPurchaseDate(d)}
+          />
+        </FormField>
+
+        <FormField id="supplier" label="Supplier">
+          <TextField
+            ref={supplierInputRef}
+            id="supplier"
+            placeholder="Supplier Name"
+            value={supplier}
+            onChangeText={setSupplier}
+            returnKeyType="next"
+            nextFieldRef={notesInputRef}
+          />
+        </FormField>
+      </View>
+
+      {/* ADDITIONAL INFO */}
+      <View style={styles.section}>
+        <FormField id="notes" label="Notes">
+          <TextField
+            ref={notesInputRef}
+            id="notes"
+            placeholder="Any additional notes or specifications..."
+            multiline
+            numberOfLines={4}
+            value={notes}
+            onChangeText={setNotes}
+          />
+        </FormField>
+      </View>
+
+      <SuccessDialog
+        visible={showSuccess}
+        title="Material Added"
+        message={`"${createdMaterialName || 'Material'}" has been successfully added.`}
+        buttonText="Done"
+        onClose={handleSuccessClose}
+      />
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  section: {
+    marginBottom: Spacing.md,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  flex1: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 20 : 20, // Modal presentation usually doesn't need huge top padding
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  closeButtonPressed: {
-    opacity: 0.5,
-  },
-  content: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F354A',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 48,
-    fontSize: 15,
-    color: '#0F354A',
-    ...(Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)),
-  },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 48,
-  },
-  pickerText: {
-    fontSize: 15,
-    color: '#0F354A',
-  },
-  footer: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6B7A85',
-  },
-  saveButton: {
+  saveBtn: {
     flex: 2,
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#F2A619',
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  buttonPressed: {
-    opacity: 0.8,
   },
 });

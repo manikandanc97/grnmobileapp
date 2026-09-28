@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
+
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   Pressable,
-  Platform,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { SiteItem, SiteType } from '@/types/dashboard';
+
+
 import { SiteCard } from '@/components/dashboard/SiteCard';
 import { SearchFilters } from '@/components/sites/SearchFilters';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
@@ -24,6 +26,7 @@ export default function SitesListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterOption>('All');
   const { sites, loading, refreshing, error, onRefresh, refetch } = useSites();
+
 
   // Filter the real Supabase sites based on search query (name, location, type) and filter chip
   const filteredSites = useMemo(() => {
@@ -133,33 +136,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerTextContainer: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
   },
   addButton: {
     flexDirection: 'row',

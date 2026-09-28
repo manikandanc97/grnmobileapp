@@ -21,18 +21,20 @@ import {
   CalendarClock,
   ArrowRight
 } from 'lucide-react-native';
-import { MaterialCategory } from '@/types/dashboard';
 import { useMaterials } from '@/hooks/useMaterials';
+import { useMasterData } from '@/hooks/useMasterData';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 
-const CATEGORIES: ('All' | MaterialCategory)[] = ['All', 'Cement', 'Sand', 'Bricks', 'Steel', 'Other'];
+
 
 export default function MaterialsScreen() {
   const { siteId } = useLocalSearchParams<{ siteId?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<'All' | MaterialCategory>('All');
+  const { categories } = useMasterData();
+  const allCategories = ['All', ...categories];
+  const [activeCategory, setActiveCategory] = useState<string>('All');
   
   const { materials, loading, refreshing, error, onRefresh, refetch } = useMaterials(siteId);
 
@@ -122,9 +124,10 @@ export default function MaterialsScreen() {
         {error && (
           <View style={{ padding: 20, alignItems: 'center' }}>
             <Text style={{ color: '#DC2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text>
-            <Pressable style={styles.filterButton} onPress={refetch}>
+            <Pressable style={styles.filterButton} onPress={() => { void refetch(); }}>
               <Text style={{ color: '#0F354A', fontWeight: '600' }}>Try Again</Text>
             </Pressable>
+
           </View>
         )}
 
@@ -174,7 +177,7 @@ export default function MaterialsScreen() {
           style={styles.categoriesContainer}
           contentContainerStyle={styles.categoriesContent}
         >
-          {CATEGORIES.map((category) => (
+          {allCategories.map((category) => (
             <Pressable
               key={category}
               style={[

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Database, SiteRow } from '@/types/database';
 import { SiteItem, SiteStatus, SiteType } from '@/types/dashboard';
+import { dataSync } from '@/lib/dataSync';
 
 export type SiteInsert = Database['public']['Tables']['sites']['Insert'];
 export type SiteUpdate = Database['public']['Tables']['sites']['Update'];
@@ -179,6 +180,43 @@ export async function createSite(params: CreateSiteParams): Promise<SiteRow> {
     throw new Error(formatDatabaseError(error, 'Failed to create new site.'));
   }
 
+  dataSync.notify({ entity: 'sites', action: 'create', payload: data });
+  return data;
+}
+
+/**
+ * Update an existing site
+ */
+export async function updateSite(
+  id: string,
+  params: Partial<CreateSiteParams> & { progress?: number; status?: SiteStatus },
+): Promise<SiteRow> {
+  const updatePayload: SiteUpdate = {
+    ...(params.name ? { name: params.name.trim() } : {}),
+    ...(params.location ? { location: params.location.trim() } : {}),
+    ...(params.type ? { type: params.type } : {}),
+    ...(params.progress !== undefined ? { progress: params.progress } : {}),
+    ...(params.status ? { status: params.status } : {}),
+    ...(params.startDate !== undefined ? { start_date: parseDateInput(params.startDate) } : {}),
+    ...(params.expectedCompletion !== undefined
+      ? { expected_completion: parseDateInput(params.expectedCompletion) }
+      : {}),
+    ...(params.budget !== undefined ? { budget: parseBudgetInput(params.budget) } : {}),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('sites')
+    .update(updatePayload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(formatDatabaseError(error, 'Failed to update site.'));
+  }
+
+  dataSync.notify({ entity: 'sites', action: 'update', payload: data });
   return data;
 }
 
@@ -194,4 +232,7 @@ export async function softDeleteSite(id: string): Promise<void> {
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to delete site.'));
   }
+
+  dataSync.notify({ entity: 'sites', action: 'delete', payload: { id } });
 }
+

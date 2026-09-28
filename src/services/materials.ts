@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { Database, MaterialRow } from '@/types/database';
 import { formatDatabaseError } from './sites';
 import { MaterialItem, MaterialCategory, MaterialUnit, MaterialStatus } from '@/types/dashboard';
+import { dataSync } from '@/lib/dataSync';
 
 export type MaterialInsert = Database['public']['Tables']['materials']['Insert'];
 export type MaterialUpdate = Database['public']['Tables']['materials']['Update'];
@@ -55,7 +56,6 @@ export async function getMaterials(siteId?: string): Promise<MaterialItem[]> {
     throw new Error(formatDatabaseError(error, 'Failed to fetch materials from database.'));
   }
 
-  // @ts-ignore - Supabase type generation doesn't type join columns correctly sometimes
   return (data || []).map(transformMaterialRow);
 }
 
@@ -73,7 +73,6 @@ export async function getMaterialById(id: string): Promise<MaterialItem | null> 
 
   if (!data) return null;
 
-  // @ts-ignore
   return transformMaterialRow(data);
 }
 
@@ -99,8 +98,42 @@ export async function createMaterial(params: CreateMaterialParams): Promise<Mate
     throw new Error(formatDatabaseError(error, 'Failed to create new material.'));
   }
 
-  // @ts-ignore
-  return transformMaterialRow(data);
+  const created = transformMaterialRow(data);
+  dataSync.notify({ entity: 'materials', action: 'create', payload: created });
+  return created;
+}
+
+export async function updateMaterial(
+  id: string,
+  params: Partial<CreateMaterialParams>,
+): Promise<MaterialItem> {
+  const updatePayload: MaterialUpdate = {
+    ...(params.site_id ? { site_id: params.site_id } : {}),
+    ...(params.name ? { name: params.name.trim() } : {}),
+    ...(params.category ? { category: params.category } : {}),
+    ...(params.quantity !== undefined ? { quantity: params.quantity } : {}),
+    ...(params.unit ? { unit: params.unit } : {}),
+    ...(params.status ? { status: params.status } : {}),
+    ...(params.used !== undefined ? { used: params.used } : {}),
+    ...(params.received !== undefined ? { received: params.received } : {}),
+    updated_at: new Date().toISOString(),
+    last_updated: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('materials')
+    .update(updatePayload)
+    .eq('id', id)
+    .select('*, sites(name)')
+    .single();
+
+  if (error) {
+    throw new Error(formatDatabaseError(error, 'Failed to update material.'));
+  }
+
+  const updated = transformMaterialRow(data);
+  dataSync.notify({ entity: 'materials', action: 'update', payload: updated });
+  return updated;
 }
 
 export async function softDeleteMaterial(id: string): Promise<void> {
@@ -112,4 +145,7 @@ export async function softDeleteMaterial(id: string): Promise<void> {
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to delete material.'));
   }
+
+  dataSync.notify({ entity: 'materials', action: 'delete', payload: { id } });
 }
+

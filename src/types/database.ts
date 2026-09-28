@@ -83,9 +83,9 @@ export type Database = {
           id: string;
           site_id: string;
           name: string;
-          category: 'Cement' | 'Sand' | 'Bricks' | 'Steel' | 'Other';
+          category: string;
           quantity: number;
-          unit: 'Bags' | 'Loads' | 'Nos' | 'Tons' | 'Kg' | 'Litres' | 'Units';
+          unit: string;
           status: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used: number;
           received: number;
@@ -98,9 +98,9 @@ export type Database = {
           id?: string;
           site_id: string;
           name: string;
-          category: 'Cement' | 'Sand' | 'Bricks' | 'Steel' | 'Other';
+          category: string;
           quantity?: number;
-          unit: 'Bags' | 'Loads' | 'Nos' | 'Tons' | 'Kg' | 'Litres' | 'Units';
+          unit: string;
           status?: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used?: number;
           received?: number;
@@ -113,9 +113,9 @@ export type Database = {
           id?: string;
           site_id?: string;
           name?: string;
-          category?: 'Cement' | 'Sand' | 'Bricks' | 'Steel' | 'Other';
+          category?: string;
           quantity?: number;
-          unit?: 'Bags' | 'Loads' | 'Nos' | 'Tons' | 'Kg' | 'Litres' | 'Units';
+          unit?: string;
           status?: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used?: number;
           received?: number;

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 import { formatDatabaseError } from './sites';
+import { dataSync } from '@/lib/dataSync';
 
 export type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
 export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert'];
@@ -80,18 +81,58 @@ export async function getExpenseById(id: string): Promise<ExpenseWithSite | null
 /**
  * Create a new expense.
  */
-export async function createExpense(expense: ExpenseInsert): Promise<ExpenseRow> {
+export async function createExpense(expense: ExpenseInsert): Promise<ExpenseWithSite> {
   const { data, error } = await supabase
     .from('expenses')
     .insert(expense)
-    .select()
+    .select(`
+      *,
+      sites (
+        name
+      )
+    `)
     .single();
 
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to add expense.'));
   }
 
-  return data;
+  const created = data as ExpenseWithSite;
+  dataSync.notify({ entity: 'expenses', action: 'create', payload: created });
+  return created;
+}
+
+/**
+ * Update an existing expense.
+ */
+export async function updateExpense(
+  id: string,
+  params: Partial<ExpenseUpdate>,
+): Promise<ExpenseWithSite> {
+  const updatePayload: ExpenseUpdate = {
+    ...params,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .update(updatePayload)
+    .eq('id', id)
+    .select(`
+      *,
+      sites (
+        name
+      )
+    `)
+    .single();
+
+  if (error) {
+    throw new Error(formatDatabaseError(error, 'Failed to update expense.'));
+  }
+
+  const updated = data as ExpenseWithSite;
+  dataSync.notify({ entity: 'expenses', action: 'update', payload: updated });
+  return updated;
 }
 
 /**
@@ -106,4 +147,7 @@ export async function softDeleteExpense(id: string): Promise<void> {
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to delete expense.'));
   }
+
+  dataSync.notify({ entity: 'expenses', action: 'delete', payload: { id } });
 }
+

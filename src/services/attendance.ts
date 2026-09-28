@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Database, AttendanceRow } from '@/types/database';
 import { formatDatabaseError } from './sites';
+import { dataSync } from '@/lib/dataSync';
 
 export type AttendanceStatus = 'Present' | 'Absent' | 'Not Marked' | 'Half Day';
 export type AttendanceInsert = Database['public']['Tables']['attendance']['Insert'];
@@ -72,8 +73,10 @@ export async function markAttendance(
     throw new Error(formatDatabaseError(error, 'Failed to mark attendance.'));
   }
 
+  dataSync.notify({ entity: 'attendance', action: 'update', payload: data });
   return data;
 }
+
 
 /**
  * Fetch attendance history for a single worker, sorted newest first.

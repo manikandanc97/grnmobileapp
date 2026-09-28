@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Plus, Search, RotateCcw } from 'lucide-react-native';
+import { Plus, Search, RotateCcw } from 'lucide-react-native';
 import { ExpenseCategory, ExpenseItem, PaymentMethod, PaymentStatus } from '@/types/dashboard';
 import { ExpenseSummaryCard } from '@/components/expenses/ExpenseSummaryCard';
 import { ExpenseFilter } from '@/components/expenses/ExpenseFilter';

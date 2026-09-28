@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { getDashboardMetrics, getRecentActivity, DashboardMetrics } from '@/services/dashboard';
 import { ActivityItem } from '@/types/dashboard';
+import { dataSync } from '@/lib/dataSync';
 
 export function useDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -8,9 +10,16 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = useCallback(async () => {
+  const isFetchingRef = useRef(false);
+
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
 
       const [fetchedMetrics, fetchedActivities] = await Promise.all([
@@ -20,19 +29,26 @@ export function useDashboard() {
 
       setMetrics(fetchedMetrics);
       setActivities(fetchedActivities);
-    } catch (err: any) {
+      dataSync.markClean('dashboard');
+    } catch (err: unknown) {
       console.error('Error fetching dashboard data:', err);
-      const isMissingTable = err?.code === 'PGRST205' || err?.message?.includes('schema cache');
+      const isErrObj = typeof err === 'object' && err !== null;
+      const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
+      const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
+
+      const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
       setError(
         isMissingTable
           ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
-          : (err?.message || 'Failed to fetch dashboard data')
+          : (message || 'Failed to fetch dashboard data')
       );
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -44,15 +60,19 @@ export function useDashboard() {
         if (isMounted) {
           setMetrics(fetchedMetrics);
           setActivities(fetchedActivities);
+          dataSync.markClean('dashboard');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (isMounted) {
           console.error('Error fetching dashboard data:', err);
-          const isMissingTable = err?.code === 'PGRST205' || err?.message?.includes('schema cache');
+          const isErrObj = typeof err === 'object' && err !== null;
+          const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
+          const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
+          const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
           setError(
             isMissingTable
               ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
-              : (err?.message || 'Failed to fetch dashboard data')
+              : (message || 'Failed to fetch dashboard data')
           );
         }
       } finally {
@@ -67,6 +87,25 @@ export function useDashboard() {
     };
   }, []);
 
+
+  // Live synchronization subscription
+  useEffect(() => {
+    const unsubscribe = dataSync.subscribe('dashboard', () => {
+      fetchDashboardData(true);
+    });
+
+    return unsubscribe;
+  }, [fetchDashboardData]);
+
+  // Intelligent navigation focus revalidation (only if marked stale)
+  useFocusEffect(
+    useCallback(() => {
+      if (dataSync.isStale('dashboard')) {
+        fetchDashboardData(true);
+      }
+    }, [fetchDashboardData])
+  );
+
   return {
     metrics,
     activities,
@@ -75,3 +114,4 @@ export function useDashboard() {
     refetch: fetchDashboardData,
   };
 }
+

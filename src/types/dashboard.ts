@@ -66,9 +66,9 @@ export const MOCK_QUICK_ACTIONS: QuickActionItem[] = [
 ];
 
 
-export type MaterialCategory = 'Cement' | 'Sand' | 'Bricks' | 'Steel' | 'Other';
-export type MaterialUnit = 'Bags' | 'Loads' | 'Nos' | 'Tons' | 'Kg' | 'Litres';
-export type MaterialStatus = 'Available' | 'Low Stock' | 'Pending';
+export type MaterialCategory = string;
+export type MaterialUnit = string;
+export type MaterialStatus = 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
 
 export type MaterialItem = {
   id: string;
