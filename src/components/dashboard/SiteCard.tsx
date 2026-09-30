@@ -1,42 +1,32 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MapPin, ChevronRight } from 'lucide-react-native';
+import { MapPin, ChevronRight, Pencil, Trash2 } from 'lucide-react-native';
 import { SiteItem } from '@/types/dashboard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Colors, Typography, Spacing, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface SiteCardProps {
   site: SiteItem;
   onPress?: (site: SiteItem) => void;
+  onEdit?: (site: SiteItem) => void;
+  onDelete?: (site: SiteItem) => void;
 }
 
-export function SiteCard({ site, onPress }: SiteCardProps) {
+export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
   const getTypeBadgeStyle = (type: SiteItem['type']) => {
     switch (type) {
       case 'Residential':
-        return { bg: '#EFF6FF', text: '#1D4ED8' }; // Crisp blue
+        return { bg: Colors.light.infoBg, text: Colors.light.info };
       case 'Commercial':
-        return { bg: '#F5F3FF', text: '#6D28D9' }; // Rich purple
+        return { bg: Colors.light.primaryBg, text: Colors.light.primary };
       case 'Renovation':
-        return { bg: '#FEF3C7', text: '#B45309' }; // Warm amber
+        return { bg: Colors.light.warningBg, text: Colors.light.warning };
       default:
-        return { bg: '#F3F4F6', text: '#374151' };
-    }
-  };
-
-  const getStatusBadge = (status: SiteItem['status']) => {
-    switch (status) {
-      case 'On Track':
-        return { bg: '#ECFDF5', text: '#059669', dot: '#10B981' };
-      case 'In Progress':
-        return { bg: '#FFF7ED', text: '#C2410C', dot: '#F97316' };
-      case 'Delayed':
-        return { bg: '#FEF2F2', text: '#DC2626', dot: '#EF4444' };
-      default:
-        return { bg: '#F3F4F6', text: '#4B5563', dot: '#9CA3AF' };
+        return { bg: Colors.light.surfaceMuted, text: Colors.light.textSecondary };
     }
   };
 
   const typeStyle = getTypeBadgeStyle(site.type);
-  const statusStyle = getStatusBadge(site.status);
 
   return (
     <Pressable
@@ -48,12 +38,11 @@ export function SiteCard({ site, onPress }: SiteCardProps) {
       ]}
       onPress={() => onPress?.(site)}
     >
-      {/* Top row: Name & Project Type */}
       <View style={styles.topRow}>
         <View style={styles.titleInfo}>
           <Text style={styles.siteName}>{site.name}</Text>
           <View style={styles.locationRow}>
-            <MapPin size={13} color="#8A99A4" strokeWidth={2.2} />
+            <MapPin size={IconSizes.sm} color={Colors.light.textSecondary} strokeWidth={2.2} />
             <Text style={styles.locationText}>{site.location}</Text>
           </View>
         </View>
@@ -65,7 +54,6 @@ export function SiteCard({ site, onPress }: SiteCardProps) {
         </View>
       </View>
 
-      {/* Progress Bar Section */}
       <View style={styles.progressContainer}>
         <View style={styles.progressLabelRow}>
           <Text style={styles.progressLabel}>Progress</Text>
@@ -84,19 +72,64 @@ export function SiteCard({ site, onPress }: SiteCardProps) {
         </View>
       </View>
 
-      {/* Footer row: Status badge + Arrow */}
-      <View style={styles.footerRow}>
-        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-          <Text style={[styles.statusText, { color: statusStyle.text }]}>
-            {site.status}
-          </Text>
+      {site.budget ? (
+        <View style={styles.budgetRow}>
+          <Text style={styles.budgetLabel}>Project Budget</Text>
+          <Text style={styles.budgetValue}>{site.budget}</Text>
         </View>
+      ) : null}
 
-        <View style={styles.actionPrompt}>
-          <Text style={styles.actionPromptText}>Details</Text>
-          <ChevronRight size={14} color="#8A99A4" />
-        </View>
+      <View style={styles.footerRow}>
+        <StatusBadge status={site.status} />
+
+        {onEdit || onDelete ? (
+          <View style={styles.cardActionsRow}>
+            {onEdit && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Edit site ${site.name}`}
+                style={({ pressed }) => [
+                  styles.actionPill,
+                  styles.editPill,
+                  pressed && styles.actionPillPressed,
+                ]}
+                hitSlop={6}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onEdit(site);
+                }}
+              >
+                <Pencil size={IconSizes.sm} color={Colors.light.brand} strokeWidth={2.4} />
+                <Text style={styles.editPillText}>Edit</Text>
+              </Pressable>
+            )}
+
+            {onDelete && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete site ${site.name}`}
+                style={({ pressed }) => [
+                  styles.actionPill,
+                  styles.deletePill,
+                  pressed && styles.actionPillPressed,
+                ]}
+                hitSlop={6}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onDelete(site);
+                }}
+              >
+                <Trash2 size={IconSizes.sm} color={Colors.light.error} strokeWidth={2.4} />
+                <Text style={styles.deletePillText}>Delete</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          <View style={styles.actionPrompt}>
+            <Text style={styles.actionPromptText}>Details</Text>
+            <ChevronRight size={IconSizes.sm + 2} color={Colors.light.textSecondary} />
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -104,36 +137,31 @@ export function SiteCard({ site, onPress }: SiteCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
+    marginBottom: Spacing.md,
   },
   cardPressed: {
     transform: [{ scale: 0.99 }],
-    backgroundColor: '#FAFCFD',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: Spacing.sm,
   },
   titleInfo: {
     flex: 1,
-    paddingRight: 10,
+    paddingRight: Spacing.sm,
   },
   siteName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#07566A',
-    letterSpacing: -0.2,
+    ...Typography.cardTitle,
+    color: Colors.light.brand,
     marginBottom: 4,
   },
   locationRow: {
@@ -142,14 +170,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   locationText: {
-    fontSize: 13,
-    color: '#6B7A85',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   typeBadge: {
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: Radius.sm,
   },
   typeBadgeText: {
     fontSize: 11,
@@ -158,7 +186,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   progressContainer: {
-    marginBottom: 14,
+    marginBottom: Spacing.sm,
   },
   progressLabelRow: {
     flexDirection: 'row',
@@ -167,59 +195,101 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   progressLabel: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   progressPercentage: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '800',
-    color: '#07566A',
+    color: Colors.light.brand,
   },
   progressTrack: {
-    height: 7,
-    backgroundColor: '#EEF2F6',
-    borderRadius: 4,
+    height: 6,
+    backgroundColor: Colors.light.borderSubtle,
+    borderRadius: Radius.full,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#E79524',
-    borderRadius: 4,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.full,
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.light.borderSubtle,
+  },
+  budgetLabel: {
+    ...Typography.caption,
+    fontWeight: '500',
+    color: Colors.light.textSecondary,
+  },
+  budgetValue: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.light.brand,
   },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: '#F3F6F8',
-    paddingTop: 10,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    gap: 5,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
+    borderTopColor: Colors.light.borderSubtle,
+    paddingTop: Spacing.sm,
   },
   actionPrompt: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    minHeight: TouchTargets.min,
   },
   actionPromptText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    minHeight: TouchTargets.min,
+  },
+  actionPillPressed: {
+    opacity: 0.75,
+  },
+  editPill: {
+    backgroundColor: Colors.light.primaryBg,
+    borderColor: Colors.light.border,
+  },
+  editPillText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.light.brand,
+  },
+  deletePill: {
+    backgroundColor: Colors.light.errorBg,
+    borderColor: Colors.light.error,
+  },
+  deletePillText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.light.error,
   },
 });

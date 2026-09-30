@@ -6,8 +6,6 @@ import {
   RefreshControl,
   Platform,
   Text,
-  ActivityIndicator,
-  Button
 } from 'react-native';
 
 import { useRouter } from 'expo-router';
@@ -21,6 +19,9 @@ import { QuickActionItem, SiteItem, MetricItem } from '@/types/dashboard';
 import { useSites } from '@/hooks/useSites';
 import { useDashboard } from '@/hooks/useDashboard';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Colors, Spacing, Typography, Shadows, Radius } from '@/constants/theme';
 
 export default function HomeDashboardScreen() {
   const router = useRouter();
@@ -79,10 +80,23 @@ export default function HomeDashboardScreen() {
   };
 
   const handleMetricPress = (metric: MetricItem) => {
-    if (metric.id === 'this-month') {
-      router.push('/expenses/index');
-    } else {
-      showToast(`${metric.label}: ${metric.value}`);
+    switch (metric.id) {
+      case 'this-month':
+        router.push({
+          pathname: '/(app)/expenses',
+          params: { period: 'This Month' },
+        } as never);
+        break;
+      case 'active-sites':
+      case 'total-projects':
+        router.push('/(app)/sites' as never);
+        break;
+      case 'workers-present':
+        router.push('/(app)/labor' as never);
+        break;
+      default:
+        showToast(`${metric.label}: ${metric.value}`);
+        break;
     }
   };
 
@@ -110,41 +124,53 @@ export default function HomeDashboardScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#E79524"
-              colors={['#E79524']}
+              tintColor={Colors.light.primary}
+              colors={[Colors.light.primary]}
             />
           }
         >
-          {/* Overview Metrics */}
           {loading && !refreshing ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#07566A" />
+            <View style={styles.loadingContainer}>
+              <LoadingSkeleton type="card" height={160} />
+              <View style={styles.loadingGrid}>
+                <LoadingSkeleton type="card" height={90} width="48%" />
+                <LoadingSkeleton type="card" height={90} width="48%" />
+              </View>
+              <LoadingSkeleton type="text" height={24} width={150} style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }} />
+              <View style={styles.loadingGrid}>
+                 <LoadingSkeleton type="card" height={80} width="22%" />
+                 <LoadingSkeleton type="card" height={80} width="22%" />
+                 <LoadingSkeleton type="card" height={80} width="22%" />
+                 <LoadingSkeleton type="card" height={80} width="22%" />
+              </View>
+              <LoadingSkeleton type="text" height={24} width={150} style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }} />
+              <LoadingSkeleton type="card" height={180} />
             </View>
           ) : error ? (
-            <View style={{ padding: 20 }}>
-              <View style={styles.errorCard}>
-                <Text style={styles.errorTitle}>Database Setup Required</Text>
-                <Text style={styles.errorMessage}>{error}</Text>
-                <View style={{ marginTop: 14 }}>
-                  <Button title="Retry Connection" onPress={onRefresh} color="#07566A" />
-                </View>
-              </View>
+            <View style={styles.errorContainer}>
+              <ErrorState 
+                title="Database Setup Required" 
+                message={error} 
+                onRetry={onRefresh} 
+                retryLabel="Retry Connection" 
+              />
             </View>
           ) : (
             <>
+              {/* 1. Overview Metrics & Financial Snapshot */}
               <OverviewSection metricsData={metrics} sites={sites} onCardPress={handleMetricPress} />
 
-              {/* Quick Actions */}
+              {/* 2. Quick Actions (Prioritized for quick daily tasks) */}
               <QuickActionsSection onActionPress={handleQuickAction} />
 
-              {/* Active Sites - Populated with real Supabase sites */}
+              {/* 3. Active Sites (Main tracking) */}
               <ActiveSitesSection
                 sites={sites}
                 onSitePress={handleSitePress}
                 onViewAllPress={() => router.push('/(app)/sites')}
               />
 
-              {/* Recent Activity */}
+              {/* 4. Recent Activity */}
               <RecentActivitySection activities={activities} />
             </>
           )}
@@ -161,26 +187,19 @@ export default function HomeDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F7F9FA',
-  },
   webContainer: {
     flex: 1,
     width: '100%',
     maxWidth: 540,
     alignSelf: 'center',
-    backgroundColor: '#F7F9FA',
+    backgroundColor: Colors.light.background,
     ...(Platform.OS === 'web'
       ? {
-          shadowColor: '#07566A',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
+          ...Shadows.lg,
           borderLeftWidth: 1,
           borderRightWidth: 1,
-          borderLeftColor: '#E8ECEF',
-          borderRightColor: '#E8ECEF',
+          borderLeftColor: Colors.light.borderSubtle,
+          borderRightColor: Colors.light.borderSubtle,
         }
       : {}),
   },
@@ -188,7 +207,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: Spacing['2xl'],
   },
   toastContainer: {
     position: 'absolute',
@@ -201,41 +220,28 @@ const styles = StyleSheet.create({
   },
   toast: {
     backgroundColor: 'rgba(15, 53, 74, 0.92)',
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: Radius.full,
+    ...Shadows.sm,
   },
   toastText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    ...Typography.caption,
+    color: Colors.light.surface,
     fontWeight: '600',
   },
-  errorCard: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  loadingContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
   },
-  errorTitle: {
-    color: '#991B1B',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 6,
+  loadingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    justifyContent: 'space-between',
   },
-  errorMessage: {
-    color: '#7F1D1D',
-    fontSize: 13,
-    lineHeight: 19,
+  errorContainer: {
+    padding: Spacing.lg,
+    marginTop: Spacing.md,
   },
 });

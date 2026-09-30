@@ -9,6 +9,7 @@ export type SyncEntity =
   | 'materials'
   | 'expenses'
   | 'attendance'
+  | 'payroll'
   | 'dashboard';
 
 export type SyncAction = 'create' | 'update' | 'delete' | 'invalidate';
@@ -19,6 +20,7 @@ export interface EntityPayloadMap {
   materials: MaterialItem;
   expenses: ExpenseWithSite;
   attendance: AttendanceRow;
+  payroll: any;
   dashboard: undefined;
 }
 

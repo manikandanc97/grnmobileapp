@@ -26,6 +26,8 @@ export interface CreateWorkerParams {
   role: WorkerRole;
   phone?: string | null;
   joining_date?: string | null;
+  pay_frequency: 'Daily' | 'Weekly' | 'Monthly';
+  salary_amount: number;
 }
 
 /**
@@ -80,6 +82,8 @@ export async function createWorker(params: CreateWorkerParams): Promise<WorkerWi
     role: params.role,
     phone: params.phone?.trim() || null,
     joining_date: params.joining_date || null,
+    pay_frequency: params.pay_frequency,
+    salary_amount: params.salary_amount,
   };
 
   const { data, error } = await supabase

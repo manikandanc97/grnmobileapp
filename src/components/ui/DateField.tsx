@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, Platform, Modal, Keyboard } from 're
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
-import { Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius, TouchTargets, IconSizes } from '@/constants/theme';
 
 export interface DateFieldProps {
   value?: Date | string | null;
@@ -59,7 +59,7 @@ export function DateField({
         ]}
         onPress={handleOpen}
       >
-        <Calendar size={18} color="#71808A" style={styles.calendarIcon} />
+        <Calendar size={IconSizes.md - 2} color={Colors.light.textSecondary} style={styles.calendarIcon} />
         <Text style={[styles.text, !displayText && styles.placeholderText]}>
           {displayText || placeholder}
         </Text>
@@ -78,7 +78,7 @@ export function DateField({
               <View style={styles.spacer} />
               <Text style={styles.modalTitle}>Select Date</Text>
               <Pressable style={styles.closeBtn} onPress={() => setShow(false)}>
-                <X size={22} color="#71808A" />
+                <X size={IconSizes.lg} color={Colors.light.textSecondary} />
               </Pressable>
             </View>
 
@@ -89,8 +89,8 @@ export function DateField({
                 minDate={minDate}
                 maxDate={maxDate}
                 components={{
-                  IconNext: <ChevronRight size={22} color="#123746" />,
-                  IconPrev: <ChevronLeft size={22} color="#123746" />,
+                  IconNext: <ChevronRight size={IconSizes.lg} color={Colors.light.text} />,
+                  IconPrev: <ChevronLeft size={IconSizes.lg} color={Colors.light.text} />,
                 }}
                 onChange={(params: any) => {
                   if (params.date) {
@@ -115,30 +115,28 @@ export function DateField({
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 50,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputError: {
-    borderColor: '#DC2626',
-    backgroundColor: '#FEF2F2',
+    borderColor: Colors.light.error,
+    backgroundColor: Colors.light.errorBg,
   },
   calendarIcon: {
-    marginRight: 10,
+    marginRight: Spacing.sm,
   },
   text: {
-    fontSize: 15,
-    color: '#0F354A',
-    fontWeight: '500',
+    ...Typography.body,
+    color: Colors.light.text,
   },
   placeholderText: {
-    color: '#8A99A4',
-    fontWeight: '400',
+    color: Colors.light.textMuted,
   },
   modalOverlay: {
     flex: 1,
@@ -146,55 +144,56 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    backgroundColor: Colors.light.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? 36 : Spacing.lg,
     maxHeight: '85%',
   },
   bottomSheetHandle: {
     width: 48,
     height: 5,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
+    backgroundColor: Colors.light.borderStrong,
+    borderRadius: Radius.full,
     alignSelf: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
   spacer: {
-    width: 24,
+    width: TouchTargets.min,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F354A',
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
   },
   closeBtn: {
-    padding: 4,
-  },
-  pickerContainer: {
-    paddingVertical: 12,
-  },
-  doneButton: {
-    height: 48,
-    backgroundColor: '#123746',
-    borderRadius: 12,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+  },
+  pickerContainer: {
+    paddingVertical: Spacing.sm,
+  },
+  doneButton: {
+    minHeight: 48,
+    backgroundColor: Colors.light.brand,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
   },
   doneButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Typography.button,
+    color: Colors.light.surface,
   },
 });

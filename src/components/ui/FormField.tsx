@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ViewStyle, StyleProp } from 'react-native';
-import { Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing } from '@/constants/theme';
 import { useFormContext } from '@/components/ui/KeyboardAwareForm';
 
 export interface FormFieldProps {
@@ -57,24 +57,23 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   label: {
-    fontSize: 14,
+    ...Typography.body,
     fontWeight: '600',
-    color: '#0F354A',
-    marginBottom: Spacing.sm,
+    color: Colors.light.text,
+    marginBottom: Spacing.xs,
   },
   required: {
-    color: '#E79524',
+    color: Colors.light.primary,
     fontWeight: '700',
   },
   errorText: {
-    fontSize: 12,
-    color: '#DC2626',
+    ...Typography.caption,
+    color: Colors.light.error,
     marginTop: Spacing.xs,
-    fontWeight: '500',
   },
   helperText: {
-    fontSize: 12,
-    color: '#8A99A4',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     marginTop: Spacing.xs,
   },
 });

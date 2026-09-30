@@ -1,3 +1,4 @@
+import { formatCurrency } from '@/lib/finance';
 import { supabase } from '@/lib/supabase';
 import { Database, SiteRow } from '@/types/database';
 import { SiteItem, SiteStatus, SiteType } from '@/types/dashboard';
@@ -16,23 +17,11 @@ export interface CreateSiteParams {
 }
 
 /**
- * Format numeric budget into user-friendly currency string (e.g. ₹50L, ₹1.2Cr)
+ * Format numeric budget into user-friendly currency string using centralized formatCurrency
  */
 export function formatSiteBudget(budget: number | null): string | undefined {
   if (budget === null || budget === undefined) return undefined;
-  if (budget >= 10000000) {
-    const cr = (budget / 10000000).toFixed(1).replace(/\.0$/, '');
-    return `₹${cr}Cr`;
-  }
-  if (budget >= 100000) {
-    const l = (budget / 100000).toFixed(1).replace(/\.0$/, '');
-    return `₹${l}L`;
-  }
-  if (budget >= 1000) {
-    const k = (budget / 1000).toFixed(1).replace(/\.0$/, '');
-    return `₹${k}k`;
-  }
-  return `₹${budget}`;
+  return formatCurrency(budget);
 }
 
 /**
@@ -104,7 +93,8 @@ export function transformSiteRow(row: SiteRow): SiteItem {
 export function formatDatabaseError(error: unknown, fallback: string): string {
   if (!error) return fallback;
   if (typeof error === 'object' && error !== null && 'message' in error) {
-    const msg = String((error as { message: unknown }).message).toLowerCase();
+    const rawMsg = String((error as { message: unknown }).message || '');
+    const msg = rawMsg.toLowerCase();
     if (msg.includes('row-level security') || msg.includes('permission denied')) {
       return 'You do not have permission to perform this action. Please verify your authentication.';
     }
@@ -113,6 +103,9 @@ export function formatDatabaseError(error: unknown, fallback: string): string {
     }
     if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('offline')) {
       return 'Network connection issue. Please check your internet connection.';
+    }
+    if (rawMsg) {
+      return `${fallback} (${rawMsg})`;
     }
   }
   return fallback;

@@ -2,20 +2,18 @@ import { supabase } from '@/lib/supabase';
 import { Database, AttendanceRow } from '@/types/database';
 import { formatDatabaseError } from './sites';
 import { dataSync } from '@/lib/dataSync';
+import { getWorkerById } from './workers';
+import { syncWorkerPayroll } from './payroll';
+import { formatInTimeZone } from 'date-fns-tz';
+import { getStartOfWeek, getEndOfWeek, getStartOfMonth, getStartOfNextMonth } from '@/lib/dateUtils';
+import { subDays } from 'date-fns';
 
 export type AttendanceStatus = 'Present' | 'Absent' | 'Not Marked' | 'Half Day';
 export type AttendanceInsert = Database['public']['Tables']['attendance']['Insert'];
 export type AttendanceUpdate = Database['public']['Tables']['attendance']['Update'];
 
-/**
- * Format a JS Date to a date-only string (YYYY-MM-DD) in local time,
- * avoiding timezone offset bugs.
- */
 export function toDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return formatInTimeZone(date, 'Asia/Kolkata', 'yyyy-MM-dd');
 }
 
 /**
@@ -71,6 +69,35 @@ export async function markAttendance(
 
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to mark attendance.'));
+  }
+
+  // Sync Payroll
+  const worker = await getWorkerById(workerId);
+  if (worker) {
+    const d = new Date(dateStr);
+    let periodStart = dateStr;
+    let periodEnd = dateStr;
+    
+    if (worker.pay_frequency === 'Weekly') {
+      const startOfWeek = getStartOfWeek(d);
+      const endOfWeek = getEndOfWeek(d);
+      periodStart = toDateString(startOfWeek);
+      periodEnd = toDateString(endOfWeek);
+    } else if (worker.pay_frequency === 'Monthly') {
+      const startOfMonth = getStartOfMonth(d);
+      const endOfMonth = subDays(getStartOfNextMonth(d), 1);
+      periodStart = toDateString(startOfMonth);
+      periodEnd = toDateString(endOfMonth);
+    }
+    
+    await syncWorkerPayroll(
+      workerId, 
+      siteId, 
+      worker.pay_frequency, 
+      worker.salary_amount, 
+      periodStart, 
+      periodEnd
+    );
   }
 
   dataSync.notify({ entity: 'attendance', action: 'update', payload: data });

@@ -1,51 +1,89 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { formatCurrency } from '@/lib/finance';
+import { Colors, Spacing, Typography, Radius, Shadows } from '@/constants/theme';
+import { Clock, Building2 } from 'lucide-react-native';
 
 interface ExpenseSummaryCardProps {
   totalAmount: number;
   thisMonthAmount: number;
   pendingAmount: number;
   activeSites: number;
+  isThisMonthSelected?: boolean;
+  isPendingSelected?: boolean;
+  onPressThisMonth?: () => void;
+  onPressPending?: () => void;
+  onPressTotal?: () => void;
 }
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 export function ExpenseSummaryCard({
   totalAmount,
   thisMonthAmount,
   pendingAmount,
   activeSites,
+  isThisMonthSelected,
+  isPendingSelected,
+  onPressThisMonth,
+  onPressPending,
+  onPressTotal,
 }: ExpenseSummaryCardProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <Pressable
+          onPress={onPressTotal}
+          style={({ pressed }) => [pressed && styles.pressedState]}
+        >
           <Text style={styles.title}>Total Expenses</Text>
           <Text style={styles.totalValue}>{formatCurrency(totalAmount)}</Text>
-        </View>
+        </Pressable>
         <View style={styles.sitesBadge}>
+          <Building2 size={12} color={Colors.light.textSecondary} />
           <Text style={styles.sitesBadgeText}>{activeSites} Sites</Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>This Month</Text>
-          <Text style={styles.statValue}>{formatCurrency(thisMonthAmount)}</Text>
-        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.statItem,
+            isThisMonthSelected && styles.statItemActive,
+            pressed && styles.pressedState,
+          ]}
+          onPress={onPressThisMonth}
+        >
+          <View style={styles.statLabelRow}>
+            <Text style={[styles.statLabel, isThisMonthSelected && styles.statLabelActive]}>
+              This Month
+            </Text>
+            {isThisMonthSelected && <View style={styles.activeDot} />}
+          </View>
+          <Text style={[styles.statValue, isThisMonthSelected && { color: Colors.light.brand }]}>
+            {formatCurrency(thisMonthAmount)}
+          </Text>
+        </Pressable>
 
         <View style={styles.divider} />
 
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Pending</Text>
-          <Text style={[styles.statValue, { color: '#EF4444' }]}>{formatCurrency(pendingAmount)}</Text>
-        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.statItem,
+            isPendingSelected && styles.statItemPendingActive,
+            pressed && styles.pressedState,
+          ]}
+          onPress={onPressPending}
+        >
+          <View style={styles.statLabelRow}>
+            <Clock size={12} color={isPendingSelected ? Colors.light.error : Colors.light.textSecondary} />
+            <Text style={[styles.statLabel, isPendingSelected && { color: Colors.light.error, fontWeight: '700' }]}>
+              Pending
+            </Text>
+            {isPendingSelected && <View style={[styles.activeDot, { backgroundColor: Colors.light.error }]} />}
+          </View>
+          <Text style={[styles.statValue, { color: Colors.light.error }]}>
+            {formatCurrency(pendingAmount)}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -53,73 +91,103 @@ export function ExpenseSummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
+    marginBottom: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: Spacing.md,
   },
   title: {
-    fontSize: 14,
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '600',
-    color: '#6B7A85',
     marginBottom: 4,
   },
   totalValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0F354A',
-    letterSpacing: -0.5,
+    ...Typography.display,
+    color: Colors.light.text,
   },
   sitesBadge: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
+    borderColor: Colors.light.borderSubtle,
   },
   sitesBadgeText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.light.surfaceMuted,
+    borderRadius: Radius.md,
+    padding: 6,
   },
   statItem: {
     flex: 1,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.sm,
+  },
+  statItemActive: {
+    backgroundColor: Colors.light.warningBg,
+    borderWidth: 1,
+    borderColor: Colors.light.warning,
+  },
+  statItemPendingActive: {
+    backgroundColor: Colors.light.errorBg,
+    borderWidth: 1,
+    borderColor: Colors.light.error,
+  },
+  statLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#6B7A85',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
-    marginBottom: 4,
+  },
+  statLabelActive: {
+    color: Colors.light.brand,
+    fontWeight: '700',
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.light.brand,
+    marginLeft: 4,
   },
   statValue: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '700',
-    color: '#0F354A',
+    color: Colors.light.text,
   },
   divider: {
     width: 1,
-    backgroundColor: '#EEF2F6',
-    marginHorizontal: 16,
+    backgroundColor: Colors.light.borderSubtle,
+    marginVertical: Spacing.xs,
+  },
+  pressedState: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
   },
 });

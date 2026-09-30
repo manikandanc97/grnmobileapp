@@ -1,36 +1,117 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  ScrollView,
-  Platform,
-  Pressable,
-  TextInput,
-  ActivityIndicator,
+  FlatList,
   RefreshControl,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Plus, Search, RotateCcw } from 'lucide-react-native';
+import { Plus, Receipt } from 'lucide-react-native';
+
 import { ExpenseCategory, ExpenseItem, PaymentMethod, PaymentStatus } from '@/types/dashboard';
 import { ExpenseSummaryCard } from '@/components/expenses/ExpenseSummaryCard';
 import { ExpenseFilter } from '@/components/expenses/ExpenseFilter';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { useExpenses } from '@/hooks/useExpenses';
-import { getExpenseSiteName } from '@/services/expenses';
+import { getExpenseSiteName, softDeleteExpense } from '@/services/expenses';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { DateField } from '@/components/ui/DateField';
+import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { Button } from '@/components/ui/Button';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 
-const CATEGORIES: ('All' | ExpenseCategory)[] = ['All', 'Materials', 'Labor', 'Transport', 'Equipment', 'Other'];
-const PERIODS = ['All Time', 'This Month', 'Last Month'];
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/constants/expenses';
+import {
+  isDateInCurrentMonth,
+  isDateInPreviousMonth,
+  isDateToday,
+  isDateInCurrentWeek,
+  isDateInCustomRange,
+} from '@/lib/dateUtils';
+import { Colors, Spacing, IconSizes } from '@/constants/theme';
+
+const CATEGORIES: ('All' | ExpenseCategory)[] = ['All', ...EXPENSE_CATEGORIES];
+const PAY_METHODS: ('All' | PaymentMethod)[] = ['All', ...PAYMENT_METHODS];
+const PERIODS = ['All Time', 'This Month', 'Last Month', 'This Week', 'Today', 'Custom Range'];
 
 export default function ExpensesScreen() {
-  const { siteId } = useLocalSearchParams<{ siteId?: string }>();
-  
+  const { siteId, period, status } = useLocalSearchParams<{
+    siteId?: string;
+    period?: string;
+    status?: string;
+  }>();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | ExpenseCategory>('All');
-  const [selectedPeriod, setSelectedPeriod] = useState('All Time');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'All' | PaymentMethod>('All');
+
+  const [prevPeriod, setPrevPeriod] = useState(period);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
+    if (period && PERIODS.includes(period)) return period;
+    return 'All Time';
+  });
+
+  if (period !== prevPeriod) {
+    setPrevPeriod(period);
+    if (period && PERIODS.includes(period)) {
+      setSelectedPeriod(period);
+    }
+  }
+
+  const [prevStatus, setPrevStatus] = useState(status);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<'All' | PaymentStatus>(() => {
+    if (status === 'Pending' || status === 'Paid') return status;
+    return 'All';
+  });
+
+  if (status !== prevStatus) {
+    setPrevStatus(status);
+    if (status === 'Pending' || status === 'Paid') {
+      setSelectedPaymentStatus(status);
+    }
+  }
+
+  const [customStartDate, setCustomStartDate] = useState<Date>(new Date(new Date().setHours(0, 0, 0, 0)));
+  const [customEndDate, setCustomEndDate] = useState<Date>(new Date());
+
+  // Card action states
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deletedExpenseTitle, setDeletedExpenseTitle] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleEditExpense = useCallback((expense: ExpenseItem) => {
+    router.push({ pathname: '/(app)/expenses/edit', params: { id: expense.id } } as never);
+  }, []);
+
+  const handleDeleteExpensePress = useCallback((expense: ExpenseItem) => {
+    setExpenseToDelete(expense);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!expenseToDelete) return;
+    setIsDeleting(true);
+    const title = expenseToDelete.title;
+    try {
+      await softDeleteExpense(expenseToDelete.id);
+      setIsDeleting(false);
+      setExpenseToDelete(null);
+      setDeletedExpenseTitle(title);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      setIsDeleting(false);
+      const msg = err instanceof Error ? err.message : 'Failed to delete expense.';
+      setDeleteError(msg);
+    }
+  }, [expenseToDelete]);
 
   const {
     expenses,
@@ -46,14 +127,15 @@ export default function ExpensesScreen() {
     return expenses.map((e) => ({
       id: e.id,
       title: e.title,
-      amount: e.amount,
+      amount: e.amount || 0,
       category: e.category as ExpenseCategory,
       siteId: e.site_id,
       siteName: getExpenseSiteName(e),
-      date: e.date,
+      expenseDate: e.expense_date,
       vendor: e.vendor ?? '',
       paymentMethod: e.payment_method as PaymentMethod,
       paymentStatus: e.payment_status as PaymentStatus,
+      reference: e.reference ?? undefined,
       notes: e.notes ?? undefined,
     }));
   }, [expenses]);
@@ -62,274 +144,268 @@ export default function ExpensesScreen() {
   const filteredExpenses = useMemo(() => {
     return mappedExpenses.filter((e) => {
       const matchCategory = selectedCategory === 'All' || e.category === selectedCategory;
+      const matchPaymentMethod = selectedPaymentMethod === 'All' || e.paymentMethod === selectedPaymentMethod;
+      const matchPaymentStatus = selectedPaymentStatus === 'All' || e.paymentStatus === selectedPaymentStatus;
       const matchSiteParam = !siteId || e.siteId === siteId;
-      
-      const query = searchQuery.toLowerCase();
-      const matchSearch = !query || 
-        e.title.toLowerCase().includes(query) ||
-        e.siteName.toLowerCase().includes(query) ||
-        e.vendor.toLowerCase().includes(query) ||
-        e.category.toLowerCase().includes(query);
 
-      // Period filter
+      const query = searchQuery.toLowerCase().trim();
+      const matchSearch = !query ||
+        (e.title && e.title.toLowerCase().includes(query)) ||
+        (e.siteName && e.siteName.toLowerCase().includes(query)) ||
+        (e.vendor && e.vendor.toLowerCase().includes(query)) ||
+        (e.category && e.category.toLowerCase().includes(query)) ||
+        (e.reference && e.reference.toLowerCase().includes(query)) ||
+        (e.notes && e.notes.toLowerCase().includes(query));
+
+      // Period filter with timezone-accurate date utilities
       let matchPeriod = true;
-      if (selectedPeriod === 'This Month' || selectedPeriod === 'Last Month') {
-        const expenseDate = new Date(e.date);
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-
-        if (selectedPeriod === 'This Month') {
-          matchPeriod = expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
-        } else if (selectedPeriod === 'Last Month') {
-          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-          matchPeriod = expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear;
-        }
+      if (selectedPeriod === 'This Month') {
+        matchPeriod = isDateInCurrentMonth(e.expenseDate);
+      } else if (selectedPeriod === 'Last Month') {
+        matchPeriod = isDateInPreviousMonth(e.expenseDate);
+      } else if (selectedPeriod === 'Today') {
+        matchPeriod = isDateToday(e.expenseDate);
+      } else if (selectedPeriod === 'This Week') {
+        matchPeriod = isDateInCurrentWeek(e.expenseDate);
+      } else if (selectedPeriod === 'Custom Range') {
+        matchPeriod = isDateInCustomRange(e.expenseDate, customStartDate, customEndDate);
       }
 
-      return matchCategory && matchSiteParam && matchSearch && matchPeriod;
+      return matchCategory && matchPaymentMethod && matchPaymentStatus && matchSiteParam && matchSearch && matchPeriod;
     });
-  }, [mappedExpenses, selectedCategory, siteId, searchQuery, selectedPeriod]);
+  }, [mappedExpenses, selectedCategory, selectedPaymentMethod, selectedPaymentStatus, siteId, searchQuery, selectedPeriod, customStartDate, customEndDate]);
 
   // Derived state (stats)
   const stats = useMemo(() => {
-    const totalAmount = mappedExpenses.reduce((sum, e) => sum + e.amount, 0);
-    
-    // "This Month" calculation
+    const totalAmount = mappedExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const thisMonthAmount = mappedExpenses
-      .filter((e) => {
-        const expenseDate = new Date(e.date);
-        const now = new Date();
-        return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, e) => sum + e.amount, 0);
-      
+      .filter((e) => isDateInCurrentMonth(e.expenseDate))
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
     const pendingAmount = mappedExpenses
-      .filter(e => e.paymentStatus === 'Pending')
-      .reduce((sum, e) => sum + e.amount, 0);
-    
-    const activeSites = new Set(mappedExpenses.map(e => e.siteId)).size;
+      .filter((e) => e.paymentStatus === 'Pending')
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    const activeSites = new Set(mappedExpenses.map((e) => e.siteId).filter(Boolean)).size;
 
     return { totalAmount, thisMonthAmount, pendingAmount, activeSites };
   }, [mappedExpenses]);
+
+  const renderExpense = ({ item }: { item: ExpenseItem }) => (
+    <ExpenseCard
+      expense={item}
+      onPress={() => router.push(`/(app)/expenses/${item.id}` as any)}
+      onEdit={() => handleEditExpense(item)}
+      onDelete={() => handleDeleteExpensePress(item)}
+    />
+  );
+
+  const renderHeader = () => {
+    if (loading || error) return null;
+    return (
+      <View style={styles.listHeaderContainer}>
+        {!siteId && (
+          <ExpenseSummaryCard
+            {...stats}
+            isThisMonthSelected={selectedPeriod === 'This Month'}
+            isPendingSelected={selectedPaymentStatus === 'Pending'}
+            onPressThisMonth={() => setSelectedPeriod((prev) => (prev === 'This Month' ? 'All Time' : 'This Month'))}
+            onPressPending={() => setSelectedPaymentStatus((prev) => (prev === 'Pending' ? 'All' : 'Pending'))}
+            onPressTotal={() => {
+              setSelectedPeriod('All Time');
+              setSelectedPaymentStatus('All');
+              setSelectedCategory('All');
+              setSelectedPaymentMethod('All');
+              setSearchQuery('');
+            }}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <ScreenWrapper>
       {/* Header */}
       <ScreenHeader
         title="Expenses"
-        subtitle="Track project spending"
-        showBorder={false}
-        showBack={true}
+        subtitle={siteId ? "Project expenses" : "Track all project spending"}
         actionButton={
-          <Pressable
-            style={styles.addButton}
-            onPress={() => router.push('/(app)/expenses/add')}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Expense</Text>
-          </Pressable>
+          <View style={{ width: 140 }}>
+            <Button
+              title="Add Expense"
+              onPress={() => router.push('/(app)/expenses/add')}
+              icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
+              style={{ height: 40 }}
+            />
+          </View>
         }
       />
-      <View style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEF2F6', paddingBottom: 16 }}>
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#8A99A4" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search expenses..."
-            placeholderTextColor="#8A99A4"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search expenses..."
+          onClear={() => setSearchQuery('')}
+          style={styles.searchBar}
+        />
+        <View style={styles.filterWrapper}>
+          <ExpenseFilter
+            categories={CATEGORIES}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            periods={PERIODS}
+            selectedPeriod={selectedPeriod}
+            onSelectPeriod={setSelectedPeriod}
+            paymentMethods={PAY_METHODS}
+            selectedPaymentMethod={selectedPaymentMethod}
+            onSelectPaymentMethod={setSelectedPaymentMethod}
           />
         </View>
+
+        {selectedPeriod === 'Custom Range' && (
+          <View style={styles.dateRangeContainer}>
+            <View style={styles.dateInputWrapper}>
+              <DateField value={customStartDate} onChange={(d) => setCustomStartDate(d)} />
+            </View>
+            <View style={styles.dateInputWrapper}>
+              <DateField value={customEndDate} onChange={(d) => setCustomEndDate(d)} />
+            </View>
+          </View>
+        )}
       </View>
 
-      {/* Loading state */}
-      {loading && !refreshing && (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#F2A619" />
-          <Text style={styles.loadingText}>Loading expenses...</Text>
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <LoadingSkeleton type="card" height={140} />
+          <LoadingSkeleton type="card" height={160} />
+          <LoadingSkeleton type="card" height={160} />
+          <LoadingSkeleton type="card" height={160} />
         </View>
-      )}
-
-      {/* Error state */}
-      {!loading && error && (
+      ) : error ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => { void refetch(); }}>
-            <RotateCcw size={16} color="#FFFFFF" />
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </Pressable>
+          <ErrorState 
+             title="Unable to load expenses" 
+             message={error} 
+             onRetry={refetch} 
+           />
         </View>
-      )}
-
-      {/* Content */}
-      {!loading && !error && (
-        <ScrollView 
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={styles.content}
+      ) : (
+        <FlatList
+          data={filteredExpenses}
+          keyExtractor={(item) => item.id}
+          renderItem={renderExpense}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={renderHeader}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#F2A619"
+              tintColor={Colors.light.primary}
+              colors={[Colors.light.primary]}
             />
           }
-        >
-          {!siteId && <ExpenseSummaryCard {...stats} />}
-
-          <View style={styles.filterWrapper}>
-            <ExpenseFilter
-              categories={CATEGORIES}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-              periods={PERIODS}
-              selectedPeriod={selectedPeriod}
-              onSelectPeriod={setSelectedPeriod}
-            />
-          </View>
-
-          <View style={styles.listContainer}>
-            {filteredExpenses.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No expenses found for this selection.</Text>
-              </View>
-            ) : (
-              filteredExpenses.map((expense) => (
-                <ExpenseCard
-                  key={expense.id}
-                  expense={expense}
-                  onPress={() => router.push(`/(app)/expenses/${expense.id}` as any)}
-                />
-              ))
-            )}
-          </View>
-        </ScrollView>
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <EmptyState
+                icon={<Receipt size={48} color={Colors.light.textMuted} />}
+                title={expenses.length === 0 ? "No expenses found" : "No results matching criteria"}
+                description={expenses.length === 0 
+                  ? "Record your first project expense to start tracking."
+                  : "Try adjusting your search or filters to find what you're looking for."}
+                actionLabel={expenses.length === 0 ? "Add Expense" : "Reset Filters"}
+                onAction={expenses.length === 0 ? () => router.push('/(app)/expenses/add') : () => {
+                  setSearchQuery('');
+                  setSelectedPeriod('All Time');
+                  setSelectedCategory('All');
+                  setSelectedPaymentMethod('All');
+                  setSelectedPaymentStatus('All');
+                }}
+              />
+            </View>
+          )}
+        />
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDeleteDialog
+        visible={!!expenseToDelete}
+        title="Delete Expense?"
+        message={
+          expenseToDelete
+            ? `Are you sure you want to delete "${expenseToDelete.title}"? This expense record will be permanently removed.`
+            : ''
+        }
+        confirmText="Delete Expense"
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isDeleting) setExpenseToDelete(null);
+        }}
+      />
+
+      {/* Delete Success Dialog */}
+      <SuccessDialog
+        visible={showDeleteSuccess}
+        title="Expense Deleted"
+        message={`"${deletedExpenseTitle || 'Expense'}" has been successfully removed.`}
+        buttonText="Done"
+        onClose={() => setShowDeleteSuccess(false)}
+      />
+
+      {/* Delete Error Dialog */}
+      <ErrorDialog
+        visible={!!deleteError}
+        title="Delete Failed"
+        message={deleteError ?? 'An unexpected error occurred while deleting expense.'}
+        onClose={() => setDeleteError(null)}
+      />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+  searchSection: {
+    backgroundColor: Colors.light.background,
+    paddingTop: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
-  headerTop: {
+  searchBar: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  filterWrapper: {
+    marginBottom: Spacing.sm,
+  },
+  dateRangeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    gap: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
   },
-  backIcon: {
-    marginRight: 16,
-    padding: 4,
-  },
-  backIconPressed: {
-    opacity: 0.5,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F354A',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2A619',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
+  dateInputWrapper: {
     flex: 1,
-    fontSize: 15,
-    color: '#0F354A',
-    height: '100%',
+  },
+  loadingContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
   centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  errorText: {
-    fontSize: 15,
-    color: '#DC2626',
-    fontWeight: '500',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2A619',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 100, // extra padding for bottom tabs
-  },
-  filterWrapper: {
-    marginHorizontal: -20, // Negative margin to allow full-width scroll
-  },
-  listContainer: {
-    gap: 12,
+    padding: Spacing.xl,
   },
   emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
+    paddingVertical: Spacing['2xl'],
   },
-  emptyText: {
-    fontSize: 15,
-    color: '#8A99A4',
-    textAlign: 'center',
+  listContent: {
+    paddingBottom: Spacing['2xl'] * 2,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  listHeaderContainer: {
+    marginBottom: Spacing.sm,
   },
 });

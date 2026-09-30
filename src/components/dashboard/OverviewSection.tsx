@@ -8,6 +8,8 @@ import {
 } from 'lucide-react-native';
 import { MetricItem, SiteItem } from '@/types/dashboard';
 import { DashboardMetrics } from '@/services/dashboard';
+import { formatCurrency } from '@/lib/finance';
+import { Colors, Typography, Spacing, Radius, Shadows, BrandColors } from '@/constants/theme';
 
 interface OverviewSectionProps {
   metricsData?: DashboardMetrics | null;
@@ -46,13 +48,7 @@ export function OverviewSection({
         {
           id: 'this-month',
           label: 'This Month',
-          value: new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0,
-            notation: "compact",
-            compactDisplay: "short"
-          }).format(metricsData.thisMonthExpenses),
+          value: formatCurrency(metricsData.thisMonthExpenses),
           subtext: 'Expenses logged',
           iconName: 'IndianRupee',
         },
@@ -60,33 +56,33 @@ export function OverviewSection({
     : [];
 
   const renderIcon = (iconName: MetricItem['iconName']) => {
-    const props = { size: 16, color: '#07566A', strokeWidth: 2.2 };
+    const props = { size: 16, strokeWidth: 2.2 };
     switch (iconName) {
       case 'Building2':
-        return <Building2 {...props} color="#E79524" />;
+        return <Building2 {...props} color={Colors.light.primary} />;
       case 'Briefcase':
-        return <Briefcase {...props} color="#2563EB" />;
+        return <Briefcase {...props} color={Colors.light.info} />;
       case 'CheckSquare':
-        return <CheckSquare {...props} color="#059669" />;
+        return <CheckSquare {...props} color={Colors.light.success} />;
       case 'IndianRupee':
-        return <IndianRupee {...props} color="#9333EA" />;
+        return <IndianRupee {...props} color={BrandColors.brand} />;
       default:
-        return <Building2 {...props} />;
+        return <Building2 {...props} color={Colors.light.textSecondary} />;
     }
   };
 
   const getIconBg = (iconName: MetricItem['iconName']) => {
     switch (iconName) {
       case 'Building2':
-        return '#FFF4E5';
+        return Colors.light.primaryBg;
       case 'Briefcase':
-        return '#EFF6FF';
+        return Colors.light.infoBg;
       case 'CheckSquare':
-        return '#ECFDF5';
+        return Colors.light.successBg;
       case 'IndianRupee':
-        return '#FAF5FF';
+        return Colors.light.brandBg; // Light teal
       default:
-        return '#F7F9FA';
+        return Colors.light.surfaceMuted;
     }
   };
 
@@ -110,8 +106,8 @@ export function OverviewSection({
             <Text style={styles.heroSubtitle}>Overall completion</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: isGoodStanding ? 'rgba(22, 165, 122, 0.2)' : 'rgba(231, 149, 36, 0.2)' }]}>
-            <View style={[styles.statusDot, { backgroundColor: isGoodStanding ? '#16A57A' : '#E79524' }]} />
-            <Text style={[styles.statusText, { color: isGoodStanding ? '#E8FDF5' : '#FEF3C7' }]}>
+            <View style={[styles.statusDot, { backgroundColor: isGoodStanding ? Colors.light.success : Colors.light.primary }]} />
+            <Text style={[styles.statusText, { color: isGoodStanding ? Colors.light.successBg : Colors.light.warningBg }]}>
               {sites.length === 0 ? 'No Sites' : isGoodStanding ? 'On track' : 'Needs attention'}
             </Text>
           </View>
@@ -162,36 +158,30 @@ export function OverviewSection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    marginTop: 20,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
   },
   heroCard: {
-    backgroundColor: '#07566A',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: Colors.light.brand,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
   },
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
   },
   heroTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
+    ...Typography.sectionTitle,
+    color: Colors.light.surface,
     marginBottom: 4,
   },
   heroSubtitle: {
-    fontSize: 13,
-    color: '#A7C4CC',
+    ...Typography.caption,
+    color: Colors.light.textMuted,
     fontWeight: '500',
   },
   statusBadge: {
@@ -199,16 +189,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     gap: 6,
   },
   statusDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: Radius.full,
   },
   statusText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
   },
   progressContainer: {
@@ -217,61 +207,57 @@ const styles = StyleSheet.create({
   heroPercentage: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: Colors.light.surface,
     letterSpacing: -1,
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   progressTrack: {
     height: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 4,
+    borderRadius: Radius.full,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#E79524',
-    borderRadius: 4,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.full,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Spacing.sm,
   },
   card: {
     width: '48%',
     flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   cardPressed: {
     transform: [{ scale: 0.98 }],
-    backgroundColor: '#FDFDFD',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
     gap: 8,
   },
   iconContainer: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   metricLabel: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#71808A',
+    color: Colors.light.textSecondary,
     flex: 1,
   },
   cardBody: {
@@ -280,13 +266,13 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#123746',
+    color: Colors.light.text,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   metricSubtext: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '500',
-    color: '#71808A',
+    color: Colors.light.textSecondary,
   },
 });

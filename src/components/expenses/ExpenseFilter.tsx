@@ -1,6 +1,8 @@
 import React from 'react';
-import { ScrollView, Pressable, Text, StyleSheet, View } from 'react-native';
-import { ExpenseCategory } from '@/types/dashboard';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { ExpenseCategory, PaymentMethod } from '@/types/dashboard';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { Spacing } from '@/constants/theme';
 
 interface ExpenseFilterProps {
   categories: ('All' | ExpenseCategory)[];
@@ -9,6 +11,9 @@ interface ExpenseFilterProps {
   periods: string[];
   selectedPeriod: string;
   onSelectPeriod: (period: string) => void;
+  paymentMethods: ('All' | PaymentMethod)[];
+  selectedPaymentMethod: 'All' | PaymentMethod;
+  onSelectPaymentMethod: (method: 'All' | PaymentMethod) => void;
 }
 
 export function ExpenseFilter({
@@ -18,6 +23,9 @@ export function ExpenseFilter({
   periods,
   selectedPeriod,
   onSelectPeriod,
+  paymentMethods,
+  selectedPaymentMethod,
+  onSelectPaymentMethod,
 }: ExpenseFilterProps) {
   return (
     <View style={styles.container}>
@@ -27,25 +35,14 @@ export function ExpenseFilter({
         contentContainerStyle={styles.rowContent}
         style={styles.row}
       >
-        {periods.map((period) => {
-          const isSelected = selectedPeriod === period;
-          return (
-            <Pressable
-              key={period}
-              style={[styles.periodChip, isSelected && styles.periodChipSelected]}
-              onPress={() => onSelectPeriod(period)}
-            >
-              <Text
-                style={[
-                  styles.periodChipText,
-                  isSelected && styles.periodChipTextSelected,
-                ]}
-              >
-                {period}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {periods.map((period) => (
+          <FilterButton
+            key={`period-${period}`}
+            label={period}
+            isActive={selectedPeriod === period}
+            onPress={() => onSelectPeriod(period)}
+          />
+        ))}
       </ScrollView>
 
       <ScrollView
@@ -54,25 +51,30 @@ export function ExpenseFilter({
         contentContainerStyle={styles.rowContent}
         style={styles.row}
       >
-        {categories.map((category) => {
-          const isSelected = selectedCategory === category;
-          return (
-            <Pressable
-              key={category}
-              style={[styles.categoryChip, isSelected && styles.categoryChipSelected]}
-              onPress={() => onSelectCategory(category)}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  isSelected && styles.categoryChipTextSelected,
-                ]}
-              >
-                {category}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {categories.map((category) => (
+          <FilterButton
+            key={`category-${category}`}
+            label={category}
+            isActive={selectedCategory === category}
+            onPress={() => onSelectCategory(category)}
+          />
+        ))}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.rowContent}
+        style={styles.row}
+      >
+        {paymentMethods.map((method) => (
+          <FilterButton
+            key={`method-${method}`}
+            label={method}
+            isActive={selectedPaymentMethod === method}
+            onPress={() => onSelectPaymentMethod(method)}
+          />
+        ))}
       </ScrollView>
     </View>
   );
@@ -80,54 +82,14 @@ export function ExpenseFilter({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   row: {
     flexGrow: 0,
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   rowContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  periodChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  periodChipSelected: {
-    backgroundColor: '#F2A619',
-    borderColor: '#F2A619',
-  },
-  periodChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7A85',
-  },
-  periodChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  categoryChipSelected: {
-    backgroundColor: '#0F354A',
-    borderColor: '#0F354A',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7A85',
-  },
-  categoryChipTextSelected: {
-    color: '#FFFFFF',
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
   },
 });

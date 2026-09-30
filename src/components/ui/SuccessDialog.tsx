@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleCheck } from 'lucide-react-native';
+import { Colors, Typography, Spacing, Radius, Shadows, TouchTargets } from '@/constants/theme';
 
 export interface SuccessDialogProps {
   /** Whether the dialog is visible */
@@ -30,14 +31,6 @@ export interface SuccessDialogProps {
   testID?: string;
 }
 
-// GRN Construction Design Tokens
-const BRAND_TEAL = '#0B5364';
-const BRAND_TEAL_ACTIVE = '#083F4C';
-const SUCCESS_COLOR = '#16A085';
-const SUCCESS_BG = '#E8F7F3';
-const TEXT_PRIMARY = '#123746';
-const TEXT_MUTED = '#6B7A85';
-
 export function SuccessDialog({
   visible,
   title,
@@ -49,7 +42,6 @@ export function SuccessDialog({
 }: SuccessDialogProps) {
   const insets = useSafeAreaInsets();
 
-  // Animated values initialized via state factory to avoid accessing ref during render
   const [backdropAnim] = useState(() => new Animated.Value(0));
   const [cardScaleAnim] = useState(() => new Animated.Value(0.95));
   const [cardFadeAnim] = useState(() => new Animated.Value(0));
@@ -147,7 +139,6 @@ export function SuccessDialog({
         aria-modal={true}
         accessibilityRole="alert"
       >
-        {/* Subtle translucent dark backdrop */}
         <Animated.View
           style={[
             styles.backdrop,
@@ -167,7 +158,6 @@ export function SuccessDialog({
           />
         </Animated.View>
 
-        {/* Dialog Card */}
         <Animated.View
           style={[
             styles.dialogCard,
@@ -178,7 +168,6 @@ export function SuccessDialog({
           ]}
           accessible={false}
         >
-          {/* Success Icon */}
           <Animated.View
             style={[
               styles.iconWrapper,
@@ -192,31 +181,22 @@ export function SuccessDialog({
             ) : (
               <CircleCheck
                 size={28}
-                color={SUCCESS_COLOR}
+                color={Colors.light.success}
                 strokeWidth={2.4}
               />
             )}
           </Animated.View>
 
-          {/* Title */}
-          <Text
-            style={styles.title}
-            accessibilityRole="header"
-          >
+          <Text style={styles.title} accessibilityRole="header">
             {title}
           </Text>
 
-          {/* Message */}
           {message ? (
-            <Text
-              style={styles.message}
-              accessibilityRole="text"
-            >
+            <Text style={styles.message} accessibilityRole="text">
               {message}
             </Text>
           ) : null}
 
-          {/* Action Button */}
           <Pressable
             style={({ pressed }) => [
               styles.button,
@@ -248,72 +228,50 @@ const styles = StyleSheet.create({
   dialogCard: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingTop: 28,
-    paddingBottom: 22,
-    paddingHorizontal: 24,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
-    // Premium soft elevation & shadows
-    ...Platform.select({
-      ios: {
-        shadowColor: '#072733',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.16,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 10,
-      },
-      default: {
-        shadowColor: '#072733',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.16,
-        shadowRadius: 24,
-      },
-    }),
+    ...Shadows.lg,
   },
   iconWrapper: {
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: SUCCESS_BG,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.light.successBg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   title: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
     textAlign: 'center',
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   message: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: TEXT_MUTED,
+    ...Typography.body,
+    color: Colors.light.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 6,
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.xs,
   },
   button: {
     width: '100%',
+    minHeight: TouchTargets.min,
     height: 48,
-    backgroundColor: BRAND_TEAL,
-    borderRadius: 12,
+    backgroundColor: Colors.light.brand,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonPressed: {
-    backgroundColor: BRAND_TEAL_ACTIVE,
     opacity: 0.92,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    ...Typography.button,
+    color: Colors.light.surface,
   },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { HardHat } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
+import { Colors, Typography, Spacing, Radius, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface HomeHeaderProps {
   onProfilePress?: () => void;
@@ -35,7 +36,7 @@ export function HomeHeader({ onProfilePress }: HomeHeaderProps) {
       <View style={styles.leftColumn}>
         <View style={styles.brandRow}>
           <View style={styles.brandIconWrapper}>
-            <HardHat size={16} color="#07566A" strokeWidth={2.4} />
+            <HardHat size={IconSizes.sm} color={Colors.light.brand} strokeWidth={2.4} />
           </View>
           <Text style={styles.brandText}>GRN CONSTRUCTIONS</Text>
         </View>
@@ -72,16 +73,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
+    backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
   leftColumn: {
     flex: 1,
-    paddingRight: 16,
+    paddingRight: Spacing.md,
   },
   brandRow: {
     flexDirection: 'row',
@@ -92,8 +93,8 @@ const styles = StyleSheet.create({
   brandIconWrapper: {
     width: 22,
     height: 22,
-    borderRadius: 6,
-    backgroundColor: '#E79524',
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.light.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -101,28 +102,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
-    color: '#07566A',
+    color: Colors.light.brand,
     textTransform: 'uppercase',
   },
   greetingText: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '500',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   waveEmoji: {
     fontSize: 13,
   },
   userNameText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#07566A',
-    letterSpacing: -0.3,
-    marginTop: 1,
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
+    marginTop: 2,
   },
   avatarButton: {
     position: 'relative',
     padding: 2,
-    borderRadius: 24,
+    borderRadius: Radius.full,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarButtonPressed: {
     opacity: 0.8,
@@ -131,28 +134,28 @@ const styles = StyleSheet.create({
   avatarInner: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#07566A',
+    borderRadius: Radius.full,
+    backgroundColor: Colors.light.brand,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#E79524',
+    borderColor: Colors.light.primary,
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    ...Typography.body,
+    color: Colors.light.surface,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   activeDot: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: '#10B981',
+    bottom: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.light.success,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.light.surface,
   },
 });

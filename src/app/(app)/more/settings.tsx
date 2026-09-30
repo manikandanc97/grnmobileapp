@@ -1,26 +1,13 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Pressable,
-  Switch,
-} from 'react-native';
-import {
-  ArrowLeft,
-  Bell,
-  Moon,
-  Globe,
-  Info,
-  Shield,
-  FileText,
-  LogOut,
-  ChevronRight,
-} from 'lucide-react-native';
+import { StyleSheet, ScrollView, Switch } from 'react-native';
+import { Bell, Moon, Globe, Info, Shield, FileText, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsRow';
+import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -44,247 +31,89 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.webContainer}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color="#0F354A" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={{ width: 40 }} />
-        </View>
+    <ScreenWrapper>
+      <ScreenHeader title="Settings" showBack />
+      
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <SettingsGroup title="General">
+          <SettingsRow
+            icon={<Bell size={IconSizes.sm} color={Colors.light.info} />}
+            iconBgColor={Colors.light.infoBg}
+            title="Notifications"
+            value={
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={setNotificationsEnabled}
+                trackColor={{ false: Colors.light.border, true: Colors.light.brand }}
+                thumbColor={Colors.light.surface}
+              />
+            }
+            showChevron={false}
+          />
+          <SettingsRow
+            icon={<Moon size={IconSizes.sm} color={Colors.light.primary} />}
+            iconBgColor={Colors.light.primaryBg}
+            title="Appearance"
+            value={theme}
+            onPress={toggleTheme}
+          />
+          <SettingsRow
+            icon={<Globe size={IconSizes.sm} color={Colors.light.warning} />}
+            iconBgColor={Colors.light.warningBg}
+            title="Language"
+            value={language}
+            onPress={toggleLanguage}
+            hideDivider
+          />
+        </SettingsGroup>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* GENERAL SECTION */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>General</Text>
-            <View style={styles.card}>
-              <View style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#F0F9FF' }]}>
-                    <Bell size={20} color="#0EA5E9" />
-                  </View>
-                  <Text style={styles.rowText}>Notifications</Text>
-                </View>
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
-                  trackColor={{ false: '#E2E8F0', true: '#F2A619' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              <View style={styles.divider} />
-              
-              <Pressable style={styles.row} onPress={toggleTheme}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#F3E8FF' }]}>
-                    <Moon size={20} color="#9333EA" />
-                  </View>
-                  <Text style={styles.rowText}>Appearance</Text>
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={styles.valueText}>{theme}</Text>
-                  <ChevronRight size={18} color="#8A99A4" />
-                </View>
-              </Pressable>
-              <View style={styles.divider} />
+        <SettingsGroup title="App">
+          <SettingsRow
+            icon={<Info size={IconSizes.sm} color={Colors.light.textSecondary} />}
+            iconBgColor={Colors.light.surfaceMuted}
+            title="About GRN Construction"
+            onPress={() => router.push('/(app)/more/about' as any)}
+          />
+          <SettingsRow
+            icon={<Shield size={IconSizes.sm} color={Colors.light.success} />}
+            iconBgColor={Colors.light.successBg}
+            title="Privacy Policy"
+            onPress={() => {}}
+          />
+          <SettingsRow
+            icon={<FileText size={IconSizes.sm} color={Colors.light.info} />}
+            iconBgColor={Colors.light.infoBg}
+            title="Terms of Service"
+            onPress={() => {}}
+            hideDivider
+          />
+        </SettingsGroup>
 
-              <Pressable style={styles.row} onPress={toggleLanguage}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
-                    <Globe size={20} color="#D97706" />
-                  </View>
-                  <Text style={styles.rowText}>Language</Text>
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={styles.valueText}>{language}</Text>
-                  <ChevronRight size={18} color="#8A99A4" />
-                </View>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* APP SECTION */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>App</Text>
-            <View style={styles.card}>
-              <Pressable
-                style={styles.row}
-                onPress={() => router.push('/(app)/more/about' as any)}
-              >
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#F3F4F6' }]}>
-                    <Info size={20} color="#4B5563" />
-                  </View>
-                  <Text style={styles.rowText}>About GRN Construction</Text>
-                </View>
-                <ChevronRight size={18} color="#8A99A4" />
-              </Pressable>
-              <View style={styles.divider} />
-
-              <Pressable style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#ECFDF5' }]}>
-                    <Shield size={20} color="#059669" />
-                  </View>
-                  <Text style={styles.rowText}>Privacy Policy</Text>
-                </View>
-                <ChevronRight size={18} color="#8A99A4" />
-              </Pressable>
-              <View style={styles.divider} />
-
-              <Pressable style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#EFF6FF' }]}>
-                    <FileText size={20} color="#2563EB" />
-                  </View>
-                  <Text style={styles.rowText}>Terms of Service</Text>
-                </View>
-                <ChevronRight size={18} color="#8A99A4" />
-              </Pressable>
-            </View>
-          </View>
-
-          {/* ACCOUNT SECTION */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Account</Text>
-            <Pressable
-              style={({ pressed }) => [
-                styles.signOutButton,
-                pressed && styles.signOutButtonPressed,
-              ]}
-              onPress={handleSignOut}
-            >
-              <LogOut size={20} color="#DC2626" />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </Pressable>
-          </View>
-
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+        <SettingsGroup title="Account">
+          <SettingsRow
+            icon={<LogOut size={IconSizes.sm} color={Colors.light.error} />}
+            iconBgColor={Colors.light.errorBg}
+            title="Sign Out"
+            onPress={handleSignOut}
+            isDestructive
+            hideDivider
+          />
+        </SettingsGroup>
+      </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  webContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 540,
-    alignSelf: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8A99A4',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-    paddingHorizontal: 4,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8ECEF',
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  rowText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#0F354A',
-  },
-  valueText: {
-    fontSize: 14,
-    color: '#6B7A85',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#EEF2F6',
-    marginLeft: 68,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-  },
-  signOutButtonPressed: {
-    backgroundColor: '#FEF2F2',
-  },
-  signOutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DC2626',
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
 });

@@ -10,13 +10,14 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
 
 function TabIcon({ focused, IconComponent }: { focused: boolean, IconComponent: any }) {
   return (
     <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
       <IconComponent
         size={22}
-        color={focused ? '#07566A' : '#71808A'}
+        color={focused ? Colors.light.brand : Colors.light.textMuted}
         strokeWidth={focused ? 2.5 : 2}
       />
     </View>
@@ -48,18 +49,18 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: '#07566A',
-        tabBarInactiveTintColor: '#71808A',
+        tabBarActiveTintColor: Colors.light.brand,
+        tabBarInactiveTintColor: Colors.light.textMuted,
         tabBarStyle: isFormScreen
           ? { display: 'none' }
           : {
-              backgroundColor: '#FFFFFF',
-              borderTopColor: '#EEF2F6',
+              backgroundColor: Colors.light.surface,
+              borderTopColor: Colors.light.border,
               borderTopWidth: 1,
               minHeight: 64 + (insets.bottom || 0),
               paddingBottom: insets.bottom || 12,
               paddingTop: 8,
-              shadowColor: '#000',
+              shadowColor: Colors.light.text,
               shadowOffset: { width: 0, height: -2 },
               shadowOpacity: 0.05,
               shadowRadius: 8,
@@ -126,6 +127,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: '#07566A15', // Teal with low opacity
+    backgroundColor: `${Colors.light.brand}15`, // Teal with low opacity
   },
 });

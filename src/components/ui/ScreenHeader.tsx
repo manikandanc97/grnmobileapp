@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { Colors, Typography, Spacing, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -20,8 +21,9 @@ export function ScreenHeader({ title, subtitle, actionButton, showBorder = true,
         <Pressable
           style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
           onPress={() => router.back()}
+          hitSlop={8}
         >
-          <ArrowLeft size={24} color="#0F354A" />
+          <ArrowLeft size={IconSizes.lg} color={Colors.light.text} />
         </Pressable>
       )}
       <View style={styles.headerTextContainer}>
@@ -42,39 +44,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Spacing.md, // 16px
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.light.surface,
   },
   headerBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
   headerTextContainer: {
     flex: 1,
-    paddingRight: 16,
+    paddingRight: Spacing.md,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0F354A',
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    ...Typography.pageTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.xs,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
+    ...Typography.secondary,
+    color: Colors.light.textSecondary,
   },
   actionContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 2,
+    minHeight: TouchTargets.min,
   },
   backButton: {
-    marginRight: 16,
-    padding: 4,
-    marginTop: 2,
+    marginRight: Spacing.md,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: -Spacing.sm, // pull slightly to left to align visual left edge
   },
   backButtonPressed: {
     opacity: 0.5,

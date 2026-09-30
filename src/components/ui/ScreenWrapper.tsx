@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
 
 interface ScreenWrapperProps extends ViewProps {
   children: React.ReactNode;
@@ -30,6 +31,6 @@ export function ScreenWrapper({ children, style, withBottomInset = false, ...pro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
   },
 });

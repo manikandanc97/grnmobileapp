@@ -1,60 +1,59 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Colors, Spacing, Typography, Radius, Shadows } from '@/constants/theme';
 
 interface LaborSummaryCardProps {
   present: number;
+  halfDay: number;
   absent: number;
   notMarked: number;
   total: number;
-  attendancePercentage: number;
 }
 
 export function LaborSummaryCard({
   present,
+  halfDay,
   absent,
   notMarked,
   total,
-  attendancePercentage,
 }: LaborSummaryCardProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Today&apos;s Overview</Text>
-          <Text style={styles.subtitle}>Total Workers: {total}</Text>
-        </View>
-        <View style={styles.percentageContainer}>
-          <Text style={styles.percentageText}>{attendancePercentage}%</Text>
-          <Text style={styles.percentageLabel}>Attendance</Text>
-        </View>
+        <Text style={styles.title}>Daily Summary</Text>
+        <Text style={styles.totalBadge}>{total} Workers</Text>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <View style={[styles.statDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.statDot, { backgroundColor: Colors.light.success }]} />
           <View>
             <Text style={styles.statValue}>{present}</Text>
             <Text style={styles.statLabel}>Present</Text>
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={styles.statItem}>
+          <View style={[styles.statDot, { backgroundColor: Colors.light.warning }]} />
+          <View>
+            <Text style={styles.statValue}>{halfDay}</Text>
+            <Text style={styles.statLabel}>Half Day</Text>
+          </View>
+        </View>
 
         <View style={styles.statItem}>
-          <View style={[styles.statDot, { backgroundColor: '#EF4444' }]} />
+          <View style={[styles.statDot, { backgroundColor: Colors.light.error }]} />
           <View>
             <Text style={styles.statValue}>{absent}</Text>
             <Text style={styles.statLabel}>Absent</Text>
           </View>
         </View>
 
-        <View style={styles.divider} />
-
         <View style={styles.statItem}>
-          <View style={[styles.statDot, { backgroundColor: '#9CA3AF' }]} />
+          <View style={[styles.statDot, { backgroundColor: Colors.light.textMuted }]} />
           <View>
             <Text style={styles.statValue}>{notMarked}</Text>
-            <Text style={styles.statLabel}>Not Marked</Text>
+            <Text style={styles.statLabel}>Unmarked</Text>
           </View>
         </View>
       </View>
@@ -64,81 +63,60 @@ export function LaborSummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
+    marginBottom: Spacing.md,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing.md,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.light.text,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  percentageContainer: {
-    alignItems: 'flex-end',
-  },
-  percentageText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#F2A619',
-    letterSpacing: -0.5,
-  },
-  percentageLabel: {
-    fontSize: 12,
-    color: '#6B7A85',
+  totalBadge: {
+    ...Typography.caption,
     fontWeight: '600',
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    color: Colors.light.textSecondary,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.xs,
   },
   statDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statValue: {
-    fontSize: 18,
+    ...Typography.body,
     fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 2,
+    color: Colors.light.text,
+    marginBottom: 0,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#6B7A85',
+    fontSize: 10,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
-  },
-  divider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#EEF2F6',
   },
 });

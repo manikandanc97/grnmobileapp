@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, FlatList, Keyboard, Platform } from 'react-native';
 import { ChevronDown, X, Plus, Trash2 } from 'lucide-react-native';
-import { Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius, TouchTargets, IconSizes } from '@/constants/theme';
 
 export interface SelectOption {
   label: string;
@@ -58,7 +58,7 @@ export function SelectField({
             {selectedOption ? selectedOption.label : placeholder}
           </Text>
         </View>
-        <ChevronDown size={20} color="#8A99A4" />
+        <ChevronDown size={IconSizes.md} color={Colors.light.textMuted} />
       </Pressable>
 
       <Modal
@@ -73,7 +73,7 @@ export function SelectField({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{placeholder}</Text>
               <Pressable onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                <X size={22} color="#0F354A" />
+                <X size={IconSizes.lg} color={Colors.light.text} />
               </Pressable>
             </View>
 
@@ -101,7 +101,7 @@ export function SelectField({
                   </View>
                   {onDeleteOption && (
                     <Pressable onPress={() => onDeleteOption(item.value)} style={styles.deleteBtn}>
-                      <Trash2 size={18} color="#DC2626" />
+                      <Trash2 size={IconSizes.md} color={Colors.light.error} />
                     </Pressable>
                   )}
                 </Pressable>
@@ -118,7 +118,7 @@ export function SelectField({
                   onAddOption();
                 }}
               >
-                <Plus size={20} color="#E79524" />
+                <Plus size={IconSizes.md} color={Colors.light.primary} />
                 <Text style={styles.addOptionText}>{manageLabel || 'Add New'}</Text>
               </Pressable>
             )}
@@ -131,19 +131,19 @@ export function SelectField({
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 50,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   inputError: {
-    borderColor: '#DC2626',
-    backgroundColor: '#FEF2F2',
+    borderColor: Colors.light.error,
+    backgroundColor: Colors.light.errorBg,
   },
   leftGroup: {
     flexDirection: 'row',
@@ -151,16 +151,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leftIconContainer: {
-    marginRight: 10,
+    marginRight: Spacing.sm,
   },
   text: {
-    fontSize: 15,
-    color: '#0F354A',
-    fontWeight: '500',
+    ...Typography.body,
+    color: Colors.light.text,
   },
   placeholderText: {
-    color: '#8A99A4',
-    fontWeight: '400',
+    color: Colors.light.textMuted,
   },
   modalOverlay: {
     flex: 1,
@@ -168,20 +166,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.light.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
     maxHeight: '75%',
     paddingBottom: Platform.OS === 'ios' ? 34 : Spacing.md,
   },
   bottomSheetHandle: {
     width: 48,
     height: 5,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
+    backgroundColor: Colors.light.borderStrong,
+    borderRadius: Radius.full,
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 4,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -190,15 +188,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F354A',
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
   },
   closeBtn: {
     padding: Spacing.xs,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingBottom: Spacing.lg,
@@ -209,33 +210,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: Spacing.lg,
+    minHeight: TouchTargets.min,
   },
   selectedOptionRow: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: Colors.light.primaryBg,
   },
   optionTextContainer: {
     flex: 1,
   },
   optionText: {
-    fontSize: 15,
-    color: '#0F354A',
-    fontWeight: '500',
+    ...Typography.body,
+    color: Colors.light.text,
   },
   selectedOptionText: {
     fontWeight: '700',
-    color: '#E79524',
+    color: Colors.light.primary,
   },
   optionSub: {
-    fontSize: 12,
-    color: '#8A99A4',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     marginTop: 2,
   },
   separator: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.borderSubtle,
   },
   deleteBtn: {
     padding: Spacing.sm,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addOptionBtn: {
     flexDirection: 'row',
@@ -243,12 +248,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
+    borderTopColor: Colors.light.borderSubtle,
     gap: Spacing.sm,
+    minHeight: TouchTargets.min + 8,
   },
   addOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#E79524',
+    ...Typography.button,
+    color: Colors.light.primary,
   },
 });

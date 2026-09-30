@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Colors, Shadows } from '@/constants/theme';
 
 export interface BottomActionBarProps {
   children: React.ReactNode;
@@ -29,14 +29,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.md,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
+    borderTopColor: Colors.light.borderSubtle,
     gap: Spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 4,
+    ...Shadows.md,
   },
 });

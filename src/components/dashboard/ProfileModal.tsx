@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -66,7 +67,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                     pressed && styles.closeButtonPressed,
                   ]}
                 >
-                  <X size={18} color="#6B7A85" />
+                  <X size={IconSizes.sm} color={Colors.light.textSecondary} />
                 </Pressable>
               </View>
 
@@ -77,7 +78,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                 </View>
                 <Text style={styles.userName}>{displayName}</Text>
                 <View style={styles.roleBadge}>
-                  <ShieldCheck size={13} color="#059669" />
+                  <ShieldCheck size={13} color={Colors.light.success} />
                   <Text style={styles.roleText}>Site Supervisor</Text>
                 </View>
               </View>
@@ -86,7 +87,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
               <View style={styles.detailsList}>
                 <View style={styles.detailRow}>
                   <View style={styles.detailIconWrapper}>
-                    <Mail size={16} color="#6B7A85" />
+                    <Mail size={IconSizes.sm} color={Colors.light.textSecondary} />
                   </View>
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Email</Text>
@@ -99,7 +100,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                 {phone !== 'Not linked' && (
                   <View style={styles.detailRow}>
                     <View style={styles.detailIconWrapper}>
-                      <Phone size={16} color="#6B7A85" />
+                      <Phone size={IconSizes.sm} color={Colors.light.textSecondary} />
                     </View>
                     <View style={styles.detailContent}>
                       <Text style={styles.detailLabel}>Phone</Text>
@@ -119,7 +120,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                 ]}
                 onPress={handleSignOut}
               >
-                <LogOut size={18} color="#DC2626" />
+                <LogOut size={IconSizes.sm} color={Colors.light.error} />
                 <Text style={styles.signOutText}>Sign Out</Text>
               </Pressable>
             </View>
@@ -136,132 +137,131 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 53, 74, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: Spacing.xl,
   },
   card: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#0F354A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    ...Shadows.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   headerTitle: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '700',
-    color: '#0F354A',
+    color: Colors.light.text,
   },
   closeButton: {
-    padding: 4,
-    borderRadius: 8,
+    padding: Spacing.xs,
+    borderRadius: Radius.sm,
+    minHeight: TouchTargets.min,
+    minWidth: TouchTargets.min,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeButtonPressed: {
-    backgroundColor: '#F3F6F8',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing.xl,
   },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#0F354A',
+    backgroundColor: Colors.light.text,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#F2A619',
-    marginBottom: 10,
+    borderColor: Colors.light.primary,
+    marginBottom: Spacing.sm,
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: Colors.light.surface,
     fontSize: 22,
     fontWeight: '700',
   },
   userName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 6,
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.xs,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
+    backgroundColor: Colors.light.successBg,
+    paddingHorizontal: Spacing.md,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radius.sm,
   },
   roleText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#059669',
+    color: Colors.light.success,
   },
   detailsList: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 20,
-    gap: 12,
+    backgroundColor: Colors.light.background,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.xl,
+    gap: Spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: Spacing.sm,
   },
   detailIconWrapper: {
     width: 32,
     height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.light.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E8ECEF',
+    borderColor: Colors.light.border,
   },
   detailContent: {
     flex: 1,
   },
   detailLabel: {
-    fontSize: 11,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#8A99A4',
+    color: Colors.light.textMuted,
     textTransform: 'uppercase',
   },
   detailValue: {
-    fontSize: 13,
+    ...Typography.body,
     fontWeight: '600',
-    color: '#1A2B35',
+    color: Colors.light.text,
     marginTop: 1,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
+    gap: Spacing.sm,
+    backgroundColor: Colors.light.errorBg,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#FEE2E2', // Fallback if errorBg border is not defined specifically
+    minHeight: TouchTargets.min,
   },
   signOutButtonPressed: {
     backgroundColor: '#FEE2E2',
   },
   signOutText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#DC2626',
+    ...Typography.button,
+    color: Colors.light.error,
   },
 });

@@ -16,6 +16,8 @@ export interface CreateMaterialParams {
   status: MaterialStatus;
   used?: number;
   received?: number;
+  unit_price?: number;
+  total_cost?: number;
 }
 
 export function transformMaterialRow(row: MaterialRow & { sites?: { name: string } | { name: string }[] | null }): MaterialItem {
@@ -35,6 +37,8 @@ export function transformMaterialRow(row: MaterialRow & { sites?: { name: string
     status: row.status as MaterialStatus,
     used: Number(row.used) || 0,
     received: Number(row.received) || 0,
+    unitPrice: Number(row.unit_price) || 0,
+    totalCost: Number(row.total_cost) || 0,
     lastUpdated: new Date(row.last_updated || row.updated_at).toLocaleDateString(),
   };
 }
@@ -86,6 +90,8 @@ export async function createMaterial(params: CreateMaterialParams): Promise<Mate
     status: params.status,
     used: params.used || 0,
     received: params.received || params.quantity,
+    unit_price: params.unit_price || 0,
+    total_cost: params.total_cost || 0,
   };
 
   const { data, error } = await supabase
@@ -116,6 +122,8 @@ export async function updateMaterial(
     ...(params.status ? { status: params.status } : {}),
     ...(params.used !== undefined ? { used: params.used } : {}),
     ...(params.received !== undefined ? { received: params.received } : {}),
+    ...(params.unit_price !== undefined ? { unit_price: params.unit_price } : {}),
+    ...(params.total_cost !== undefined ? { total_cost: params.total_cost } : {}),
     updated_at: new Date().toISOString(),
     last_updated: new Date().toISOString(),
   };

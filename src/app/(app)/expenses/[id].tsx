@@ -1,125 +1,149 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, MapPin, Calendar, CreditCard, User, FileText, Trash2, Edit2 } from 'lucide-react-native';
+import { MapPin, Calendar, CreditCard, User, FileText, FolderOpen } from 'lucide-react-native';
+
 import { useExpenseDetails } from '@/hooks/useExpenses';
 import { softDeleteExpense, getExpenseSiteName } from '@/services/expenses';
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
+import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Money } from '@/components/ui/Money';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+import { parseSafeDate, formatDate as formatLibDate } from '@/lib/dateUtils';
+import { Colors, Spacing, Typography, Radius, Shadows } from '@/constants/theme';
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return 'Not set';
+  const d = parseSafeDate(dateStr);
+  if (!d) return dateStr;
+  return formatLibDate(d, 'EEE, dd MMM yyyy');
 }
 
 export default function ExpenseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   
-  const { expense, loading, error } = useExpenseDetails(id);
+  const { expense, loading, error, refetch } = useExpenseDetails(id);
+
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletedExpenseTitle, setDeletedExpenseTitle] = useState('');
+  const [isDeleted, setIsDeleted] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!expense) return;
+    setIsDeleting(true);
+    const expTitle = expense.title;
+    setDeletedExpenseTitle(expTitle);
+    try {
+      setIsDeleted(true);
+      await softDeleteExpense(expense.id);
+      setShowConfirmDelete(false);
+      setIsDeleting(false);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      setIsDeleting(false);
+      setIsDeleted(false);
+      const message = err instanceof Error ? err.message : 'Failed to delete expense.';
+      setDeleteError(message);
+    }
+  };
+
+  const handleDeleteSuccessClose = () => {
+    setShowDeleteSuccess(false);
+    router.replace('/(app)/expenses');
+  };
+
+  if (isDeleted && showDeleteSuccess) {
+    return (
+      <ScreenWrapper>
+        <SuccessDialog
+          visible={showDeleteSuccess}
+          title="Expense Deleted"
+          message={`"${deletedExpenseTitle || 'Expense'}" has been successfully removed.`}
+          buttonText="Done"
+          onClose={handleDeleteSuccessClose}
+        />
+      </ScreenWrapper>
+    );
+  }
 
   if (loading) {
     return (
-      <View style={styles.errorContainer}>
-        <ActivityIndicator size="large" color="#F2A619" />
-      </View>
+      <ScreenWrapper>
+        <ScreenHeader title="Expense Details" showBack={true} />
+        <View style={styles.loadingContainer}>
+          <LoadingSkeleton type="card" height={200} />
+          <LoadingSkeleton type="card" height={300} />
+        </View>
+      </ScreenWrapper>
     );
   }
 
   if (!expense || error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error ?? 'Expense not found'}</Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </Pressable>
-      </View>
+      <ScreenWrapper>
+        <ScreenHeader title="Expense Details" showBack={true} />
+        <View style={styles.centerContainer}>
+          <ErrorState 
+            title="Expense not found" 
+            message={error ?? 'The expense you are looking for does not exist or has been deleted.'} 
+            onRetry={error ? refetch : undefined}
+          />
+        </View>
+      </ScreenWrapper>
     );
   }
 
-  const isPaid = expense.payment_status === 'Paid';
   const siteName = getExpenseSiteName(expense);
 
-  const performDelete = async () => {
-    try {
-      await softDeleteExpense(expense.id);
-      Alert.alert('Deleted', 'Expense has been removed.');
-      router.back();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete expense.';
-      Alert.alert('Error', message);
-    }
-  };
-
-  const handleDelete = () => {
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm('Are you sure you want to delete this expense?');
-      if (confirm) {
-        void performDelete();
-      }
-    } else {
-      Alert.alert(
-        'Delete Expense',
-        'Are you sure you want to delete this expense? This action cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: () => void performDelete() }
-        ]
-      );
-    }
-  };
-
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable
-            style={({ pressed }) => [styles.backIcon, pressed && styles.backIconPressed]}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color="#0F354A" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Expense Details</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.actionButton} onPress={() => { Alert.alert('Notice', 'Edit feature coming soon'); }}>
-            <Edit2 size={18} color="#0F354A" />
-          </Pressable>
-          <Pressable style={styles.actionButton} onPress={handleDelete}>
-            <Trash2 size={18} color="#EF4444" />
-          </Pressable>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Expense Details"
+        showBack={true}
+        actionButton={
+          <EntityActionMenu
+            onEdit={() => router.push({ pathname: '/(app)/expenses/edit', params: { id: expense.id } })}
+            onDelete={() => setShowConfirmDelete(true)}
+            editLabel="Edit Expense"
+            deleteLabel="Delete Expense"
+          />
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         
-        {/* Main Card */}
-        <View style={styles.mainCard}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{expense.category}</Text>
+        {/* Main Identity Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <View style={styles.categoryBadge}>
+              <FolderOpen size={14} color={Colors.light.textSecondary} />
+              <Text style={styles.categoryText}>{expense.category}</Text>
+            </View>
+            <StatusBadge status={expense.payment_status} />
           </View>
-          <Text style={styles.title}>{expense.title}</Text>
-          <Text style={styles.amount}>{formatCurrency(expense.amount)}</Text>
           
-          <View style={[styles.statusBadge, isPaid ? styles.statusPaid : styles.statusPending]}>
-            <Text style={[styles.statusText, isPaid ? styles.statusTextPaid : styles.statusTextPending]}>
-              {expense.payment_status}
-            </Text>
-          </View>
+          <Text style={styles.title}>{expense.title}</Text>
+          <Money amount={expense.amount || 0} style={styles.amount} />
         </View>
 
         {/* Details List */}
-        <Text style={styles.sectionTitle}>Details</Text>
+        <Text style={styles.sectionTitle}>Information</Text>
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <MapPin size={18} color="#6B7A85" />
+              <MapPin size={20} color={Colors.light.textSecondary} />
             </View>
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Site</Text>
@@ -131,11 +155,11 @@ export default function ExpenseDetailScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <Calendar size={18} color="#6B7A85" />
+              <Calendar size={20} color={Colors.light.textSecondary} />
             </View>
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{formatDate(expense.date)}</Text>
+              <Text style={styles.detailLabel}>Expense Date</Text>
+              <Text style={styles.detailValue}>{formatDate(expense.expense_date)}</Text>
             </View>
           </View>
 
@@ -143,19 +167,34 @@ export default function ExpenseDetailScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <User size={18} color="#6B7A85" />
+              <User size={20} color={Colors.light.textSecondary} />
             </View>
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Vendor</Text>
-              <Text style={styles.detailValue}>{expense.vendor || 'N/A'}</Text>
+              <Text style={styles.detailValue}>{expense.vendor || 'Not specified'}</Text>
             </View>
           </View>
+
+          {expense.reference && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.detailRow}>
+                <View style={styles.detailIconBox}>
+                  <FileText size={20} color={Colors.light.textSecondary} />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Reference / Receipt No.</Text>
+                  <Text style={styles.detailValue}>{expense.reference}</Text>
+                </View>
+              </View>
+            </>
+          )}
 
           <View style={styles.divider} />
 
           <View style={styles.detailRow}>
             <View style={styles.detailIconBox}>
-              <CreditCard size={18} color="#6B7A85" />
+              <CreditCard size={20} color={Colors.light.textSecondary} />
             </View>
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Payment Method</Text>
@@ -169,206 +208,164 @@ export default function ExpenseDetailScreen() {
           <>
             <Text style={styles.sectionTitle}>Notes</Text>
             <View style={styles.notesCard}>
-              <FileText size={20} color="#8A99A4" style={styles.notesIcon} />
               <Text style={styles.notesText}>{expense.notes}</Text>
             </View>
           </>
         )}
 
       </ScrollView>
-    </View>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        visible={showConfirmDelete}
+        title="Delete Expense?"
+        message={`Are you sure you want to delete "${expense.title}"? This expense record will be permanently removed.`}
+        confirmText="Delete Expense"
+        loading={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
+
+      {/* Success Feedback Dialog */}
+      <SuccessDialog
+        visible={showDeleteSuccess}
+        title="Expense Deleted"
+        message={`"${deletedExpenseTitle || 'Expense'}" has been successfully removed.`}
+        buttonText="Done"
+        onClose={handleDeleteSuccessClose}
+      />
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        visible={Boolean(deleteError)}
+        title="Error"
+        message={deleteError || 'Failed to delete expense.'}
+        onClose={() => setDeleteError(null)}
+        onRetry={handleDeleteConfirm}
+      />
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  loadingContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
-  errorContainer: {
+  centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 16,
-  },
-  backButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#F2A619',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backIcon: {
-    marginRight: 16,
-    padding: 4,
-  },
-  backIconPressed: {
-    opacity: 0.5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
+    padding: Spacing.xl,
   },
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
-  mainCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+  heroCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.xl,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginBottom: 24,
+    borderColor: Colors.light.border,
+    marginBottom: Spacing.xl,
     alignItems: 'center',
+    ...Shadows.sm,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: Spacing.md,
   },
   categoryBadge: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginBottom: 12,
+    borderColor: Colors.light.borderSubtle,
+    gap: 6,
   },
   categoryText: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
   },
   title: {
+    ...Typography.cardTitle,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 8,
+    color: Colors.light.text,
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   amount: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#F2A619',
-    marginBottom: 16,
-    letterSpacing: -1,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusPaid: {
-    backgroundColor: '#ECFDF5',
-  },
-  statusPending: {
-    backgroundColor: '#FEF2F2',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  statusTextPaid: {
-    color: '#10B981',
-  },
-  statusTextPending: {
-    color: '#EF4444',
+    ...Typography.display,
+    color: Colors.light.brand,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 12,
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.sm,
+    marginLeft: Spacing.xs,
   },
   detailsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginBottom: 24,
+    borderColor: Colors.light.border,
+    marginBottom: Spacing.xl,
+    ...Shadows.sm,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   detailIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: Spacing.md,
   },
   detailContent: {
     flex: 1,
   },
   detailLabel: {
-    fontSize: 13,
-    color: '#8A99A4',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
     marginBottom: 2,
   },
   detailValue: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '600',
-    color: '#0F354A',
+    color: Colors.light.text,
   },
   divider: {
     height: 1,
-    backgroundColor: '#EEF2F6',
-    marginVertical: 16,
-    marginLeft: 56,
+    backgroundColor: Colors.light.borderSubtle,
+    marginVertical: Spacing.md,
+    marginLeft: 60,
   },
   notesCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    flexDirection: 'row',
-  },
-  notesIcon: {
-    marginRight: 12,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   notesText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#4B5563',
-    lineHeight: 22,
+    ...Typography.body,
+    color: Colors.light.textSecondary,
+    lineHeight: 24,
   },
 });

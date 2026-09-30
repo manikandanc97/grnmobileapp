@@ -1,21 +1,11 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Pressable,
-} from 'react-native';
-import {
-  ArrowLeft,
-  Bell,
-  Box,
-  Users,
-  CreditCard,
-  CheckCircle2,
-} from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Bell, Box, Users, CreditCard, CheckCircle2 } from 'lucide-react-native';
+
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 
 type Notification = {
   id: string;
@@ -54,7 +44,6 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
 ];
 
 export default function NotificationsScreen() {
-  const router = useRouter();
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
 
   const markAllAsRead = () => {
@@ -74,211 +63,162 @@ export default function NotificationsScreen() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'material':
-        return <Box size={20} color="#D97706" />;
+        return <Box size={IconSizes.sm} color={Colors.light.warning} />;
       case 'attendance':
-        return <Users size={20} color="#059669" />;
+        return <Users size={IconSizes.sm} color={Colors.light.success} />;
       case 'expense':
-        return <CreditCard size={20} color="#9333EA" />;
+        return <CreditCard size={IconSizes.sm} color={Colors.light.primary} />;
       default:
-        return <Bell size={20} color="#0EA5E9" />;
+        return <Bell size={IconSizes.sm} color={Colors.light.info} />;
     }
   };
 
   const getIconBg = (type: string) => {
     switch (type) {
       case 'material':
-        return '#FEF3C7';
+        return Colors.light.warningBg;
       case 'attendance':
-        return '#ECFDF5';
+        return Colors.light.successBg;
       case 'expense':
-        return '#F3E8FF';
+        return Colors.light.primaryBg;
       default:
-        return '#F0F9FF';
+        return Colors.light.infoBg;
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.webContainer}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Pressable
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <ArrowLeft size={24} color="#0F354A" />
-            </Pressable>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-          {unreadCount > 0 && (
+    <ScreenWrapper>
+      <ScreenHeader
+        title="Notifications"
+        showBack
+        actionButton={
+          unreadCount > 0 ? (
             <Pressable
               onPress={markAllAsRead}
-              style={styles.markAllButton}
+              style={({ pressed }) => [
+                styles.markAllButton,
+                pressed && { opacity: 0.7 }
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all as read"
             >
-              <CheckCircle2 size={16} color="#0EA5E9" />
+              <CheckCircle2 size={IconSizes.sm} color={Colors.light.info} />
               <Text style={styles.markAllText}>Mark all read</Text>
             </Pressable>
-          )}
-        </View>
+          ) : undefined
+        }
+      />
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {notifications.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Bell size={48} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.emptySubtitle}>
-                We&apos;ll notify you when something important happens.
-              </Text>
-            </View>
-          ) : (
-            notifications.map((notification) => (
-              <Pressable
-                key={notification.id}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {notifications.length === 0 ? (
+          <EmptyState
+            icon={<Bell size={48} color={Colors.light.textMuted} />}
+            title="No notifications yet"
+            description="We'll notify you when something important happens."
+          />
+        ) : (
+          notifications.map((notification) => (
+            <Pressable
+              key={notification.id}
+              style={({ pressed }) => [
+                styles.notificationCard,
+                !notification.read && styles.notificationCardUnread,
+                pressed && styles.notificationCardPressed,
+              ]}
+              onPress={() => toggleRead(notification.id)}
+            >
+              {!notification.read && <View style={styles.unreadDot} />}
+              
+              <View
                 style={[
-                  styles.notificationCard,
-                  !notification.read && styles.notificationCardUnread,
+                  styles.iconContainer,
+                  { backgroundColor: getIconBg(notification.type) },
                 ]}
-                onPress={() => toggleRead(notification.id)}
               >
-                {!notification.read && <View style={styles.unreadDot} />}
-                <View
-                  style={[
-                    styles.iconContainer,
-                    { backgroundColor: getIconBg(notification.type) },
-                  ]}
-                >
-                  {getIcon(notification.type)}
+                {getIcon(notification.type)}
+              </View>
+              
+              <View style={styles.contentContainer}>
+                <View style={styles.contentHeader}>
+                  <Text
+                    style={[
+                      styles.title,
+                      !notification.read && styles.titleUnread,
+                    ]}
+                  >
+                    {notification.title}
+                  </Text>
+                  <Text style={styles.time}>{notification.time}</Text>
                 </View>
-                <View style={styles.contentContainer}>
-                  <View style={styles.contentHeader}>
-                    <Text
-                      style={[
-                        styles.title,
-                        !notification.read && styles.titleUnread,
-                      ]}
-                    >
-                      {notification.title}
-                    </Text>
-                    <Text style={styles.time}>{notification.time}</Text>
-                  </View>
-                  <Text style={styles.message}>{notification.message}</Text>
-                </View>
-              </Pressable>
-            ))
-          )}
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+                <Text style={styles.message}>{notification.message}</Text>
+              </View>
+            </Pressable>
+          ))
+        )}
+      </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  webContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 540,
-    alignSelf: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginLeft: 4,
-  },
-  badge: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   markAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    padding: 8,
+    padding: Spacing.sm,
   },
   markAllText: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#0EA5E9',
+    color: Colors.light.info,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.light.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
     position: 'relative',
     overflow: 'hidden',
   },
   notificationCardUnread: {
-    backgroundColor: '#F0F9FF',
-    borderColor: '#BAE6FD',
+    backgroundColor: Colors.light.infoBg,
+    borderColor: Colors.light.border,
+  },
+  notificationCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
   unreadDot: {
     position: 'absolute',
-    top: 16,
+    top: Spacing.md,
     left: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#0EA5E9',
+    backgroundColor: Colors.light.info,
   },
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: Spacing.md,
     marginLeft: 4,
   },
   contentContainer: {
@@ -291,41 +231,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#334155',
+    ...Typography.body,
+    fontWeight: '500',
+    color: Colors.light.textSecondary,
     flex: 1,
-    marginRight: 8,
+    marginRight: Spacing.sm,
   },
   titleUnread: {
-    color: '#0F354A',
+    color: Colors.light.text,
     fontWeight: '700',
   },
   time: {
-    fontSize: 12,
-    color: '#94A3B8',
+    ...Typography.caption,
+    color: Colors.light.textMuted,
   },
   message: {
-    fontSize: 14,
-    color: '#64748B',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     lineHeight: 20,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    textAlign: 'center',
-    maxWidth: '80%',
   },
 });

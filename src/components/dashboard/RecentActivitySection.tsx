@@ -8,6 +8,8 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { ActivityItem } from '@/types/dashboard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Colors, Typography, Spacing, Radius, Shadows, BrandColors, IconSizes } from '@/constants/theme';
 
 interface RecentActivitySectionProps {
   activities?: ActivityItem[];
@@ -17,32 +19,32 @@ export function RecentActivitySection({
   activities = [],
 }: RecentActivitySectionProps) {
   const getActivityIcon = (type: ActivityItem['type']) => {
-    const props = { size: 16, strokeWidth: 2.2 };
+    const props = { size: IconSizes.md, strokeWidth: 2.2 };
     switch (type) {
       case 'material':
         return {
-          icon: <Package {...props} color="#D97706" />,
-          bg: '#FEF3C7',
+          icon: <Package {...props} color={BrandColors.warning} />,
+          bg: Colors.light.warningBg,
         };
       case 'labor':
         return {
-          icon: <Users {...props} color="#2563EB" />,
-          bg: '#EFF6FF',
+          icon: <Users {...props} color={Colors.light.info} />,
+          bg: Colors.light.infoBg,
         };
       case 'delivery':
         return {
-          icon: <Truck {...props} color="#7C3AED" />,
-          bg: '#F5F3FF',
+          icon: <Truck {...props} color={BrandColors.brand} />,
+          bg: Colors.light.brandBg,
         };
       case 'progress':
         return {
-          icon: <TrendingUp {...props} color="#059669" />,
-          bg: '#ECFDF5',
+          icon: <TrendingUp {...props} color={Colors.light.success} />,
+          bg: Colors.light.successBg,
         };
       default:
         return {
-          icon: <Clock {...props} color="#6B7A85" />,
-          bg: '#F3F4F6',
+          icon: <Clock {...props} color={Colors.light.textSecondary} />,
+          bg: Colors.light.surfaceMuted,
         };
     }
   };
@@ -53,10 +55,10 @@ export function RecentActivitySection({
 
       <View style={styles.card}>
         {activities.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>No recent activity</Text>
-            <Text style={styles.emptyStateText}>Your latest updates will appear here.</Text>
-          </View>
+          <EmptyState
+            title="No recent activity"
+            description="Your latest updates will appear here."
+          />
         ) : (
           activities.map((item, index) => {
             const { icon, bg } = getActivityIcon(item.type);
@@ -90,36 +92,30 @@ export function RecentActivitySection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 32,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.xl,
+    marginBottom: Spacing['2xl'],
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#07566A',
-    letterSpacing: -0.2,
-    marginBottom: 12,
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
+    marginBottom: Spacing.md,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F6F8',
+    borderBottomColor: Colors.light.borderSubtle,
   },
   activityRowLast: {
     borderBottomWidth: 0,
@@ -127,53 +123,37 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 36,
     height: 36,
-    borderRadius: 18, // Make it circular avatar-like
+    borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: Spacing.md,
   },
   contentColumn: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: 14,
+    ...Typography.body,
     fontWeight: '600',
-    color: '#123746',
+    color: Colors.light.text,
     marginBottom: 2,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.xs,
   },
   siteName: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '500',
-    color: '#71808A',
+    color: Colors.light.textSecondary,
   },
   dotSeparator: {
-    fontSize: 10,
-    color: '#E8ECEF',
+    ...Typography.caption,
+    color: Colors.light.borderSubtle,
   },
   timestamp: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '400',
-    color: '#71808A',
-  },
-  emptyState: {
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-  },
-  emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#123746',
-    marginBottom: 4,
-  },
-  emptyStateText: {
-    fontSize: 13,
-    color: '#71808A',
-    textAlign: 'center',
+    color: Colors.light.textSecondary,
   },
 });

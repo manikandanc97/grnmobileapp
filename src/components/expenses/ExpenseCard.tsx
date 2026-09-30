@@ -1,23 +1,24 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MapPin, Calendar, CreditCard } from 'lucide-react-native';
+import { MapPin, Calendar, CreditCard, Pencil, Trash2, FolderOpen } from 'lucide-react-native';
 import { ExpenseItem } from '@/types/dashboard';
+import { Money } from '@/components/ui/Money';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 
-interface ExpenseCardProps {
+export interface ExpenseCardProps {
   expense: ExpenseItem;
   onPress: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
-export function ExpenseCard({ expense, onPress }: ExpenseCardProps) {
-  const isPaid = expense.paymentStatus === 'Paid';
+export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardProps) {
+  const formattedDate = React.useMemo(() => {
+    if (!expense.expenseDate) return '';
+    const [y, m, d] = expense.expenseDate.split('-');
+    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  }, [expense.expenseDate]);
 
   return (
     <Pressable
@@ -25,37 +26,77 @@ export function ExpenseCard({ expense, onPress }: ExpenseCardProps) {
       onPress={onPress}
     >
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>{expense.title}</Text>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{expense.category}</Text>
-          </View>
+        <View style={styles.categoryBadge}>
+          <FolderOpen size={10} color={Colors.light.textSecondary} />
+          <Text style={styles.categoryText}>{expense.category}</Text>
         </View>
-        <Text style={styles.amount}>{formatCurrency(expense.amount)}</Text>
+        <StatusBadge status={expense.paymentStatus} />
       </View>
 
-      <View style={styles.detailsRow}>
+      <Text style={styles.title} numberOfLines={2}>{expense.title}</Text>
+
+      <View style={styles.subtextRow}>
         <View style={styles.detailItem}>
-          <MapPin size={14} color="#8A99A4" />
+          <MapPin size={12} color={Colors.light.textSecondary} />
           <Text style={styles.detailText} numberOfLines={1}>{expense.siteName}</Text>
         </View>
+        <Text style={styles.bulletSeparator}>•</Text>
         <View style={styles.detailItem}>
-          <Calendar size={14} color="#8A99A4" />
-          <Text style={styles.detailText}>{expense.date}</Text>
+          <Calendar size={12} color={Colors.light.textSecondary} />
+          <Text style={styles.detailText}>{formattedDate}</Text>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <View style={styles.detailItem}>
-          <CreditCard size={14} color="#8A99A4" />
-          <Text style={styles.detailText}>{expense.paymentMethod}</Text>
+        <View style={styles.footerLeft}>
+          <Money amount={expense.amount} style={styles.amount} />
+          <View style={styles.paymentMethodPill}>
+            <CreditCard size={12} color={Colors.light.textSecondary} />
+            <Text style={styles.paymentMethodText}>{expense.paymentMethod}</Text>
+          </View>
         </View>
-        
-        <View style={[styles.statusBadge, isPaid ? styles.statusPaid : styles.statusPending]}>
-          <Text style={[styles.statusText, isPaid ? styles.statusTextPaid : styles.statusTextPending]}>
-            {expense.paymentStatus}
-          </Text>
-        </View>
+
+        {(onEdit || onDelete) && (
+          <View style={styles.cardActions}>
+            {onEdit && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${expense.title}`}
+                style={({ pressed }) => [
+                  styles.actionPill,
+                  styles.editPill,
+                  pressed && styles.actionPillPressed,
+                ]}
+                hitSlop={6}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Pencil size={IconSizes.sm} color={Colors.light.primary} />
+              </Pressable>
+            )}
+
+            {onDelete && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${expense.title}`}
+                style={({ pressed }) => [
+                  styles.actionPill,
+                  styles.deletePill,
+                  pressed && styles.actionPillPressed,
+                ]}
+                hitSlop={6}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2 size={IconSizes.sm} color={Colors.light.error} />
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -63,12 +104,13 @@ export function ExpenseCard({ expense, onPress }: ExpenseCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginBottom: 12,
+    borderColor: Colors.light.border,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
   },
   pressed: {
     opacity: 0.9,
@@ -78,81 +120,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  titleContainer: {
-    flex: 1,
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 6,
+    marginBottom: Spacing.xs,
   },
   categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#6B7A85',
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F354A',
-  },
-  detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 12,
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.light.borderSubtle,
+    gap: 4,
+  },
+  categoryText: {
+    ...Typography.caption,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+    textTransform: 'uppercase',
+  },
+  title: {
+    ...Typography.cardTitle,
+    color: Colors.light.text,
+    marginBottom: 4,
+  },
+  subtextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Spacing.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flex: 1,
+    gap: 4,
+    flexShrink: 1,
   },
   detailText: {
-    fontSize: 13,
-    color: '#6B7A85',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
+  },
+  bulletSeparator: {
+    fontSize: 10,
+    color: Colors.light.textMuted,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
+    alignItems: 'flex-end',
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderTopColor: Colors.light.borderSubtle,
+    paddingTop: Spacing.sm,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  footerLeft: {
+    flex: 1,
   },
-  statusPaid: {
-    backgroundColor: '#ECFDF5',
+  amount: {
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: 4,
   },
-  statusPending: {
-    backgroundColor: '#FEF2F2',
+  paymentMethodPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+  paymentMethodText: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    fontWeight: '500',
   },
-  statusTextPaid: {
-    color: '#10B981',
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
-  statusTextPending: {
-    color: '#EF4444',
+  actionPill: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+  },
+  actionPillPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.96 }],
+  },
+  editPill: {
+    backgroundColor: Colors.light.primaryBg,
+    borderColor: 'transparent',
+  },
+  deletePill: {
+    backgroundColor: Colors.light.errorBg,
+    borderColor: 'transparent',
   },
 });

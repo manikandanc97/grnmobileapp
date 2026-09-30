@@ -8,6 +8,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
+import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { useFormContext } from '@/components/ui/KeyboardAwareForm';
 
 export interface TextFieldProps extends TextInputProps {
@@ -68,10 +69,10 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
   const hasError = Boolean(error);
   const borderColor = hasError
-    ? '#DC2626'
+    ? Colors.light.error
     : isFocused
-    ? '#E79524'
-    : '#EEF2F6';
+    ? Colors.light.primary
+    : Colors.light.border;
 
   return (
     <View
@@ -88,7 +89,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
       <TextInput
         ref={inputRef}
-        placeholderTextColor="#8A99A4"
+        placeholderTextColor={Colors.light.textMuted}
         multiline={multiline}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -112,53 +113,55 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderRadius: 12,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderRadius: Radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 50,
+    minHeight: 48,
   },
   containerFocused: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.surface,
+    borderColor: Colors.light.primary,
   },
   containerError: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
+    borderColor: Colors.light.error,
   },
   containerMultiline: {
     alignItems: 'flex-start',
     minHeight: 104,
   },
   leftIconContainer: {
-    paddingLeft: 14,
-    paddingRight: 8,
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   rightIconContainer: {
-    paddingRight: 14,
-    paddingLeft: 8,
+    paddingRight: Spacing.md,
+    paddingLeft: Spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   input: {
     flex: 1,
-    paddingHorizontal: 16,
-    height: 50,
-    fontSize: 15,
-    color: '#0F354A',
+    paddingHorizontal: Spacing.md,
+    minHeight: 48,
+    ...Typography.body,
+    color: Colors.light.text,
     ...(Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)),
   },
   inputWithLeftIcon: {
-    paddingLeft: 4,
+    paddingLeft: Spacing.xs,
   },
   inputWithRightIcon: {
-    paddingRight: 4,
+    paddingRight: Spacing.xs,
   },
   textArea: {
     height: 100,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
     textAlignVertical: 'top',
   },
 });

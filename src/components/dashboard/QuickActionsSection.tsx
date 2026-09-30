@@ -6,7 +6,8 @@ import {
   UserCheck,
   Receipt,
 } from 'lucide-react-native';
-import { QuickActionItem, MOCK_QUICK_ACTIONS } from '@/types/dashboard';
+import { QuickActionItem, QUICK_ACTIONS } from '@/types/dashboard';
+import { Colors, Typography, Spacing, Radius, Shadows, BrandColors, TouchTargets, IconSizes } from '@/constants/theme';
 
 interface QuickActionsSectionProps {
   actions?: QuickActionItem[];
@@ -14,40 +15,36 @@ interface QuickActionsSectionProps {
 }
 
 export function QuickActionsSection({
-  actions = MOCK_QUICK_ACTIONS,
+  actions = QUICK_ACTIONS,
   onActionPress,
 }: QuickActionsSectionProps) {
   const getActionConfig = (iconName: QuickActionItem['iconName']) => {
+    const iconProps = { size: IconSizes.md, strokeWidth: 2.2 };
     switch (iconName) {
       case 'Building2':
         return {
-          icon: <Building2 size={20} color="#07566A" strokeWidth={2.2} />,
-          bg: '#FFF4E5', // Orange tint
-          iconColor: '#07566A',
+          icon: <Building2 {...iconProps} color={Colors.light.brand} />,
+          bg: Colors.light.primaryBg,
         };
       case 'PackagePlus':
         return {
-          icon: <PackagePlus size={20} color="#1D4ED8" strokeWidth={2.2} />,
-          bg: '#EFF6FF',
-          iconColor: '#1D4ED8',
+          icon: <PackagePlus {...iconProps} color={Colors.light.info} />,
+          bg: Colors.light.infoBg,
         };
       case 'UserCheck':
         return {
-          icon: <UserCheck size={20} color="#059669" strokeWidth={2.2} />,
-          bg: '#ECFDF5',
-          iconColor: '#059669',
+          icon: <UserCheck {...iconProps} color={Colors.light.success} />,
+          bg: Colors.light.successBg,
         };
       case 'Receipt':
         return {
-          icon: <Receipt size={20} color="#9333EA" strokeWidth={2.2} />,
-          bg: '#FAF5FF',
-          iconColor: '#9333EA',
+          icon: <Receipt {...iconProps} color={BrandColors.brand} />,
+          bg: Colors.light.brandBg,
         };
       default:
         return {
-          icon: <Building2 size={20} color="#07566A" />,
-          bg: '#FFF4E5',
-          iconColor: '#07566A',
+          icon: <Building2 {...iconProps} color={Colors.light.brand} />,
+          bg: Colors.light.surfaceMuted,
         };
     }
   };
@@ -86,53 +83,48 @@ export function QuickActionsSection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.xl,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#07566A',
-    letterSpacing: -0.2,
-    marginBottom: 12,
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
+    marginBottom: Spacing.md,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Spacing.sm,
   },
   actionTile: {
     flexBasis: '22%',
     flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
+    minHeight: TouchTargets.min,
   },
   actionTilePressed: {
-    transform: [{ scale: 0.96 }],
-    backgroundColor: '#FAFCFD',
+    transform: [{ scale: 0.98 }],
+    backgroundColor: Colors.light.surfaceMuted,
   },
   iconBox: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.xs,
   },
   actionLabel: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#123746',
+    color: Colors.light.text,
     textAlign: 'center',
     lineHeight: 15,
   },

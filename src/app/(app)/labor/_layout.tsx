@@ -1,12 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
+import { Colors } from '@/constants/theme';
 
 export default function LaborLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#F8FAFC' },
+        contentStyle: { backgroundColor: Colors.light.background },
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Labor & Attendance' }} />
@@ -18,6 +19,12 @@ export default function LaborLayout() {
       />
       <Stack.Screen
         name="add"
+        options={{
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="edit"
         options={{
           presentation: 'modal',
         }}

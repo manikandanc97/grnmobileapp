@@ -4,39 +4,85 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
-  Platform,
-  ActivityIndicator,
+  FlatList,
   RefreshControl,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-  Search,
-  Filter,
   Plus,
   Boxes,
   AlertTriangle,
   Truck,
   CalendarClock,
-  ArrowRight
+  Pencil,
+  Trash2,
+  MapPin,
 } from 'lucide-react-native';
+
+import { isDateInCurrentMonth } from '@/lib/dateUtils';
+import { MaterialItem } from '@/types/dashboard';
 import { useMaterials } from '@/hooks/useMaterials';
 import { useMasterData } from '@/hooks/useMasterData';
+import { softDeleteMaterial } from '@/services/materials';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { Money } from '@/components/ui/Money';
+import { Button } from '@/components/ui/Button';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
-
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 export default function MaterialsScreen() {
   const { siteId } = useLocalSearchParams<{ siteId?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
+  
   const { categories } = useMasterData();
-  const allCategories = ['All', ...categories];
+  const allCategories = useMemo(() => ['All', ...categories], [categories]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   
   const { materials, loading, refreshing, error, onRefresh, refetch } = useMaterials(siteId);
+
+  // Card action states
+  const [materialToDelete, setMaterialToDelete] = useState<MaterialItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deletedMaterialName, setDeletedMaterialName] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleEditMaterial = (material: MaterialItem) => {
+    router.push({ pathname: '/(app)/materials/edit', params: { id: material.id } } as never);
+  };
+
+  const handleDeleteMaterialPress = (material: MaterialItem) => {
+    setMaterialToDelete(material);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!materialToDelete) return;
+    setIsDeleting(true);
+    const materialName = materialToDelete.name;
+    try {
+      await softDeleteMaterial(materialToDelete.id);
+      setIsDeleting(false);
+      setMaterialToDelete(null);
+      setDeletedMaterialName(materialName);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      setIsDeleting(false);
+      const msg = err instanceof Error ? err.message : 'Failed to delete material.';
+      setDeleteError(msg);
+    }
+  };
 
   const filteredMaterials = useMemo(() => {
     return materials.filter((material) => {
@@ -55,22 +101,135 @@ export default function MaterialsScreen() {
     const total = materials.length;
     const lowStock = materials.filter((m) => m.status === 'Low Stock').length;
     const pending = materials.filter((m) => m.status === 'Pending').length;
-    const thisMonth = materials.filter((m) => m.status === 'Available').length; // Mock logic for now
+    const thisMonth = materials.filter((m) => isDateInCurrentMonth(m.lastUpdated)).length;
     return { total, lowStock, pending, thisMonth };
   }, [materials]);
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Available':
-        return { bg: '#ECFDF5', text: '#059669', dot: '#10B981' };
-      case 'Low Stock':
-        return { bg: '#FEF2F2', text: '#DC2626', dot: '#EF4444' };
-      case 'Pending':
-        return { bg: '#FFF7ED', text: '#C2410C', dot: '#F97316' };
-      default:
-        return { bg: '#F3F4F6', text: '#4B5563', dot: '#9CA3AF' };
-    }
+  const renderSummaryCards = () => {
+    if (siteId || loading || error || materials.length === 0) return null;
+    return (
+      <View style={styles.summaryContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.summaryScroll}>
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.infoBg }]}>
+              <Boxes size={IconSizes.sm} color={Colors.light.info} />
+            </View>
+            <Text style={styles.summaryValue}>{summary.total}</Text>
+            <Text style={styles.summaryLabel}>Total Materials</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.errorBg }]}>
+              <AlertTriangle size={IconSizes.sm} color={Colors.light.error} />
+            </View>
+            <Text style={styles.summaryValue}>{summary.lowStock}</Text>
+            <Text style={styles.summaryLabel}>Low Stock</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.warningBg }]}>
+              <Truck size={IconSizes.sm} color={Colors.light.warning} />
+            </View>
+            <Text style={styles.summaryValue}>{summary.pending}</Text>
+            <Text style={styles.summaryLabel}>Pending Delivery</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.successBg }]}>
+              <CalendarClock size={IconSizes.sm} color={Colors.light.success} />
+            </View>
+            <Text style={styles.summaryValue}>{summary.thisMonth}</Text>
+            <Text style={styles.summaryLabel}>This Month</Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
   };
+
+  const renderMaterialCard = ({ item }: { item: MaterialItem }) => (
+    <Pressable
+      style={({ pressed }) => [styles.materialCard, pressed && styles.materialCardPressed]}
+      onPress={() => router.push(`/(app)/materials/${item.id}` as any)}
+    >
+      <View style={styles.materialHeader}>
+        <View style={styles.materialHeaderInfo}>
+          <Text style={styles.materialName} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.categorySiteRow}>
+            <Text style={styles.materialCategory}>{item.category}</Text>
+            <Text style={styles.bulletSeparator}>•</Text>
+            <View style={styles.siteLocationWrapper}>
+              <MapPin size={12} color={Colors.light.textSecondary} />
+              <Text style={styles.siteLocationText} numberOfLines={1}>{item.siteName}</Text>
+            </View>
+          </View>
+        </View>
+        <StatusBadge status={item.status} />
+      </View>
+      
+      <View style={styles.financialRow}>
+        <View style={styles.financialCol}>
+          <Text style={styles.financialLabel}>Stock</Text>
+          <View style={styles.quantityBox}>
+            <Text style={styles.quantityValue}>{item.quantity.toLocaleString()}</Text>
+            <Text style={styles.quantityUnit}>{item.unit}</Text>
+          </View>
+        </View>
+
+        <View style={styles.financialCol}>
+          <Text style={styles.financialLabel}>Unit Rate</Text>
+          <Text style={styles.rateValue}>
+            <Money amount={item.unitPrice} />
+            <Text style={styles.rateUnit}>/{item.unit}</Text>
+          </Text>
+        </View>
+
+        <View style={[styles.financialCol, styles.financialColRight]}>
+          <Text style={styles.financialLabel}>Total Cost</Text>
+          <Money amount={item.totalCost} style={styles.totalCostValue} />
+        </View>
+      </View>
+
+      <View style={styles.materialFooter}>
+        <View style={styles.cardActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${item.name}`}
+            style={({ pressed }) => [
+              styles.actionPill,
+              styles.editPill,
+              pressed && styles.actionPillPressed,
+            ]}
+            hitSlop={6}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleEditMaterial(item);
+            }}
+          >
+            <Pencil size={12} color={Colors.light.primary} strokeWidth={2.4} />
+            <Text style={styles.editPillText}>Edit</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${item.name}`}
+            style={({ pressed }) => [
+              styles.actionPill,
+              styles.deletePill,
+              pressed && styles.actionPillPressed,
+            ]}
+            hitSlop={6}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleDeleteMaterialPress(item);
+            }}
+          >
+            <Trash2 size={12} color={Colors.light.error} strokeWidth={2.4} />
+            <Text style={styles.deletePillText}>Delete</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Pressable>
+  );
 
   return (
     <ScreenWrapper>
@@ -78,334 +237,201 @@ export default function MaterialsScreen() {
       <ScreenHeader
         title="Materials"
         subtitle={siteId ? 'Materials for selected site' : 'Track materials across your sites'}
-        showBorder={false}
         actionButton={
-          <Pressable
-            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-            onPress={() => router.push('/(app)/materials/add')}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Material</Text>
-          </Pressable>
+          <View style={{ width: 150 }}>
+            <Button
+              title="Add Material"
+              onPress={() => router.push('/(app)/materials/add')}
+              icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
+              style={{ height: 40 }}
+            />
+          </View>
         }
       />
-      <View style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEF2F6', paddingBottom: 16 }}>
 
-        {/* Search */}
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#8A99A4" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search materials..."
-            placeholderTextColor="#8A99A4"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <Pressable style={styles.filterButton}>
-            <Filter size={18} color="#0F354A" />
-          </Pressable>
-        </View>
-      </View>
-
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F2A619']} tintColor="#F2A619" />
-        }
-      >
-        {/* Loading and Error States */}
-        {loading && !refreshing && (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#F2A619" />
-          </View>
-        )}
-        
-        {error && (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: '#DC2626', textAlign: 'center', marginBottom: 12 }}>{error}</Text>
-            <Pressable style={styles.filterButton} onPress={() => { void refetch(); }}>
-              <Text style={{ color: '#0F354A', fontWeight: '600' }}>Try Again</Text>
-            </Pressable>
-
-          </View>
-        )}
-
-        {/* Summary Cards - Only show if not filtering by specific site and not loading/error */}
-        {!siteId && !loading && !error && (
-          <View style={styles.summaryContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.summaryScroll}>
-              <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconBox, { backgroundColor: '#EFF6FF' }]}>
-                  <Boxes size={18} color="#3B82F6" />
-                </View>
-                <Text style={styles.summaryValue}>{summary.total}</Text>
-                <Text style={styles.summaryLabel}>Total Materials</Text>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconBox, { backgroundColor: '#FEF2F2' }]}>
-                  <AlertTriangle size={18} color="#EF4444" />
-                </View>
-                <Text style={styles.summaryValue}>{summary.lowStock}</Text>
-                <Text style={styles.summaryLabel}>Low Stock</Text>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconBox, { backgroundColor: '#FFF7ED' }]}>
-                  <Truck size={18} color="#F97316" />
-                </View>
-                <Text style={styles.summaryValue}>{summary.pending}</Text>
-                <Text style={styles.summaryLabel}>Pending Delivery</Text>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <View style={[styles.summaryIconBox, { backgroundColor: '#F3E8FF' }]}>
-                  <CalendarClock size={18} color="#A855F7" />
-                </View>
-                <Text style={styles.summaryValue}>{summary.thisMonth}</Text>
-                <Text style={styles.summaryLabel}>This Month</Text>
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Categories */}
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search materials..."
+          onClear={() => setSearchQuery('')}
+          style={styles.searchBar}
+        />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.categoriesContainer}
           contentContainerStyle={styles.categoriesContent}
         >
           {allCategories.map((category) => (
-            <Pressable
+            <FilterButton
               key={category}
-              style={[
-                styles.categoryChip,
-                activeCategory === category && styles.categoryChipActive,
-              ]}
+              label={category}
+              isActive={activeCategory === category}
               onPress={() => setActiveCategory(category)}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  activeCategory === category && styles.categoryTextActive,
-                ]}
-              >
-                {category}
-              </Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
+      </View>
 
-        {/* Material Cards */}
-        <View style={styles.materialsList}>
-          {filteredMaterials.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Boxes size={48} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No materials found</Text>
-              <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
-            </View>
-          ) : (
-            filteredMaterials.map((material) => {
-              const statusStyle = getStatusStyle(material.status);
-              
-              return (
-                <Pressable
-                  key={material.id}
-                  style={({ pressed }) => [styles.materialCard, pressed && styles.materialCardPressed]}
-                  onPress={() => router.push(`/(app)/materials/${material.id}` as any)}
-                >
-                  <View style={styles.materialHeader}>
-                    <View>
-                      <Text style={styles.materialName}>{material.name}</Text>
-                      <Text style={styles.materialCategory}>{material.category} • {material.siteName}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                      <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
-                      <Text style={[styles.statusText, { color: statusStyle.text }]}>{material.status}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.materialDetails}>
-                    <View style={styles.quantityBox}>
-                      <Text style={styles.quantityValue}>{material.quantity.toLocaleString()}</Text>
-                      <Text style={styles.quantityUnit}>{material.unit}</Text>
-                    </View>
-                    
-                    <View style={styles.materialFooter}>
-                      <Text style={styles.updatedText}>Updated: {material.lastUpdated}</Text>
-                      <ArrowRight size={16} color="#8A99A4" />
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
+      {/* Loading and Error States */}
+      {loading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <LoadingSkeleton type="card" height={160} />
+          <LoadingSkeleton type="card" height={160} />
+          <LoadingSkeleton type="card" height={160} />
         </View>
-      </ScrollView>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+           <ErrorState 
+             title="Unable to load materials" 
+             message={error} 
+             onRetry={refetch} 
+           />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredMaterials}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMaterialCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={renderSummaryCards}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.light.primary}
+              colors={[Colors.light.primary]}
+            />
+          }
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <EmptyState
+                icon={<Boxes size={48} color={Colors.light.textMuted} />}
+                title={materials.length === 0 ? "No materials yet" : "No materials found"}
+                description={materials.length === 0 
+                  ? "Add materials to start tracking construction inventory."
+                  : "Try adjusting your search or category filters."}
+                actionLabel={materials.length === 0 ? "Add Material" : "Clear Filters"}
+                onAction={materials.length === 0 ? () => router.push('/(app)/materials/add') : () => { setSearchQuery(''); setActiveCategory('All'); }}
+              />
+            </View>
+          )}
+        />
+      )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDeleteDialog
+        visible={!!materialToDelete}
+        title="Delete Material?"
+        message={
+          materialToDelete
+            ? `Are you sure you want to delete "${materialToDelete.name}"? This item will be removed from project inventory.`
+            : ''
+        }
+        confirmText="Delete Material"
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isDeleting) setMaterialToDelete(null);
+        }}
+      />
+
+      {/* Delete Success Dialog */}
+      <SuccessDialog
+        visible={showDeleteSuccess}
+        title="Material Deleted"
+        message={`"${deletedMaterialName || 'Material'}" has been successfully removed from inventory.`}
+        buttonText="Done"
+        onClose={() => setShowDeleteSuccess(false)}
+      />
+
+      {/* Delete Error Dialog */}
+      <ErrorDialog
+        visible={!!deleteError}
+        title="Delete Failed"
+        message={deleteError ?? 'An unexpected error occurred while deleting material.'}
+        onClose={() => setDeleteError(null)}
+      />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  loadingContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+  centerContainer: {
+    flex: 1,
+    padding: Spacing.xl,
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: Spacing['2xl'],
+  },
+  searchSection: {
+    backgroundColor: Colors.light.background,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
+    borderBottomColor: Colors.light.borderSubtle,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
+  searchBar: {
+    marginBottom: Spacing.md,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0F354A',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    marginTop: 4,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2A619',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 6,
-  },
-  addButtonPressed: {
-    opacity: 0.8,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    fontSize: 15,
-    color: '#0F354A',
-    ...(Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)),
-  },
-  filterButton: {
-    padding: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    marginLeft: 8,
-  },
-  content: {
-    paddingBottom: 40,
+  categoriesContent: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.lg,
   },
   summaryContainer: {
-    paddingVertical: 20,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.xs,
   },
   summaryScroll: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
   },
   summaryCard: {
     width: 140,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   summaryIconBox: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   summaryValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: 2,
   },
   summaryLabel: {
-    fontSize: 13,
-    color: '#6B7A85',
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
-  categoriesContainer: {
-    marginBottom: 20,
-  },
-  categoriesContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  categoryChipActive: {
-    backgroundColor: '#0F354A',
-    borderColor: '#0F354A',
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7A85',
-  },
-  categoryTextActive: {
-    color: '#FFFFFF',
-  },
-  materialsList: {
-    paddingHorizontal: 20,
-    gap: 12,
+  listContent: {
+    paddingBottom: Spacing['2xl'] * 2,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    gap: Spacing.md,
   },
   materialCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   materialCardPressed: {
     transform: [{ scale: 0.98 }],
@@ -415,85 +441,140 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
+  },
+  materialHeaderInfo: {
+    flex: 1,
+    marginRight: Spacing.sm,
   },
   materialName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 4,
+    ...Typography.cardTitle,
+    color: Colors.light.text,
+    marginBottom: 2,
   },
-  materialCategory: {
-    fontSize: 13,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  statusBadge: {
+  categorySiteRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
     gap: 6,
+    marginTop: 2,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  materialCategory: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    fontWeight: '500',
   },
-  statusText: {
+  bulletSeparator: {
     fontSize: 12,
-    fontWeight: '600',
+    color: Colors.light.textMuted,
   },
-  materialDetails: {
+  siteLocationWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexShrink: 1,
+  },
+  siteLocationText: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    fontWeight: '500',
+  },
+  financialRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.light.surfaceMuted,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.light.borderSubtle,
+  },
+  financialCol: {
+    flex: 1,
+  },
+  financialColRight: {
     alignItems: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2F6',
-    paddingTop: 12,
+  },
+  financialLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.light.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
   quantityBox: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 4,
+    gap: 3,
   },
   quantityValue: {
-    fontSize: 20,
+    ...Typography.body,
     fontWeight: '800',
-    color: '#0F354A',
+    color: Colors.light.text,
     letterSpacing: -0.5,
   },
   quantityUnit: {
-    fontSize: 14,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#8A99A4',
+    color: Colors.light.textMuted,
+  },
+  rateValue: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  rateUnit: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: Colors.light.textSecondary,
+  },
+  totalCostValue: {
+    ...Typography.body,
+    fontWeight: '800',
+    color: Colors.light.brand,
   },
   materialFooter: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 8,
   },
-  updatedText: {
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    minHeight: TouchTargets.min,
+  },
+  actionPillPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.96 }],
+  },
+  editPill: {
+    backgroundColor: Colors.light.primaryBg,
+    borderColor: 'transparent',
+  },
+  editPillText: {
     fontSize: 12,
-    color: '#8A99A4',
-    fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
     fontWeight: '700',
-    color: '#0F354A',
-    marginTop: 16,
-    marginBottom: 8,
+    color: Colors.light.primary,
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7A85',
-    textAlign: 'center',
+  deletePill: {
+    backgroundColor: Colors.light.errorBg,
+    borderColor: 'transparent',
+  },
+  deletePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.light.error,
   },
 });

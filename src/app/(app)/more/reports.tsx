@@ -1,218 +1,162 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Pressable,
-} from 'react-native';
-import {
-  ArrowLeft,
-  PieChart,
-  Box,
-  Users,
-  CreditCard,
-  ChevronRight,
-} from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { PieChart, Box, Users, CreditCard, ChevronRight } from 'lucide-react-native';
+
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 
 export default function ReportsScreen() {
-  const router = useRouter();
-
   const reports = [
     {
       id: 'summary',
       title: 'Project Summary',
       description: 'Overall progress and status of active projects',
-      icon: <PieChart size={24} color="#0EA5E9" />,
-      bgColor: '#F0F9FF',
+      icon: <PieChart size={IconSizes.md} color={Colors.light.info} />,
+      bgColor: Colors.light.infoBg,
     },
     {
       id: 'materials',
       title: 'Material Usage',
       description: 'Inventory levels and consumption trends',
-      icon: <Box size={24} color="#D97706" />,
-      bgColor: '#FEF3C7',
+      icon: <Box size={IconSizes.md} color={Colors.light.warning} />,
+      bgColor: Colors.light.warningBg,
     },
     {
       id: 'labor',
       title: 'Labor Attendance',
       description: 'Workforce statistics and manpower reports',
-      icon: <Users size={24} color="#059669" />,
-      bgColor: '#ECFDF5',
+      icon: <Users size={IconSizes.md} color={Colors.light.success} />,
+      bgColor: Colors.light.successBg,
     },
     {
       id: 'expenses',
       title: 'Expenses',
       description: 'Financial summaries and budget tracking',
-      icon: <CreditCard size={24} color="#9333EA" />,
-      bgColor: '#F3E8FF',
+      icon: <CreditCard size={IconSizes.md} color={Colors.light.primary} />,
+      bgColor: Colors.light.primaryBg,
     },
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.webContainer}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color="#0F354A" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Reports</Text>
-          <View style={{ width: 40 }} />
-        </View>
+    <ScreenWrapper>
+      <ScreenHeader title="Reports" showBack />
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.sectionTitle}>Available Reports</Text>
-          <Text style={styles.sectionSubtitle}>
-            Select a category to view detailed analytics
-          </Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.sectionTitle}>Available Reports</Text>
+        <Text style={styles.sectionSubtitle}>
+          Select a category to view detailed analytics
+        </Text>
 
-          <View style={styles.grid}>
-            {reports.map((report) => (
-              <Pressable
-                key={report.id}
-                style={({ pressed }) => [
-                  styles.card,
-                  pressed && styles.cardPressed,
+        <View style={styles.grid}>
+          {reports.map((report) => (
+            <Pressable
+              key={report.id}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => {
+                // Future navigation goes here
+              }}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: report.bgColor },
                 ]}
               >
-                <View
-                  style={[
-                    styles.iconContainer,
-                    { backgroundColor: report.bgColor },
-                  ]}
-                >
-                  {report.icon}
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>{report.title}</Text>
-                  <Text style={styles.cardDescription}>{report.description}</Text>
-                </View>
-                <View style={styles.viewButton}>
-                  <Text style={styles.viewText}>View</Text>
-                  <ChevronRight size={16} color="#0F354A" />
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+                {report.icon}
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>{report.title}</Text>
+                <Text style={styles.cardDescription}>{report.description}</Text>
+              </View>
+              <View style={styles.viewButton}>
+                <Text style={styles.viewText}>View</Text>
+                <ChevronRight size={IconSizes.sm} color={Colors.light.text} />
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  webContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 540,
-    alignSelf: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.xs,
   },
   sectionSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    marginBottom: 24,
+    ...Typography.body,
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.xl,
   },
   grid: {
-    gap: 16,
+    gap: Spacing.lg,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.xl,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#0F354A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
   cardPressed: {
-    backgroundColor: '#FAFCFD',
-    borderColor: '#E2E8F0',
+    backgroundColor: Colors.light.surfaceMuted,
+    borderColor: Colors.light.borderSubtle,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   cardContent: {
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 6,
+    ...Typography.cardTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.xs,
   },
   cardDescription: {
-    fontSize: 14,
-    color: '#6B7A85',
-    lineHeight: 20,
+    ...Typography.body,
+    color: Colors.light.textSecondary,
+    lineHeight: 22,
   },
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.light.borderSubtle,
   },
   viewText: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#0F354A',
+    color: Colors.light.text,
     marginRight: 4,
   },
 });

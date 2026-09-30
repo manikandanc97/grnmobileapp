@@ -1,11 +1,11 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
-import { Spacing } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius, TouchTargets } from '@/constants/theme';
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
   icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
@@ -33,11 +33,16 @@ export function Button({
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#FFFFFF' : '#6B7A85'} style={styles.icon} />
+        <ActivityIndicator 
+          color={(variant === 'primary' || variant === 'danger') ? Colors.light.surface : Colors.light.textSecondary} 
+          style={styles.icon} 
+        />
       ) : (
         icon && <View style={styles.icon}>{icon}</View>
       )}
-      <Text style={[styles.text, styles[`${variant}Text`]]}>{loading ? 'Please wait...' : title}</Text>
+      <Text style={[styles.text, styles[`${variant}Text`]]}>
+        {loading ? 'Please wait...' : title}
+      </Text>
     </Pressable>
   );
 }
@@ -45,38 +50,52 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     flex: 1,
+    minHeight: TouchTargets.min,
     height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: Radius.md,
   },
   primary: {
-    backgroundColor: '#E79524',
+    backgroundColor: Colors.light.primary,
   },
   secondary: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
+    borderColor: Colors.light.border,
   },
   danger: {
-    backgroundColor: '#DC2626',
+    backgroundColor: Colors.light.error,
+  },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.light.borderStrong,
+  },
+  ghost: {
+    backgroundColor: 'transparent',
   },
   disabled: {
     opacity: 0.7,
   },
   text: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...Typography.button,
   },
   primaryText: {
-    color: '#FFFFFF',
+    color: Colors.light.surface,
   },
   secondaryText: {
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   dangerText: {
-    color: '#FFFFFF',
+    color: Colors.light.surface,
+  },
+  outlineText: {
+    color: Colors.light.text,
+  },
+  ghostText: {
+    color: Colors.light.text,
   },
   icon: {
     marginRight: Spacing.sm,

@@ -2,11 +2,8 @@ import React, { useState, useMemo } from 'react';
 
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
-  Pressable,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { Plus } from 'lucide-react-native';
@@ -19,6 +16,15 @@ import { SearchFilters } from '@/components/sites/SearchFilters';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useSites } from '@/hooks/useSites';
+import { softDeleteSite } from '@/services/sites';
+import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { Button } from '@/components/ui/Button';
+import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
 type FilterOption = 'All' | SiteType;
 
@@ -26,6 +32,13 @@ export default function SitesListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterOption>('All');
   const { sites, loading, refreshing, error, onRefresh, refetch } = useSites();
+
+  // Card action states
+  const [siteToDelete, setSiteToDelete] = useState<SiteItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [deletedSiteName, setDeletedSiteName] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
 
   // Filter the real Supabase sites based on search query (name, location, type) and filter chip
@@ -49,6 +62,31 @@ export default function SitesListScreen() {
     router.push({ pathname: '/(app)/sites/[id]', params: { id: site.id } });
   };
 
+  const handleEditSite = (site: SiteItem) => {
+    router.push({ pathname: '/(app)/sites/edit', params: { id: site.id } });
+  };
+
+  const handleDeleteSitePress = (site: SiteItem) => {
+    setSiteToDelete(site);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!siteToDelete) return;
+    setIsDeleting(true);
+    const siteName = siteToDelete.name;
+    try {
+      await softDeleteSite(siteToDelete.id);
+      setIsDeleting(false);
+      setSiteToDelete(null);
+      setDeletedSiteName(siteName);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      setIsDeleting(false);
+      const msg = err instanceof Error ? err.message : 'Failed to delete site.';
+      setDeleteError(msg);
+    }
+  };
+
   const handleAddSitePress = () => {
     router.push('/(app)/sites/add');
   };
@@ -57,18 +95,16 @@ export default function SitesListScreen() {
     <ScreenWrapper>
       <ScreenHeader
         title="Sites"
-        subtitle="Manage your construction projects"
+        subtitle={sites.length > 0 ? `${sites.length} Active Projects` : "Manage your construction projects"}
         actionButton={
-          <Pressable
-            style={({ pressed }) => [
-              styles.addButton,
-              pressed && styles.addButtonPressed,
-            ]}
-            onPress={handleAddSitePress}
-          >
-            <Plus size={20} color="#FFFFFF" strokeWidth={2.5} />
-            <Text style={styles.addButtonText}>Add Site</Text>
-          </Pressable>
+          <View style={{ width: 120 }}>
+            <Button
+              title="Add Site"
+              onPress={handleAddSitePress}
+              icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
+              style={{ height: 40 }}
+            />
+          </View>
         }
       />
 
@@ -82,17 +118,18 @@ export default function SitesListScreen() {
 
       {/* Loading state on initial fetch */}
       {loading && !refreshing ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#F2A619" />
-          <Text style={styles.loadingText}>Loading sites...</Text>
+        <View style={styles.loadingContainer}>
+          <LoadingSkeleton type="card" height={180} />
+          <LoadingSkeleton type="card" height={180} />
+          <LoadingSkeleton type="card" height={180} />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorTitle}>Unable to load sites</Text>
-          <Text style={styles.errorSubtitle}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => refetch()}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </Pressable>
+          <ErrorState 
+            title="Unable to load sites" 
+            message={error} 
+            onRetry={refetch} 
+          />
         </View>
       ) : (
         /* Sites List */
@@ -101,7 +138,12 @@ export default function SitesListScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.cardContainer}>
-              <SiteCard site={item} onPress={handleSitePress} />
+              <SiteCard
+                site={item}
+                onPress={handleSitePress}
+                onEdit={handleEditSite}
+                onDelete={handleDeleteSitePress}
+              />
             </View>
           )}
           contentContainerStyle={styles.listContent}
@@ -110,112 +152,75 @@ export default function SitesListScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#F2A619"
-              colors={['#F2A619']}
+              tintColor={Colors.light.primary}
+              colors={[Colors.light.primary]}
             />
           }
           ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>
-                {sites.length === 0 ? 'No sites added yet' : 'No sites found'}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {sites.length === 0
-                  ? 'Tap "Add Site" above to register your first project.'
-                  : 'Try adjusting your search or filters.'}
-              </Text>
-            </View>
+            <EmptyState
+              title={sites.length === 0 ? 'No sites added yet' : 'No sites found'}
+              description={sites.length === 0
+                ? 'Tap "Add Site" above to register your first project.'
+                : 'Try adjusting your search or filters.'}
+              actionLabel={sites.length === 0 ? "Add Site" : undefined}
+              onAction={sites.length === 0 ? handleAddSitePress : undefined}
+            />
           )}
         />
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDeleteDialog
+        visible={!!siteToDelete}
+        title="Delete Site?"
+        message={
+          siteToDelete
+            ? `Are you sure you want to delete "${siteToDelete.name}"? Project records, materials, and expenses for this site will be archived.`
+            : ''
+        }
+        confirmText="Delete Site"
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isDeleting) setSiteToDelete(null);
+        }}
+      />
+
+      {/* Delete Success Dialog */}
+      <SuccessDialog
+        visible={showDeleteSuccess}
+        title="Site Deleted"
+        message={`"${deletedSiteName || 'Site'}" has been successfully archived.`}
+        buttonText="Done"
+        onClose={() => setShowDeleteSuccess(false)}
+      />
+
+      {/* Delete Error Dialog */}
+      <ErrorDialog
+        visible={!!deleteError}
+        title="Delete Failed"
+        message={deleteError ?? 'An unexpected error occurred while deleting the site.'}
+        onClose={() => setDeleteError(null)}
+      />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2A619',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 6,
-    shadowColor: '#F2A619',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  addButtonPressed: {
-    transform: [{ scale: 0.96 }],
-    opacity: 0.9,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  listContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  cardContainer: {
-    marginBottom: 16,
+  loadingContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
   centerContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 6,
-  },
-  errorSubtitle: {
-    fontSize: 14,
-    color: '#6B7A85',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#F2A619',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
+    padding: Spacing.xl,
     justifyContent: 'center',
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 8,
+  listContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#8A99A4',
-    textAlign: 'center',
+  cardContainer: {
+    marginBottom: Spacing.md,
   },
 });

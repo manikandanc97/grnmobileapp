@@ -17,6 +17,23 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   // Format dates locally to avoid UTC timezone drift
   const todayStr = `${year}-${month}-${day}`;
   const firstDayOfMonthStr = `${year}-${month}-01`;
+  const nextMonthNum = today.getMonth() === 11 ? 1 : today.getMonth() + 2;
+  const nextMonthYear = today.getMonth() === 11 ? year + 1 : year;
+  const firstDayOfNextMonthStr = `${nextMonthYear}-${String(nextMonthNum).padStart(2, '0')}-01`;
+
+  // 3. This Month Expenses query
+  const fetchThisMonthExpenses = async () => {
+    try {
+      return await supabase
+        .from('expenses')
+        .select('amount')
+        .gte('expense_date', firstDayOfMonthStr)
+        .lt('expense_date', firstDayOfNextMonthStr)
+        .is('deleted_at', null);
+    } catch {
+      return { data: [], error: null };
+    }
+  };
 
   const [
     totalProjectsResult,
@@ -31,7 +48,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     supabase.from('sites').select('*', { count: 'exact', head: true }).is('deleted_at', null).not('status', 'in', '("Completed","On Hold")'),
     
     // 3. This Month Expenses
-    supabase.from('expenses').select('amount').gte('date', firstDayOfMonthStr).is('deleted_at', null),
+    fetchThisMonthExpenses(),
     
     // 4. Workers Present Today
     supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', todayStr).eq('status', 'Present')
@@ -39,7 +56,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 
   if (totalProjectsResult.error) throw totalProjectsResult.error;
   if (activeSitesResult.error) throw activeSitesResult.error;
-  if (expensesResult.error) throw expensesResult.error;
+  if (expensesResult.error) {
+    console.warn('[dashboard] Non-critical error fetching monthly expenses:', expensesResult.error);
+  }
   if (attendanceResult.error) throw attendanceResult.error;
 
   const thisMonthExpenses = expensesResult.data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;

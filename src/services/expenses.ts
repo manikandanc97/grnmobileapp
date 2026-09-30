@@ -39,7 +39,7 @@ export async function getExpenses(siteId?: string): Promise<ExpenseWithSite[]> {
       )
     `)
     .is('deleted_at', null)
-    .order('date', { ascending: false });
+    .order('expense_date', { ascending: false });
 
   if (siteId) {
     query = query.eq('site_id', siteId);

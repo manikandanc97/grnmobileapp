@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SiteItem } from '@/types/dashboard';
 import { SiteCard } from './SiteCard';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Colors, Typography, Spacing, Radius, Shadows, TouchTargets } from '@/constants/theme';
 
 interface ActiveSitesSectionProps {
   sites?: SiteItem[];
@@ -39,9 +41,11 @@ export function ActiveSitesSection({
 
       <View style={styles.list}>
         {sites.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>No active sites yet</Text>
-            <Text style={styles.emptyStateText}>Create your first construction site to get started.</Text>
+          <View style={styles.emptyStateContainer}>
+            <EmptyState
+              title="No active sites yet"
+              description="Create your first construction site to get started."
+            />
           </View>
         ) : (
           sites.map((site) => (
@@ -55,76 +59,58 @@ export function ActiveSitesSection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#07566A',
-    letterSpacing: -0.2,
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
   },
   countBadge: {
-    backgroundColor: '#EEF2F6',
+    backgroundColor: Colors.light.surfaceMuted,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: Radius.full,
   },
   countText: {
-    fontSize: 11,
+    ...Typography.caption,
     fontWeight: '700',
-    color: '#07566A',
+    color: Colors.light.brand,
   },
   viewAllButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: Radius.sm,
+    minHeight: TouchTargets.min,
+    justifyContent: 'center',
   },
   viewAllButtonPressed: {
-    backgroundColor: '#F3F6F8',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   viewAllText: {
-    fontSize: 13,
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#E79524',
+    color: Colors.light.primary,
   },
   list: {
-    gap: 12,
+    gap: Spacing.sm,
   },
-  emptyState: {
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  emptyStateContainer: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#123746',
-    marginBottom: 4,
-  },
-  emptyStateText: {
-    fontSize: 13,
-    color: '#71808A',
-    textAlign: 'center',
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
 });

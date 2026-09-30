@@ -5,30 +5,42 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   MapPin,
   Calendar,
   Users,
-  Boxes,
   CheckSquare,
-  IndianRupee,
+  Package,
 } from 'lucide-react-native';
+
 import { useSiteDetails } from '@/hooks/useSites';
 import { useMaterials } from '@/hooks/useMaterials';
 import { useWorkers } from '@/hooks/useWorkers';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useExpenses } from '@/hooks/useExpenses';
+import { useSiteBudget } from '@/hooks/useSiteBudget';
+import { softDeleteSite } from '@/services/sites';
+
+import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
+import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
+import { SuccessDialog } from '@/components/ui/SuccessDialog';
+import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { Money } from '@/components/ui/Money';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 export default function SiteDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
-  const { site, loading, error } = useSiteDetails(id);
+  
+  const { site, loading, error, refetch: refetchSite } = useSiteDetails(id);
   const { materials, loading: materialsLoading } = useMaterials(id);
+  const { budgetSummary } = useSiteBudget(id);
 
   const today = useMemo(() => new Date(), []);
   const { workers: siteWorkersRaw } = useWorkers(id);
@@ -45,575 +57,548 @@ export default function SiteDetailsScreen() {
     [siteWorkersRaw, attendanceMap],
   );
 
+  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deletedSiteName, setDeletedSiteName] = React.useState('');
+  const [isDeleted, setIsDeleted] = React.useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!site) return;
+    setIsDeleting(true);
+    const siteName = site.name;
+    setDeletedSiteName(siteName);
+    try {
+      setIsDeleted(true);
+      await softDeleteSite(site.id);
+      setShowConfirmDelete(false);
+      setIsDeleting(false);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      setIsDeleting(false);
+      setIsDeleted(false);
+      const msg = err instanceof Error ? err.message : 'Failed to delete site.';
+      setDeleteError(msg);
+    }
+  };
+
+  const handleDeleteSuccessClose = () => {
+    setShowDeleteSuccess(false);
+    router.replace('/(app)/sites');
+  };
+
+  if (isDeleted && showDeleteSuccess) {
+    return (
+      <ScreenWrapper>
+        <SuccessDialog
+          visible={showDeleteSuccess}
+          title="Site Deleted"
+          message={`"${deletedSiteName || 'Site'}" has been removed from active projects.`}
+          buttonText="Done"
+          onClose={handleDeleteSuccessClose}
+        />
+      </ScreenWrapper>
+    );
+  }
+
   if (loading) {
     return (
-      <View style={styles.errorContainer}>
-        <ActivityIndicator size="large" color="#F2A619" />
-        <Text style={styles.loadingText}>Loading site details...</Text>
-      </View>
+      <ScreenWrapper>
+        <ScreenHeader title="Loading..." showBack />
+        <View style={styles.loadingContainer}>
+          <LoadingSkeleton type="card" height={100} />
+          <LoadingSkeleton type="card" height={220} />
+          <View style={styles.flexRow}>
+            <LoadingSkeleton type="card" height={140} width="48%" />
+            <LoadingSkeleton type="card" height={140} width="48%" />
+          </View>
+        </View>
+      </ScreenWrapper>
     );
   }
 
   if (!site || error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || 'Site not found'}</Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </Pressable>
-      </View>
+      <ScreenWrapper>
+        <ScreenHeader title="Error" showBack />
+        <View style={styles.errorContainer}>
+          <ErrorState 
+            title={!site ? "Site not found" : "Error"} 
+            message={error || "The requested site could not be found."} 
+            onRetry={refetchSite} 
+            retryLabel="Retry" 
+          />
+        </View>
+      </ScreenWrapper>
     );
   }
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'On Track':
-        return { bg: '#ECFDF5', text: '#059669', dot: '#10B981' };
-      case 'In Progress':
-        return { bg: '#FFF7ED', text: '#C2410C', dot: '#F97316' };
-      case 'Delayed':
-        return { bg: '#FEF2F2', text: '#DC2626', dot: '#EF4444' };
-      case 'Finishing':
-        return { bg: '#F5F3FF', text: '#6D28D9', dot: '#8B5CF6' };
-      default:
-        return { bg: '#F3F4F6', text: '#4B5563', dot: '#9CA3AF' };
-    }
-  };
-
-  const statusStyle = getStatusStyle(site.status);
 
   // Compute expenses for this site from the real data
   const totalSiteExpenses = siteExpenses.reduce((sum, e) => sum + e.amount, 0);
   const pendingSiteExpenses = siteExpenses.filter(e => e.payment_status === 'Pending').reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 16 }]}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.backIcon,
-            pressed && styles.backIconPressed,
-          ]}
-          onPress={() => router.back()}
-        >
-          <ArrowLeft size={24} color="#0F354A" />
-        </Pressable>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {site.name}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-            <View
-              style={[styles.statusDot, { backgroundColor: statusStyle.dot }]}
-            />
-            <Text style={[styles.statusText, { color: statusStyle.text }]}>
-              {site.status}
-            </Text>
+      <ScreenHeader
+        title={site.name}
+        subtitle="Site Details"
+        showBack
+        actionButton={
+          <EntityActionMenu
+            onEdit={() => router.push({ pathname: '/(app)/sites/edit', params: { id: site.id } })}
+            onDelete={() => setShowConfirmDelete(true)}
+            editLabel="Edit Site"
+            deleteLabel="Delete Site"
+          />
+        }
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        
+        {/* Project Header Identity */}
+        <View style={styles.identitySection}>
+          <View style={styles.identityHeader}>
+             <StatusBadge status={site.status} />
+             <Text style={styles.identityType}>{site.type}</Text>
           </View>
-        </View>
-      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
-        {/* Overview Section */}
-        <View style={styles.section}>
-          <View style={styles.overviewGrid}>
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconContainer}>
-                <MapPin size={20} color="#8A99A4" />
-              </View>
-              <View>
-                <Text style={styles.overviewLabel}>Location</Text>
-                <Text style={styles.overviewValue}>{site.location}</Text>
-              </View>
-            </View>
-
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconContainer}>
-                <Calendar size={20} color="#8A99A4" />
-              </View>
-              <View>
-                <Text style={styles.overviewLabel}>Start Date</Text>
-                <Text style={styles.overviewValue}>{site.startDate || 'N/A'}</Text>
-              </View>
-            </View>
-
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconContainer}>
-                <Calendar size={20} color="#8A99A4" />
-              </View>
-              <View>
-                <Text style={styles.overviewLabel}>Expected Completion</Text>
-                <Text style={styles.overviewValue}>{site.expectedCompletion || 'N/A'}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Progress Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Project Progress</Text>
+          {/* Project Progress */}
           <View style={styles.progressContainer}>
-            <View style={styles.progressHeader}>
+            <View style={styles.progressHeaderRow}>
+              <Text style={styles.progressLabel}>Project Progress</Text>
               <Text style={styles.progressPercent}>{site.progress}%</Text>
-              <Text style={styles.progressText}>Complete</Text>
             </View>
             <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${Math.min(100, Math.max(0, site.progress))}%` },
-                ]}
-              />
+              <View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, site.progress))}%` }]} />
             </View>
           </View>
         </View>
 
-        {/* Quick Stats Grid */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Stats</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
-                <Users size={20} color="#3B82F6" />
-              </View>
-              <Text style={styles.statValue}>{site.workers ?? siteWorkerCount}</Text>
-              <Text style={styles.statLabel}>Workers Today</Text>
+        {/* Overview Grid */}
+        <View style={styles.overviewGrid}>
+          <View style={styles.overviewItem}>
+            <View style={styles.overviewIconContainer}>
+              <MapPin size={IconSizes.sm} color={Colors.light.brand} />
             </View>
-
-            <View style={styles.statCard}>
-              <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
-                <IndianRupee size={20} color="#F59E0B" />
-              </View>
-              <Text style={styles.statValue}>{site.budget || 'N/A'}</Text>
-              <Text style={styles.statLabel}>Est. Budget</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <View style={[styles.statIconBox, { backgroundColor: '#F3E8FF' }]}>
-                <CheckSquare size={20} color="#A855F7" />
-              </View>
-              <Text style={styles.statValue}>{site.pendingTasks || 0}</Text>
-              <Text style={styles.statLabel}>Pending Tasks</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <View style={[styles.statIconBox, { backgroundColor: '#ECFDF5' }]}>
-                <Boxes size={20} color="#10B981" />
-              </View>
-              <Text style={styles.statValue}>{site.expenses || (totalSiteExpenses > 0 ? `₹${totalSiteExpenses}` : 'N/A')}</Text>
-              <Text style={styles.statLabel}>Expenses</Text>
+            <View style={styles.overviewTextWrap}>
+              <Text style={styles.overviewLabel}>Location</Text>
+              <Text style={styles.overviewValue}>{site.location}</Text>
             </View>
           </View>
-        </View>
 
-        {/* Labor Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Labor</Text>
-            <Pressable onPress={() => router.push({ pathname: '/labor', params: { siteId: site.id } })}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </Pressable>
+          <View style={styles.overviewItem}>
+            <View style={styles.overviewIconContainer}>
+              <Calendar size={IconSizes.sm} color={Colors.light.brand} />
+            </View>
+            <View style={styles.overviewTextWrap}>
+              <Text style={styles.overviewLabel}>Start Date</Text>
+              <Text style={styles.overviewValue}>{site.startDate || 'N/A'}</Text>
+            </View>
           </View>
-          
-          <View style={styles.laborPreviewCard}>
-            <View style={styles.laborStatsRow}>
-              <View style={styles.laborStatItem}>
-                <Text style={styles.laborStatValue}>{siteWorkerCount}</Text>
-                <Text style={styles.laborStatLabel}>Total Workers</Text>
-              </View>
-              <View style={styles.laborStatDivider} />
-              <View style={styles.laborStatItem}>
-                <Text style={[styles.laborStatValue, { color: '#10B981' }]}>{presentWorkers}</Text>
-                <Text style={styles.laborStatLabel}>Present</Text>
-              </View>
-              <View style={styles.laborStatDivider} />
-              <View style={styles.laborStatItem}>
-                <Text style={[styles.laborStatValue, { color: '#EF4444' }]}>{absentWorkers}</Text>
-                <Text style={styles.laborStatLabel}>Absent</Text>
-              </View>
+
+          <View style={styles.overviewItem}>
+            <View style={styles.overviewIconContainer}>
+              <Calendar size={IconSizes.sm} color={Colors.light.brand} />
+            </View>
+            <View style={styles.overviewTextWrap}>
+              <Text style={styles.overviewLabel}>Completion</Text>
+              <Text style={styles.overviewValue}>{site.expectedCompletion || 'N/A'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.overviewItem}>
+            <View style={styles.overviewIconContainer}>
+              <CheckSquare size={IconSizes.sm} color={Colors.light.brand} />
+            </View>
+            <View style={styles.overviewTextWrap}>
+              <Text style={styles.overviewLabel}>Pending Tasks</Text>
+              <Text style={styles.overviewValue}>{site.pendingTasks || 0}</Text>
             </View>
           </View>
         </View>
 
-        {/* Expenses Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Expenses</Text>
-            <Pressable onPress={() => router.push({ pathname: '/expenses', params: { siteId: site.id } })}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </Pressable>
-          </View>
-          
-          <View style={styles.expensesPreviewCard}>
-            <View style={styles.expensesStatsRow}>
-              <View style={styles.expensesStatItem}>
-                <Text style={styles.expensesStatValue}>
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalSiteExpenses)}
-                </Text>
-                <Text style={styles.expensesStatLabel}>Total Expenses</Text>
-              </View>
-              <View style={styles.expensesStatDivider} />
-              <View style={styles.expensesStatItem}>
-                <Text style={[styles.expensesStatValue, { color: '#EF4444' }]}>
-                  {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(pendingSiteExpenses)}
-                </Text>
-                <Text style={styles.expensesStatLabel}>Pending</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Materials Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Materials</Text>
-            <Pressable onPress={() => router.push({ pathname: '/materials', params: { siteId: site.id } })}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </Pressable>
-          </View>
-          
-          <View style={styles.materialsPreviewGrid}>
-            {materialsLoading ? (
-              <ActivityIndicator size="small" color="#F2A619" style={{ marginVertical: 20 }} />
-            ) : materials.length === 0 ? (
-              <Text style={{ color: '#6B7A85', fontStyle: 'italic', paddingVertical: 10 }}>No materials tracked yet.</Text>
-            ) : (
-              materials.slice(0, 3).map((material) => (
-                <View key={material.id} style={styles.materialPreviewCard}>
-                  <View style={styles.materialPreviewHeader}>
-                    <Text style={styles.materialPreviewName}>{material.name}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getMaterialStatusStyle(material.status).bg }]}>
-                      <Text style={[styles.statusText, { color: getMaterialStatusStyle(material.status).text }]}>{material.status}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.materialPreviewQuantity}>{material.quantity.toLocaleString()} {material.unit}</Text>
+        {/* Financial Summary */}
+        {budgetSummary && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Financial Summary</Text>
+            <View style={styles.financeCard}>
+              
+              <View style={styles.financeTop}>
+                <View style={styles.financeMain}>
+                  <Text style={styles.financeMainLabel}>Total Budget</Text>
+                  <Money amount={budgetSummary.totalBudget} style={styles.financeMainValue} />
                 </View>
-              ))
-            )}
+                <View style={[styles.financeMain, { alignItems: 'flex-end' }]}>
+                  <Text style={styles.financeMainLabel}>Remaining</Text>
+                  <Money amount={budgetSummary.remainingBudget} style={styles.financeMainValueHighlight} />
+                </View>
+              </View>
+
+              <View style={styles.financeProgressContainer}>
+                <View style={styles.progressHeaderRow}>
+                  <Text style={styles.financeProgressLabel}>
+                    <Money amount={budgetSummary.totalSpent} style={styles.financeProgressSpent} /> spent
+                  </Text>
+                  <Text style={styles.financeProgressPercent}>{budgetSummary.usagePercent.toFixed(1)}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.financeProgressFill,
+                      { width: `${Math.min(100, Math.max(0, budgetSummary.usagePercent))}%` },
+                      budgetSummary.status === 'Exceeded' && { backgroundColor: Colors.light.error },
+                      budgetSummary.status === 'Near Limit' && { backgroundColor: Colors.light.warning },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.breakdownContainer}>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Materials</Text>
+                  <Money amount={budgetSummary.materialCost} style={styles.breakdownValue} />
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Labor</Text>
+                  <Money amount={budgetSummary.laborCost} style={styles.breakdownValue} />
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Other Expenses</Text>
+                  <Money amount={budgetSummary.expenseCost} style={styles.breakdownValue} />
+                </View>
+              </View>
+
+            </View>
           </View>
+        )}
+
+        {/* Breakdown Modules */}
+        <View style={styles.modulesGrid}>
+          
+          {/* Materials Module */}
+          <Pressable 
+            style={styles.moduleCard} 
+            onPress={() => router.push({ pathname: '/materials', params: { siteId: site.id } })}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: Colors.light.infoBg }]}>
+              <Package size={IconSizes.md} color={Colors.light.info} />
+            </View>
+            <Text style={styles.moduleValue}>{materialsLoading ? '-' : materials.length}</Text>
+            <Text style={styles.moduleLabel}>Tracked Materials</Text>
+          </Pressable>
+
+          {/* Labor Module */}
+          <Pressable 
+            style={styles.moduleCard} 
+            onPress={() => router.push({ pathname: '/labor', params: { siteId: site.id } })}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: Colors.light.successBg }]}>
+              <Users size={IconSizes.md} color={Colors.light.success} />
+            </View>
+            <Text style={styles.moduleValue}>{siteWorkerCount}</Text>
+            <Text style={styles.moduleLabel}>Total Workers</Text>
+            
+            <View style={styles.moduleSubtextRow}>
+               <Text style={[styles.moduleSubtext, { color: Colors.light.success }]}>{presentWorkers} Present</Text>
+               <Text style={styles.moduleSubtextDivider}>•</Text>
+               <Text style={[styles.moduleSubtext, { color: Colors.light.error }]}>{absentWorkers} Absent</Text>
+            </View>
+          </Pressable>
+
+          {/* Expenses Module */}
+          <Pressable 
+            style={styles.moduleCard} 
+            onPress={() => router.push({ pathname: '/expenses', params: { siteId: site.id } })}
+          >
+            <View style={[styles.moduleIconBox, { backgroundColor: Colors.light.warningBg }]}>
+              <CheckSquare size={IconSizes.md} color={Colors.light.warning} />
+            </View>
+            <Money amount={totalSiteExpenses} style={styles.moduleValue} />
+            <Text style={styles.moduleLabel}>Other Expenses</Text>
+            
+            <View style={styles.moduleSubtextRow}>
+               <Text style={[styles.moduleSubtext, { color: Colors.light.error }]}>
+                 {pendingSiteExpenses > 0 ? `${pendingSiteExpenses} Pending` : 'All Paid'}
+               </Text>
+            </View>
+          </Pressable>
+
         </View>
       </ScrollView>
-    </View>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        visible={showConfirmDelete}
+        title="Delete Site?"
+        message={`Are you sure you want to delete "${site.name}"?\nAll related site information will be safely preserved in history, but will no longer appear in the active project list.`}
+        confirmText="Delete Site"
+        loading={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
+
+      {/* Success Feedback Dialog */}
+      <SuccessDialog
+        visible={showDeleteSuccess}
+        title="Site Deleted"
+        message={`"${deletedSiteName || 'Site'}" has been successfully removed.`}
+        buttonText="Done"
+        onClose={handleDeleteSuccessClose}
+      />
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        visible={Boolean(deleteError)}
+        message={deleteError || 'Failed to delete site.'}
+        onClose={() => setDeleteError(null)}
+        onRetry={handleDeleteConfirm}
+      />
+    </ScreenWrapper>
   );
 }
 
-function getMaterialStatusStyle(status: string) {
-  switch (status) {
-    case 'Available':
-      return { bg: '#ECFDF5', text: '#059669', dot: '#10B981' };
-    case 'Low Stock':
-      return { bg: '#FEF2F2', text: '#DC2626', dot: '#EF4444' };
-    case 'Pending':
-      return { bg: '#FFF7ED', text: '#C2410C', dot: '#F97316' };
-    default:
-      return { bg: '#F3F4F6', text: '#4B5563', dot: '#9CA3AF' };
-  }
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  loadingContainer: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  flexRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
+    padding: Spacing.xl,
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  backButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#F2A619',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  backIcon: {
-    marginRight: 16,
-    padding: 4,
-  },
-  backIconPressed: {
-    opacity: 0.5,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    flex: 1,
-    marginRight: 10,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   content: {
-    padding: 20,
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
-  section: {
-    marginBottom: 24,
+  identitySection: {
+    marginBottom: Spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-  overviewGrid: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  overviewItem: {
+  identityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
   },
-  overviewIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewLabel: {
-    fontSize: 12,
-    color: '#8A99A4',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  overviewValue: {
-    fontSize: 15,
+  identityType: {
+    ...Typography.caption,
     fontWeight: '600',
-    color: '#0F354A',
+    color: Colors.light.textSecondary,
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
   progressContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: Colors.light.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
-  progressHeader: {
+  progressHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'baseline',
-    gap: 8,
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
-  progressPercent: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#0F354A',
-    letterSpacing: -1,
-  },
-  progressText: {
-    fontSize: 15,
-    color: '#6B7A85',
+  progressLabel: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
     fontWeight: '600',
   },
+  progressPercent: {
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
+  },
   progressTrack: {
-    height: 12,
-    backgroundColor: '#EEF2F6',
-    borderRadius: 6,
+    height: 8,
+    backgroundColor: Colors.light.border,
+    borderRadius: Radius.full,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#F2A619',
-    borderRadius: 6,
+    backgroundColor: Colors.light.success,
+    borderRadius: Radius.full,
   },
-  statsGrid: {
+  overviewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
   },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+  overviewItem: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.surface,
+    padding: Spacing.sm,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
   },
-  statIconBox: {
+  overviewIconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginRight: Spacing.sm,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+  overviewTextWrap: {
+    flex: 1,
   },
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7A85',
-    fontWeight: '500',
+  overviewLabel: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    marginBottom: 2,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 16,
-  },
-  viewAllText: {
-    fontSize: 14,
+  overviewValue: {
+    ...Typography.body,
     fontWeight: '600',
-    color: '#F2A619',
+    color: Colors.light.text,
   },
-  materialsPreviewGrid: {
-    gap: 12,
+  section: {
+    marginBottom: Spacing.xl,
   },
-  materialPreviewCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+  sectionTitle: {
+    ...Typography.sectionTitle,
+    color: Colors.light.brand,
+    marginBottom: Spacing.md,
+  },
+  financeCard: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#EEF2F6',
+    borderColor: Colors.light.border,
+    padding: Spacing.lg,
+    ...Shadows.sm,
   },
-  materialPreviewHeader: {
+  financeTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.lg,
   },
-  materialPreviewName: {
-    fontSize: 16,
+  financeMain: {
+    flex: 1,
+  },
+  financeMainLabel: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  financeMainValue: {
+    ...Typography.pageTitle,
+    color: Colors.light.text,
+  },
+  financeMainValueHighlight: {
+    ...Typography.pageTitle,
+    color: Colors.light.success,
+  },
+  financeProgressContainer: {
+    marginBottom: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.borderSubtle,
+  },
+  financeProgressLabel: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+  },
+  financeProgressSpent: {
+    ...Typography.body,
     fontWeight: '700',
-    color: '#0F354A',
+    color: Colors.light.error,
   },
-  materialPreviewQuantity: {
-    fontSize: 14,
-    color: '#6B7A85',
-    fontWeight: '500',
+  financeProgressPercent: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
   },
-  laborPreviewCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
+  financeProgressFill: {
+    height: '100%',
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.full,
   },
-  laborStatsRow: {
+  breakdownContainer: {
+    gap: Spacing.sm,
+  },
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  laborStatItem: {
-    alignItems: 'center',
-    flex: 1,
+  breakdownLabel: {
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
   },
-  laborStatValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+  breakdownValue: {
+    ...Typography.body,
+    fontWeight: '600',
+    color: Colors.light.text,
   },
-  laborStatLabel: {
-    fontSize: 12,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  laborStatDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#EEF2F6',
-  },
-  expensesPreviewCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EEF2F6',
-  },
-  expensesStatsRow: {
+  modulesGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  moduleCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    backgroundColor: Colors.light.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    ...Shadows.sm,
+    minHeight: TouchTargets.min,
+  },
+  moduleIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
   },
-  expensesStatItem: {
+  moduleValue: {
+    ...Typography.sectionTitle,
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  moduleLabel: {
+    ...Typography.caption,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  moduleSubtextRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: 4,
+    marginTop: 'auto',
   },
-  expensesStatValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
+  moduleSubtext: {
+    fontSize: 11,
+    fontWeight: '600',
   },
-  expensesStatLabel: {
-    fontSize: 12,
-    color: '#6B7A85',
-    fontWeight: '500',
-  },
-  expensesStatDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#EEF2F6',
+  moduleSubtextDivider: {
+    fontSize: 11,
+    color: Colors.light.borderStrong,
   },
 });

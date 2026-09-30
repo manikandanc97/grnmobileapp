@@ -1,12 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
+import { Colors } from '@/constants/theme';
 
 export default function SitesLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#F8FAFC' },
+        contentStyle: { backgroundColor: Colors.light.background },
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Sites' }} />
@@ -18,6 +19,12 @@ export default function SitesLayout() {
       />
       <Stack.Screen
         name="add"
+        options={{
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="edit"
         options={{
           presentation: 'modal',
         }}

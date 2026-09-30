@@ -89,6 +89,8 @@ export type Database = {
           status: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used: number;
           received: number;
+          unit_price: number;
+          total_cost: number;
           last_updated: string;
           created_at: string;
           updated_at: string;
@@ -104,6 +106,8 @@ export type Database = {
           status?: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used?: number;
           received?: number;
+          unit_price?: number;
+          total_cost?: number;
           last_updated?: string;
           created_at?: string;
           updated_at?: string;
@@ -119,6 +123,8 @@ export type Database = {
           status?: 'Available' | 'Low Stock' | 'Pending' | 'Out of Stock';
           used?: number;
           received?: number;
+          unit_price?: number;
+          total_cost?: number;
           last_updated?: string;
           created_at?: string;
           updated_at?: string;
@@ -142,6 +148,8 @@ export type Database = {
           role: 'Mason' | 'Painter' | 'Electrician' | 'Plumber' | 'Carpenter' | 'Supervisor' | 'Laborer' | 'Other';
           phone: string | null;
           joining_date: string | null;
+          pay_frequency: 'Daily' | 'Weekly' | 'Monthly';
+          salary_amount: number;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -153,6 +161,8 @@ export type Database = {
           role: 'Mason' | 'Painter' | 'Electrician' | 'Plumber' | 'Carpenter' | 'Supervisor' | 'Laborer' | 'Other';
           phone?: string | null;
           joining_date?: string | null;
+          pay_frequency?: 'Daily' | 'Weekly' | 'Monthly';
+          salary_amount?: number;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -164,6 +174,8 @@ export type Database = {
           role?: 'Mason' | 'Painter' | 'Electrician' | 'Plumber' | 'Carpenter' | 'Supervisor' | 'Laborer' | 'Other';
           phone?: string | null;
           joining_date?: string | null;
+          pay_frequency?: 'Daily' | 'Weekly' | 'Monthly';
+          salary_amount?: number;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -223,17 +235,84 @@ export type Database = {
           }
         ];
       };
+      payroll_records: {
+        Row: {
+          id: string;
+          worker_id: string;
+          site_id: string;
+          pay_frequency: 'Daily' | 'Weekly' | 'Monthly';
+          pay_period_start: string;
+          pay_period_end: string;
+          rate: number;
+          days_present: number;
+          half_days: number;
+          days_absent: number;
+          gross_amount: number;
+          status: 'Paid' | 'Pending';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          worker_id: string;
+          site_id: string;
+          pay_frequency: 'Daily' | 'Weekly' | 'Monthly';
+          pay_period_start: string;
+          pay_period_end: string;
+          rate: number;
+          days_present?: number;
+          half_days?: number;
+          days_absent?: number;
+          gross_amount: number;
+          status?: 'Paid' | 'Pending';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          worker_id?: string;
+          site_id?: string;
+          pay_frequency?: 'Daily' | 'Weekly' | 'Monthly';
+          pay_period_start?: string;
+          pay_period_end?: string;
+          rate?: number;
+          days_present?: number;
+          half_days?: number;
+          days_absent?: number;
+          gross_amount?: number;
+          status?: 'Paid' | 'Pending';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payroll_records_worker_id_fkey';
+            columns: ['worker_id'];
+            isOneToOne: false;
+            referencedRelation: 'workers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payroll_records_site_id_fkey';
+            columns: ['site_id'];
+            isOneToOne: false;
+            referencedRelation: 'sites';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       expenses: {
         Row: {
           id: string;
           site_id: string;
           title: string;
           amount: number;
-          category: 'Materials' | 'Labor' | 'Transport' | 'Equipment' | 'Other';
-          date: string;
+          category: string;
+          expense_date: string;
           vendor: string | null;
-          payment_method: 'Cash' | 'UPI' | 'Bank Transfer' | 'Card' | 'Cheque';
-          payment_status: 'Paid' | 'Pending';
+          payment_method: string;
+          payment_status: string;
+          reference: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -244,11 +323,12 @@ export type Database = {
           site_id: string;
           title: string;
           amount: number;
-          category: 'Materials' | 'Labor' | 'Transport' | 'Equipment' | 'Other';
-          date?: string;
+          category: string;
+          expense_date: string;
           vendor?: string | null;
-          payment_method?: 'Cash' | 'UPI' | 'Bank Transfer' | 'Card' | 'Cheque';
-          payment_status?: 'Paid' | 'Pending';
+          payment_method?: string;
+          payment_status?: string;
+          reference?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -259,11 +339,12 @@ export type Database = {
           site_id?: string;
           title?: string;
           amount?: number;
-          category?: 'Materials' | 'Labor' | 'Transport' | 'Equipment' | 'Other';
-          date?: string;
+          category?: string;
+          expense_date?: string;
           vendor?: string | null;
-          payment_method?: 'Cash' | 'UPI' | 'Bank Transfer' | 'Card' | 'Cheque';
-          payment_status?: 'Paid' | 'Pending';
+          payment_method?: string;
+          payment_status?: string;
+          reference?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -346,5 +427,6 @@ export type SiteRow = Tables<'sites'>;
 export type MaterialRow = Tables<'materials'>;
 export type WorkerRow = Tables<'workers'>;
 export type AttendanceRow = Tables<'attendance'>;
+export type PayrollRecordRow = Tables<'payroll_records'>;
 export type ExpenseRow = Tables<'expenses'>;
 export type NotificationRow = Tables<'notifications'>;

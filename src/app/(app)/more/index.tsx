@@ -1,24 +1,13 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-} from 'react-native';
-import {
-  User,
-  CreditCard,
-  FileText,
-  Bell,
-  Settings,
-  ChevronRight,
-} from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { User, CreditCard, FileText, Bell, Settings, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsRow';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 
 export default function MoreScreen() {
   const { session } = useAuth();
@@ -37,214 +26,151 @@ export default function MoreScreen() {
     .slice(0, 2)
     .toUpperCase() || 'GR';
 
-  const menuItems = [
-    {
-      icon: <User size={20} color="#0F354A" />,
-      title: 'Profile',
-      description: 'Manage your account',
-      route: '/(app)/more/profile',
-      bgColor: '#E2E8F0',
-    },
-    {
-      icon: <CreditCard size={20} color="#9333EA" />,
-      title: 'Expenses',
-      description: 'Track project spending',
-      route: '/(app)/expenses',
-      bgColor: '#F3E8FF',
-    },
-    {
-      icon: <FileText size={20} color="#D97706" />,
-      title: 'Reports',
-      description: 'View project summaries',
-      route: '/(app)/more/reports',
-      bgColor: '#FEF3C7',
-    },
-    {
-      icon: <Bell size={20} color="#059669" />,
-      title: 'Notifications',
-      description: 'Stay updated',
-      route: '/(app)/more/notifications',
-      bgColor: '#ECFDF5',
-    },
-    {
-      icon: <Settings size={20} color="#4B5563" />,
-      title: 'Settings',
-      description: 'App preferences',
-      route: '/(app)/more/settings',
-      bgColor: '#F3F4F6',
-    },
-  ];
-
   return (
     <ScreenWrapper>
-      <View style={styles.webContainer}>
-        {/* Header */}
-        <ScreenHeader
-          title="More"
-          subtitle="Manage your account and app"
-        />
+      <ScreenHeader
+        title="More"
+        subtitle="Manage your account and app"
+      />
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Profile Card */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View profile details"
+          style={({ pressed }) => [
+            styles.profileCard,
+            pressed && styles.profileCardPressed,
+          ]}
+          onPress={() => router.push('/(app)/more/profile' as any)}
         >
-          {/* User Profile Card */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="View profile details"
-            style={({ pressed }) => [
-              styles.profileCard,
-              pressed && styles.profileCardPressed,
-            ]}
-            onPress={() => router.push('/(app)/more/profile' as any)}
-          >
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>{initials}</Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{displayName}</Text>
-              <Text style={styles.profileEmail} numberOfLines={1}>
-                {email}
-              </Text>
-              <View style={styles.providerBadge}>
-                <Text style={styles.providerText}>
-                  {provider === 'google' ? 'Google account' : `${provider} account`}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.viewProfileContainer}>
-              <Text style={styles.viewProfileText}>View Profile</Text>
-              <ChevronRight size={16} color="#8A99A4" />
-            </View>
-          </Pressable>
-
-          {/* Quick Menu */}
-          <View style={styles.menuGroup}>
-            {menuItems.map((item, index) => (
-              <React.Fragment key={item.title}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    pressed && styles.menuItemPressed,
-                  ]}
-                  onPress={() => router.push(item.route as any)}
-                >
-                  <View style={[styles.menuIcon, { backgroundColor: item.bgColor }]}>
-                    {item.icon}
-                  </View>
-                  <View style={styles.menuContent}>
-                    <Text style={styles.menuTitle}>{item.title}</Text>
-                    <Text style={styles.menuSubtitle}>{item.description}</Text>
-                  </View>
-                  <ChevronRight size={18} color="#8A99A4" />
-                </Pressable>
-                {index < menuItems.length - 1 && <View style={styles.menuItemDivider} />}
-              </React.Fragment>
-            ))}
+          <View style={styles.profileAvatar}>
+            <Text style={styles.profileAvatarText}>{initials}</Text>
           </View>
-        </ScrollView>
-      </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{displayName}</Text>
+            <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
+            <View style={styles.providerBadge}>
+              <Text style={styles.providerText}>
+                {provider === 'google' ? 'Google account' : `${provider} account`}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.viewProfileContainer}>
+            <Text style={styles.viewProfileText}>View Profile</Text>
+            <ChevronRight size={IconSizes.sm} color={Colors.light.textMuted} />
+          </View>
+        </Pressable>
+
+        <SettingsGroup>
+          <SettingsRow
+            icon={<User size={IconSizes.sm} color={Colors.light.text} />}
+            iconBgColor={Colors.light.surfaceMuted}
+            title="Profile"
+            subtitle="Manage your account"
+            onPress={() => router.push('/(app)/more/profile')}
+          />
+          <SettingsRow
+            icon={<CreditCard size={IconSizes.sm} color={Colors.light.warning} />}
+            iconBgColor={Colors.light.warningBg}
+            title="Expenses"
+            subtitle="Track project spending"
+            onPress={() => router.push('/(app)/expenses')}
+          />
+          <SettingsRow
+            icon={<FileText size={IconSizes.sm} color={Colors.light.brand} />}
+            iconBgColor={Colors.light.brandBg}
+            title="Reports"
+            subtitle="View project summaries"
+            onPress={() => router.push('/(app)/more/reports')}
+          />
+          <SettingsRow
+            icon={<Bell size={IconSizes.sm} color={Colors.light.success} />}
+            iconBgColor={Colors.light.successBg}
+            title="Notifications"
+            subtitle="Stay updated"
+            onPress={() => router.push('/(app)/more/notifications')}
+          />
+          <SettingsRow
+            icon={<Settings size={IconSizes.sm} color={Colors.light.textSecondary} />}
+            iconBgColor={Colors.light.borderSubtle}
+            title="Settings"
+            subtitle="App preferences"
+            onPress={() => router.push('/(app)/more/settings')}
+            hideDivider
+          />
+        </SettingsGroup>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  webContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 540,
-    alignSelf: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F6',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0F354A',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#6B7A85',
-  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: Spacing.lg,
+    paddingBottom: Spacing['2xl'] * 2,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E8ECEF',
-    marginBottom: 24,
-    shadowColor: '#0F354A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    borderColor: Colors.light.border,
+    marginBottom: Spacing.xl,
+    ...Shadows.sm,
   },
   profileCardPressed: {
-    backgroundColor: '#FAFCFD',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   profileAvatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#0F354A',
+    backgroundColor: Colors.light.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#F2A619',
-    marginRight: 16,
+    borderColor: Colors.light.brand,
+    marginRight: Spacing.md,
   },
   profileAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
+    color: Colors.light.surface,
+    ...Typography.sectionTitle,
   },
   profileInfo: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: Spacing.sm,
   },
   profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F354A',
+    ...Typography.cardTitle,
+    color: Colors.light.text,
     marginBottom: 2,
   },
   profileEmail: {
-    fontSize: 14,
-    color: '#6B7A85',
-    marginBottom: 6,
+    ...Typography.caption,
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.sm,
   },
   providerBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: Colors.light.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
   },
   providerText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#475569',
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
     textTransform: 'capitalize',
   },
   viewProfileContainer: {
@@ -252,56 +178,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewProfileText: {
-    fontSize: 13,
-    color: '#0F354A',
+    ...Typography.caption,
+    color: Colors.light.text,
     fontWeight: '600',
     marginRight: 2,
-  },
-  menuGroup: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8ECEF',
-    overflow: 'hidden',
-    shadowColor: '#0F354A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  menuItemPressed: {
-    backgroundColor: '#FAFCFD',
-  },
-  menuItemDivider: {
-    height: 1,
-    backgroundColor: '#F3F6F8',
-    marginLeft: 64,
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  menuContent: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0F354A',
-    marginBottom: 2,
-  },
-  menuSubtitle: {
-    fontSize: 13,
-    color: '#6B7A85',
   },
 });

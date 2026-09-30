@@ -1,3 +1,5 @@
+import { ExpenseCategory, PaymentMethod, PaymentStatus } from '@/lib/constants/expenses';
+
 export type MetricItem = {
   id: string;
   label: string;
@@ -42,7 +44,7 @@ export type ActivityItem = {
 };
 
 
-export const MOCK_QUICK_ACTIONS: QuickActionItem[] = [
+export const QUICK_ACTIONS: QuickActionItem[] = [
   {
     id: 'add-site',
     title: 'Add Site',
@@ -82,6 +84,8 @@ export type MaterialItem = {
   lastUpdated: string;
   used: number;
   received: number;
+  unitPrice: number;
+  totalCost: number;
 };
 
 
@@ -97,13 +101,13 @@ export type WorkerItem = {
   phone: string;
   joiningDate: string;
   todayStatus: WorkerStatus;
+  payFrequency: 'Daily' | 'Weekly' | 'Monthly';
+  salaryAmount: number;
 };
 
 
 
-export type ExpenseCategory = 'Materials' | 'Labor' | 'Transport' | 'Equipment' | 'Other';
-export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Card';
-export type PaymentStatus = 'Paid' | 'Pending';
+export type { ExpenseCategory, PaymentMethod, PaymentStatus };
 
 export type ExpenseItem = {
   id: string;
@@ -112,10 +116,11 @@ export type ExpenseItem = {
   category: ExpenseCategory;
   siteId: string;
   siteName: string;
-  date: string; // ISO or formatted date string
+  expenseDate: string; // ISO or formatted date string
   vendor: string;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  reference?: string;
   notes?: string;
 };
 
