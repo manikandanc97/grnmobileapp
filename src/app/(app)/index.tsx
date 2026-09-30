@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -34,12 +34,20 @@ export default function HomeDashboardScreen() {
   // Fetch dashboard metrics and activity
   const { metrics, activities, loading, error, refetch: refetchDashboard } = useDashboard();
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const showToast = (message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToastMessage(message);
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
+      toastTimerRef.current = null;
     }, 2800);
   };
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -176,11 +184,13 @@ export default function HomeDashboardScreen() {
           )}
         </ScrollView>
 
-        {/* Profile Modal */}
-        <ProfileModal
-          visible={profileVisible}
-          onClose={() => setProfileVisible(false)}
-        />
+        {/* Profile Modal — mounted only on first open */}
+        {profileVisible && (
+          <ProfileModal
+            visible={profileVisible}
+            onClose={() => setProfileVisible(false)}
+          />
+        )}
       </View>
     </ScreenWrapper>
   );

@@ -22,7 +22,7 @@ import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { FilterButton } from '@/components/ui/FilterButton';
+import { SelectField } from '@/components/ui/SelectField';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -220,20 +220,12 @@ export default function LaborScreen() {
           onClear={() => setSearchQuery('')}
           style={styles.searchBar}
         />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {ROLES.map((role) => (
-            <FilterButton
-              key={role}
-              label={role}
-              isActive={selectedRole === role}
-              onPress={() => setSelectedRole(role)}
-            />
-          ))}
-        </ScrollView>
+        <SelectField
+          value={selectedRole}
+          options={ROLES.map(r => ({ label: r, value: r }))}
+          onChange={(val) => setSelectedRole(val as any)}
+          placeholder="Filter by Role"
+        />
       </View>
 
       {/* Loading state */}

@@ -11,6 +11,7 @@ export function useDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const fetchDashboardData = useCallback(async (isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -27,64 +28,42 @@ export function useDashboard() {
         getRecentActivity(),
       ]);
 
-      setMetrics(fetchedMetrics);
-      setActivities(fetchedActivities);
-      dataSync.markClean('dashboard');
+      if (isMountedRef.current) {
+        setMetrics(fetchedMetrics);
+        setActivities(fetchedActivities);
+        dataSync.markClean('dashboard');
+      }
     } catch (err: unknown) {
-      console.error('Error fetching dashboard data:', err);
-      const isErrObj = typeof err === 'object' && err !== null;
-      const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
-      const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
+      if (isMountedRef.current) {
+        console.error('Error fetching dashboard data:', err);
+        const isErrObj = typeof err === 'object' && err !== null;
+        const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
+        const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
 
-      const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
-      setError(
-        isMissingTable
-          ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
-          : (message || 'Failed to fetch dashboard data')
-      );
+        const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
+        setError(
+          isMissingTable
+            ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
+            : (message || 'Failed to fetch dashboard data')
+        );
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const [fetchedMetrics, fetchedActivities] = await Promise.all([
-          getDashboardMetrics(),
-          getRecentActivity(),
-        ]);
-        if (isMounted) {
-          setMetrics(fetchedMetrics);
-          setActivities(fetchedActivities);
-          dataSync.markClean('dashboard');
-        }
-      } catch (err: unknown) {
-        if (isMounted) {
-          console.error('Error fetching dashboard data:', err);
-          const isErrObj = typeof err === 'object' && err !== null;
-          const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
-          const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
-          const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
-          setError(
-            isMissingTable
-              ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
-              : (message || 'Failed to fetch dashboard data')
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDashboardData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 

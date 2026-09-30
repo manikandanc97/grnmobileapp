@@ -23,6 +23,7 @@ export function useSites(): UseSitesResult {
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadData = useCallback(async (isRefresh = false, isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -37,44 +38,34 @@ export function useSites(): UseSitesResult {
 
     try {
       const data = await getSites();
-      setRawSites(data);
-      setSites(data.map(transformSiteRow));
-      dataSync.markClean('sites');
+      if (isMountedRef.current) {
+        setRawSites(data);
+        setSites(data.map(transformSiteRow));
+        dataSync.markClean('sites');
+      }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load sites.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message = err instanceof Error ? err.message : 'Unable to load sites.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const data = await getSites();
-        if (isMounted) {
-          setRawSites(data);
-          setSites(data.map(transformSiteRow));
-          dataSync.markClean('sites');
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load sites.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -165,6 +156,7 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
   const [error, setError] = useState<string | null>(id ? null : 'Invalid site ID provided.');
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadDetail = useCallback(async (targetId: string, isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -177,54 +169,39 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
 
     try {
       const data = await getSiteById(targetId);
-      if (!data) {
-        setSite(null);
-        setRawSite(null);
-        setError('Site not found.');
-      } else {
-        setRawSite(data);
-        setSite(transformSiteRow(data));
+      if (isMountedRef.current) {
+        if (!data) {
+          setSite(null);
+          setRawSite(null);
+          setError('Site not found.');
+        } else {
+          setRawSite(data);
+          setSite(transformSiteRow(data));
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load site details.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message = err instanceof Error ? err.message : 'Unable to load site details.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial load — single authoritative fetch path
   useEffect(() => {
     if (!id) return;
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const data = await getSiteById(id);
-        if (isMounted) {
-          if (!data) {
-            setSite(null);
-            setRawSite(null);
-            setError('Site not found.');
-          } else {
-            setRawSite(data);
-            setSite(transformSiteRow(data));
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load site details.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDetail(id);
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
 

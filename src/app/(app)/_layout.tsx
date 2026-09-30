@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Tabs, useRouter, usePathname, useSegments } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import {
@@ -31,6 +31,31 @@ export default function AppLayout() {
   const pathname = usePathname();
   const segments = useSegments();
 
+  const isFormScreen =
+    segments[segments.length - 1] === 'add' ||
+    pathname.endsWith('/add') ||
+    pathname.includes('/add');
+
+  const tabBarStyle = useMemo(
+    () =>
+      isFormScreen
+        ? { display: 'none' as const }
+        : {
+            backgroundColor: Colors.light.surface,
+            borderTopColor: Colors.light.border,
+            borderTopWidth: 1,
+            minHeight: 64 + (insets.bottom || 0),
+            paddingBottom: insets.bottom || 12,
+            paddingTop: 8,
+            shadowColor: Colors.light.text,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 5,
+          },
+    [isFormScreen, insets.bottom],
+  );
+
   React.useEffect(() => {
     if (!loading && !session) {
       router.replace('/(auth)');
@@ -39,11 +64,6 @@ export default function AppLayout() {
 
   if (loading || !session) return null;
 
-  const isFormScreen =
-    segments[segments.length - 1] === 'add' ||
-    pathname.endsWith('/add') ||
-    pathname.includes('/add');
-
   return (
     <Tabs
       screenOptions={{
@@ -51,21 +71,7 @@ export default function AppLayout() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: Colors.light.brand,
         tabBarInactiveTintColor: Colors.light.textMuted,
-        tabBarStyle: isFormScreen
-          ? { display: 'none' }
-          : {
-              backgroundColor: Colors.light.surface,
-              borderTopColor: Colors.light.border,
-              borderTopWidth: 1,
-              minHeight: 64 + (insets.bottom || 0),
-              paddingBottom: insets.bottom || 12,
-              paddingTop: 8,
-              shadowColor: Colors.light.text,
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 5,
-            },
+        tabBarStyle,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',

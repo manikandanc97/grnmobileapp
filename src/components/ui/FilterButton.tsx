@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   },
   buttonActive: {
     backgroundColor: Colors.light.primaryBg,
-    borderColor: Colors.light.brand,
+    borderColor: 'transparent',
   },
   buttonPressed: {
     opacity: 0.8,

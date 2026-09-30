@@ -35,6 +35,7 @@ import { Money } from '@/components/ui/Money';
 import { Button } from '@/components/ui/Button';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SelectField } from '@/components/ui/SelectField';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -257,20 +258,12 @@ export default function MaterialsScreen() {
           onClear={() => setSearchQuery('')}
           style={styles.searchBar}
         />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {allCategories.map((category) => (
-            <FilterButton
-              key={category}
-              label={category}
-              isActive={activeCategory === category}
-              onPress={() => setActiveCategory(category)}
-            />
-          ))}
-        </ScrollView>
+        <SelectField
+          value={activeCategory}
+          options={allCategories.map(c => ({ label: c, value: c }))}
+          onChange={setActiveCategory}
+          placeholder="Filter by Category"
+        />
       </View>
 
       {/* Loading and Error States */}
@@ -389,7 +382,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   summaryScroll: {
-    paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
   },
   summaryCard: {

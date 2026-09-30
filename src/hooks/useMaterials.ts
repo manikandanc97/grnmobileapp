@@ -20,6 +20,7 @@ export function useMaterials(siteId?: string): UseMaterialsResult {
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadData = useCallback(
     async (isRefresh = false, isSilent = false) => {
@@ -35,44 +36,35 @@ export function useMaterials(siteId?: string): UseMaterialsResult {
 
       try {
         const data = await getMaterials(siteId);
-        setMaterials(data);
-        dataSync.markClean('materials');
+        if (isMountedRef.current) {
+          setMaterials(data);
+          dataSync.markClean('materials');
+        }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load materials.';
-        setError(message);
+        if (isMountedRef.current) {
+          const message = err instanceof Error ? err.message : 'Unable to load materials.';
+          setError(message);
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
         isFetchingRef.current = false;
       }
     },
     [siteId],
   );
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const data = await getMaterials(siteId);
-        if (isMounted) {
-          setMaterials(data);
-          dataSync.markClean('materials');
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load materials.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
 
@@ -153,6 +145,7 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
   const [error, setError] = useState<string | null>(id ? null : 'Invalid material ID provided.');
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadDetail = useCallback(async (targetId: string, isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -165,50 +158,37 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
 
     try {
       const data = await getMaterialById(targetId);
-      if (!data) {
-        setMaterial(null);
-        setError('Material not found.');
-      } else {
-        setMaterial(data);
+      if (isMountedRef.current) {
+        if (!data) {
+          setMaterial(null);
+          setError('Material not found.');
+        } else {
+          setMaterial(data);
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load material details.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message = err instanceof Error ? err.message : 'Unable to load material details.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial load — single authoritative fetch path
   useEffect(() => {
     if (!id) return;
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const data = await getMaterialById(id);
-        if (isMounted) {
-          if (!data) {
-            setMaterial(null);
-            setError('Material not found.');
-          } else {
-            setMaterial(data);
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load material details.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDetail(id);
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
 

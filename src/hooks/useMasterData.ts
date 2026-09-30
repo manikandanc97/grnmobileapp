@@ -34,8 +34,7 @@ export function useMasterData() {
     }
   };
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
+    Promise.resolve().then(() => loadData());
   }, []);
 
   const addCategory = async (newCategory: string) => {

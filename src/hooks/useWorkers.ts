@@ -19,6 +19,7 @@ export function useWorkers(siteId?: string): UseWorkersResult {
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadData = useCallback(
     async (isRefresh = false, isSilent = false) => {
@@ -34,44 +35,35 @@ export function useWorkers(siteId?: string): UseWorkersResult {
 
       try {
         const data = await getWorkers(siteId);
-        setWorkers(data);
-        dataSync.markClean('workers');
+        if (isMountedRef.current) {
+          setWorkers(data);
+          dataSync.markClean('workers');
+        }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load workers.';
-        setError(message);
+        if (isMountedRef.current) {
+          const message = err instanceof Error ? err.message : 'Unable to load workers.';
+          setError(message);
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
         isFetchingRef.current = false;
       }
     },
     [siteId],
   );
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const data = await getWorkers(siteId);
-        if (isMounted) {
-          setWorkers(data);
-          dataSync.markClean('workers');
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load workers.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
 
@@ -146,6 +138,7 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
   const [error, setError] = useState<string | null>(id ? null : 'Invalid worker ID.');
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadDetail = useCallback(
     async (targetId: string, isSilent = false) => {
@@ -159,31 +152,7 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
 
       try {
         const data = await getWorkerById(targetId);
-        if (!data) {
-          setWorker(null);
-          setError('Worker not found.');
-        } else {
-          setWorker(data);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load worker details.';
-        setError(message);
-      } finally {
-        setLoading(false);
-        isFetchingRef.current = false;
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!id) return;
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const data = await getWorkerById(id);
-        if (isMounted) {
+        if (isMountedRef.current) {
           if (!data) {
             setWorker(null);
             setError('Worker not found.');
@@ -192,19 +161,30 @@ export function useWorkerDetails(id: string | undefined): UseWorkerDetailsResult
           }
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load worker details.');
+        if (isMountedRef.current) {
+          const message = err instanceof Error ? err.message : 'Unable to load worker details.';
+          setError(message);
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current) {
           setLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    })();
+    },
+    [],
+  );
 
+  // Initial load — single authoritative fetch path
+  useEffect(() => {
+    if (!id) return;
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDetail(id);
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
 

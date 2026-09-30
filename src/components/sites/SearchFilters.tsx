@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SiteType } from '@/types/dashboard';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { FilterButton } from '@/components/ui/FilterButton';
+import { SelectField } from '@/components/ui/SelectField';
 import { Colors, Spacing } from '@/constants/theme';
 
 type FilterOption = 'All' | SiteType;
@@ -35,23 +35,12 @@ export function SearchFilters({
         onClear={() => onSearchChange('')}
         style={styles.searchBar}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersContainer}
-      >
-        {FILTERS.map((filter) => {
-          const isActive = activeFilter === filter;
-          return (
-            <FilterButton
-              key={filter}
-              label={filter}
-              isActive={isActive}
-              onPress={() => onFilterChange(filter)}
-            />
-          );
-        })}
-      </ScrollView>
+      <SelectField
+        value={activeFilter}
+        options={FILTERS.map(f => ({ label: f, value: f }))}
+        onChange={(val) => onFilterChange(val as FilterOption)}
+        placeholder="Filter by Type"
+      />
     </View>
   );
 }

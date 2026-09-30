@@ -27,6 +27,7 @@ export function useAttendance(date: Date): UseAttendanceResult {
 
   const dateStr = toDateString(date);
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadData = useCallback(async (isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -39,41 +40,31 @@ export function useAttendance(date: Date): UseAttendanceResult {
 
     try {
       const map = await getAttendanceForDate(date);
-      setAttendanceMap(map);
-      dataSync.markClean('attendance');
+      if (isMountedRef.current) {
+        setAttendanceMap(map);
+        dataSync.markClean('attendance');
+      }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load attendance.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message = err instanceof Error ? err.message : 'Unable to load attendance.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr]);
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const map = await getAttendanceForDate(date);
-        if (isMounted) {
-          setAttendanceMap(map);
-          dataSync.markClean('attendance');
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load attendance.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStr]);
@@ -175,6 +166,7 @@ export function useWorkerAttendanceHistory(
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadHistory = useCallback(async (isSilent = false) => {
     if (!workerId || isFetchingRef.current) return;
@@ -187,44 +179,33 @@ export function useWorkerAttendanceHistory(
 
     try {
       const data = await getWorkerAttendanceHistory(workerId);
-      setHistory(data);
+      if (isMountedRef.current) {
+        setHistory(data);
+      }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unable to load attendance history.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message =
+          err instanceof Error ? err.message : 'Unable to load attendance history.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, [workerId]);
 
+  // Initial load — single authoritative fetch path
   useEffect(() => {
     if (!workerId) return;
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const data = await getWorkerAttendanceHistory(workerId);
-        if (isMounted) {
-          setHistory(data);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err.message : 'Unable to load attendance history.',
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadHistory();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [workerId]);
+  }, [workerId, loadHistory]);
 
 
   // Live synchronization for worker attendance history

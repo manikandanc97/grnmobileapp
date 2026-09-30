@@ -61,23 +61,25 @@ export async function markAttendance(
     status,
   };
 
-  const { data, error } = await supabase
-    .from('attendance')
-    .upsert(upsertPayload, { onConflict: 'worker_id,date' })
-    .select()
-    .single();
+  const [data, worker] = await Promise.all([
+    supabase
+      .from('attendance')
+      .upsert(upsertPayload, { onConflict: 'worker_id,date' })
+      .select()
+      .single()
+      .then(({ data, error }) => {
+        if (error) throw new Error(formatDatabaseError(error, 'Failed to mark attendance.'));
+        return data as AttendanceRow;
+      }),
+    getWorkerById(workerId),
+  ]);
 
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to mark attendance.'));
-  }
-
-  // Sync Payroll
-  const worker = await getWorkerById(workerId);
+  // Sync Payroll — runs after both the upsert and worker fetch complete
   if (worker) {
     const d = new Date(dateStr);
     let periodStart = dateStr;
     let periodEnd = dateStr;
-    
+
     if (worker.pay_frequency === 'Weekly') {
       const startOfWeek = getStartOfWeek(d);
       const endOfWeek = getEndOfWeek(d);
@@ -89,13 +91,13 @@ export async function markAttendance(
       periodStart = toDateString(startOfMonth);
       periodEnd = toDateString(endOfMonth);
     }
-    
+
     await syncWorkerPayroll(
-      workerId, 
-      siteId, 
-      worker.pay_frequency, 
-      worker.salary_amount, 
-      periodStart, 
+      workerId,
+      siteId,
+      worker.pay_frequency,
+      worker.salary_amount,
+      periodStart,
       periodEnd
     );
   }

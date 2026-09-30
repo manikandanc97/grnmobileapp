@@ -30,7 +30,6 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
 
   return (
     <Pressable
-      accessibilityRole="button"
       accessibilityLabel={`Site ${site.name}, ${site.location}, ${site.progress}% complete`}
       style={({ pressed }) => [
         styles.card,

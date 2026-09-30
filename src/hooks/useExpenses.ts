@@ -19,6 +19,7 @@ export function useExpenses(siteId?: string): UseExpensesResult {
   const [error, setError] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadData = useCallback(
     async (isRefresh = false, isSilent = false) => {
@@ -34,44 +35,35 @@ export function useExpenses(siteId?: string): UseExpensesResult {
 
       try {
         const data = await getExpenses(siteId);
-        setExpenses(data);
-        dataSync.markClean('expenses');
+        if (isMountedRef.current) {
+          setExpenses(data);
+          dataSync.markClean('expenses');
+        }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load expenses.';
-        setError(message);
+        if (isMountedRef.current) {
+          const message = err instanceof Error ? err.message : 'Unable to load expenses.';
+          setError(message);
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
         isFetchingRef.current = false;
       }
     },
     [siteId],
   );
 
-  // Initial load
+  // Initial load — single authoritative fetch path
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const data = await getExpenses(siteId);
-        if (isMounted) {
-          setExpenses(data);
-          dataSync.markClean('expenses');
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load expenses.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
 
@@ -145,6 +137,7 @@ export function useExpenseDetails(id: string | undefined): UseExpenseDetailsResu
   const [error, setError] = useState<string | null>(id ? null : 'Invalid expense ID.');
 
   const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const loadDetail = useCallback(async (targetId: string, isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -157,50 +150,37 @@ export function useExpenseDetails(id: string | undefined): UseExpenseDetailsResu
 
     try {
       const data = await getExpenseById(targetId);
-      if (!data) {
-        setExpense(null);
-        setError('Expense not found.');
-      } else {
-        setExpense(data);
+      if (isMountedRef.current) {
+        if (!data) {
+          setExpense(null);
+          setError('Expense not found.');
+        } else {
+          setExpense(data);
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to load expense details.';
-      setError(message);
+      if (isMountedRef.current) {
+        const message = err instanceof Error ? err.message : 'Unable to load expense details.';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, []);
 
+  // Initial load — single authoritative fetch path
   useEffect(() => {
     if (!id) return;
-    let isMounted = true;
-
-    (async () => {
-      try {
-        const data = await getExpenseById(id);
-        if (isMounted) {
-          if (!data) {
-            setExpense(null);
-            setError('Expense not found.');
-          } else {
-            setExpense(data);
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Unable to load expense details.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    })();
-
+    isMountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDetail(id);
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
 

@@ -164,8 +164,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   modalContent: {
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 480 : '100%',
     backgroundColor: Colors.light.surface,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
