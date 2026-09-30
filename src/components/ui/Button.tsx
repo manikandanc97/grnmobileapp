@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Pressable, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { Colors, Typography, Spacing, Radius, TouchTargets } from '@/constants/theme';
 
@@ -10,7 +11,10 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: any;
+  accessibilityLabel?: string;
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Button({ 
   title, 
@@ -21,13 +25,21 @@ export function Button({
   disabled = false,
   style 
 }: ButtonProps) {
+
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
+  }));
+  const handlePressIn = () => { scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); };
+  const handlePressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
   return (
-    <Pressable
-      style={({ pressed }) => [
+    <AnimatedPressable onPressIn={handlePressIn} onPressOut={handlePressOut}
+      style={({ pressed }: { pressed: boolean }) => [
         styles.button,
         styles[variant],
         (pressed || loading || disabled) && styles.disabled,
         style,
+        animatedStyle,
       ]}
       onPress={onPress}
       disabled={disabled || loading}
@@ -43,7 +55,7 @@ export function Button({
       <Text style={[styles.text, styles[`${variant}Text`]]}>
         {loading ? 'Please wait...' : title}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

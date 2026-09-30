@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { StyleSheet, ScrollView, Switch } from 'react-native';
-import { Bell, Moon, Globe, Info, Shield, FileText, LogOut } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, ScrollView, Switch, Alert } from 'react-native';
+import { Bell, Moon, Globe, Info, Shield, FileText, LogOut, Lock, Fingerprint, Clock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useAppLock } from '@/providers/AppLockProvider';
+import { AutoLockTimeout, appLockService } from '@/services/appLock';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -11,10 +13,16 @@ import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { settings: lockSettings, updateSettings } = useAppLock();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [theme, setTheme] = useState('System');
   const [language, setLanguage] = useState('English');
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+
+  useEffect(() => {
+    appLockService.isBiometricAvailable().then(setIsBiometricAvailable);
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -30,6 +38,34 @@ export default function SettingsScreen() {
     setLanguage(prev => (prev === 'English' ? 'Tamil' : 'English'));
   };
 
+  const toggleAppLock = async (enabled: boolean) => {
+    if (enabled && !isBiometricAvailable) {
+      Alert.alert('Unavailable', 'Device biometrics must be configured to use App Lock.');
+      return;
+    }
+    
+    if (enabled) {
+      const result = await appLockService.authenticate();
+      if (!result.success) {
+        Alert.alert('Authentication Failed', 'You must authenticate to enable App Lock.');
+        return;
+      }
+    }
+    
+    await updateSettings({ enabled });
+  };
+
+  const toggleBiometric = async (biometric: boolean) => {
+    await updateSettings({ biometric });
+  };
+
+  const changeAutoLock = () => {
+    const options: AutoLockTimeout[] = ['Immediately', '1 min', '5 min', '15 min'];
+    const currentIndex = options.indexOf(lockSettings.timeout);
+    const nextIndex = (currentIndex + 1) % options.length;
+    updateSettings({ timeout: options[nextIndex] });
+  };
+
   return (
     <ScreenWrapper>
       <ScreenHeader title="Settings" showBack />
@@ -39,6 +75,49 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <SettingsGroup title="Security">
+          <SettingsRow
+            icon={<Lock size={IconSizes.sm} color={Colors.light.brand} />}
+            iconBgColor={Colors.light.brand + '20'}
+            title="App Lock"
+            value={
+              <Switch
+                value={lockSettings.enabled}
+                onValueChange={toggleAppLock}
+                trackColor={{ false: Colors.light.border, true: Colors.light.brand }}
+                thumbColor={Colors.light.surface}
+              />
+            }
+            showChevron={false}
+          />
+          {lockSettings.enabled && (
+            <>
+              <SettingsRow
+                icon={<Fingerprint size={IconSizes.sm} color={Colors.light.primary} />}
+                iconBgColor={Colors.light.primaryBg}
+                title="Biometric Authentication"
+                value={
+                  <Switch
+                    value={lockSettings.biometric}
+                    onValueChange={toggleBiometric}
+                    trackColor={{ false: Colors.light.border, true: Colors.light.brand }}
+                    thumbColor={Colors.light.surface}
+                  />
+                }
+                showChevron={false}
+              />
+              <SettingsRow
+                icon={<Clock size={IconSizes.sm} color={Colors.light.warning} />}
+                iconBgColor={Colors.light.warningBg}
+                title="Auto Lock"
+                value={lockSettings.timeout}
+                onPress={changeAutoLock}
+                hideDivider
+              />
+            </>
+          )}
+        </SettingsGroup>
+
         <SettingsGroup title="General">
           <SettingsRow
             icon={<Bell size={IconSizes.sm} color={Colors.light.info} />}

@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
@@ -9,18 +10,35 @@ interface PrimaryButtonProps extends TouchableOpacityProps {
   loading?: boolean;
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 export function PrimaryButton({ title, loading = false, disabled, style, ...props }: PrimaryButtonProps) {
   const theme = useTheme();
   const primaryColor = theme.primary;
   const primaryTextColor = theme.primaryText;
 
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
+  }));
+  const handlePressIn = (e: any) => { 
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); 
+    if (props.onPressIn) props.onPressIn(e);
+  };
+  const handlePressOut = (e: any) => { 
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
+    if (props.onPressOut) props.onPressOut(e);
+  };
+
+
   return (
-    <TouchableOpacity
+    <AnimatedTouchableOpacity onPressIn={handlePressIn} onPressOut={handlePressOut}
       style={[
         styles.button,
         { backgroundColor: primaryColor },
         (disabled || loading) && styles.disabled,
         style,
+        animatedStyle,
       ]}
       disabled={disabled || loading}
       activeOpacity={0.8}
@@ -33,7 +51,7 @@ export function PrimaryButton({ title, loading = false, disabled, style, ...prop
           {title}
         </ThemedText>
       )}
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 }
 

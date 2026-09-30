@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { AuthProvider } from '@/providers/AuthProvider';
+import { AppLockProvider } from '@/providers/AppLockProvider';
 import { Colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -20,17 +21,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={styles.container}>
-            <View style={styles.mobileWrapper}>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.surface } }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
-              </Stack>
+        <AppLockProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <View style={styles.container}>
+              <View style={styles.mobileWrapper}>
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.surface } }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                </Stack>
+              </View>
             </View>
-          </View>
-          <StatusBar style="dark" />
-        </ThemeProvider>
+            <StatusBar style="dark" />
+          </ThemeProvider>
+        </AppLockProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

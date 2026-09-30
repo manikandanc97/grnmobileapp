@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
@@ -10,19 +11,36 @@ interface GoogleButtonProps extends TouchableOpacityProps {
   loading?: boolean;
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 export function GoogleButton({ title = "Continue with Google", loading = false, disabled, style, ...props }: GoogleButtonProps) {
   const theme = useTheme();
   const backgroundColor = theme.backgroundElement;
   const borderColor = theme.border;
   const textColor = theme.text;
 
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
+  }));
+  const handlePressIn = (e: any) => { 
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); 
+    if (props.onPressIn) props.onPressIn(e);
+  };
+  const handlePressOut = (e: any) => { 
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
+    if (props.onPressOut) props.onPressOut(e);
+  };
+
+
   return (
-    <TouchableOpacity
+    <AnimatedTouchableOpacity onPressIn={handlePressIn} onPressOut={handlePressOut}
       style={[
         styles.button,
         { backgroundColor, borderColor },
         (disabled || loading) && styles.disabled,
         style,
+        animatedStyle,
       ]}
       disabled={disabled || loading}
       activeOpacity={0.8}
@@ -42,7 +60,7 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
           </ThemedText>
         </View>
       )}
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 }
 

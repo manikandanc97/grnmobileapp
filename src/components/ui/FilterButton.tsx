@@ -1,4 +1,5 @@
 import React from 'react';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Filter } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius, IconSizes, TouchTargets } from '@/constants/theme';
@@ -10,19 +11,29 @@ export interface FilterButtonProps {
   style?: ViewStyle;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function FilterButton({
   onPress,
   isActive = false,
   label = 'Filter',
   style,
 }: FilterButtonProps) {
+
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
+  }));
+  const handlePressIn = () => { scale.value = withSpring(0.94, { damping: 15, stiffness: 300 }); };
+  const handlePressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
   return (
-    <Pressable
-      style={({ pressed }) => [
+    <AnimatedPressable onPressIn={handlePressIn} onPressOut={handlePressOut}
+      style={({ pressed }: { pressed: boolean }) => [
         styles.button,
         isActive && styles.buttonActive,
         pressed && styles.buttonPressed,
         style,
+        animatedStyle,
       ]}
       onPress={onPress}
       accessibilityRole="button"
@@ -37,7 +48,7 @@ export function FilterButton({
       <Text style={[styles.text, isActive && styles.textActive]}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
