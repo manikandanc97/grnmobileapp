@@ -135,7 +135,7 @@ const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
   return (
     <View style={styles.lockContainer} accessibilityRole="none">
       <Shield size={64} color={Colors.light.brand} style={styles.icon} accessibilityLabel="Security Shield" />
-      <Text style={styles.title} accessibilityRole="header">GRN Construction</Text>
+      <Text style={styles.title} accessibilityRole="header">GRN</Text>
       <Text style={styles.subtitle}>App Locked</Text>
       <Text style={styles.prompt}>Authenticate to continue</Text>
       

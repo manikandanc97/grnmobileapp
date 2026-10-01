@@ -154,7 +154,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon={<Info size={IconSizes.sm} color={Colors.light.textSecondary} />}
             iconBgColor={Colors.light.surfaceMuted}
-            title="About GRN Construction"
+            title="About GRN"
             onPress={() => router.push('/(app)/more/about' as any)}
           />
           <SettingsRow

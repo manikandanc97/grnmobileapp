@@ -14,8 +14,6 @@ interface ButtonProps {
   accessibilityLabel?: string;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export function Button({ 
   title, 
   onPress, 
@@ -32,36 +30,44 @@ export function Button({
   }));
   const handlePressIn = () => { scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); };
   const handlePressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
+  
   return (
-    <AnimatedPressable onPressIn={handlePressIn} onPressOut={handlePressOut}
-      style={({ pressed }: { pressed: boolean }) => [
-        styles.button,
-        styles[variant],
-        (pressed || loading || disabled) && styles.disabled,
-        style,
-        animatedStyle,
-      ]}
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       onPress={onPress}
       disabled={disabled || loading}
+      style={style}
     >
-      {loading ? (
-        <ActivityIndicator 
-          color={(variant === 'primary' || variant === 'danger') ? Colors.light.surface : Colors.light.textSecondary} 
-          style={styles.icon} 
-        />
-      ) : (
-        icon && <View style={styles.icon}>{icon}</View>
+      {({ pressed }) => (
+        <Animated.View
+          style={[
+            styles.button,
+            styles[variant],
+            (pressed || loading || disabled) && styles.disabled,
+            animatedStyle,
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator 
+              color={(variant === 'primary' || variant === 'danger') ? Colors.light.surface : Colors.light.textSecondary} 
+              style={styles.icon} 
+            />
+          ) : (
+            icon && <View style={styles.icon}>{icon}</View>
+          )}
+          <Text style={[styles.text, styles[`${variant}Text`]]}>
+            {loading ? 'Please wait...' : title}
+          </Text>
+        </Animated.View>
       )}
-      <Text style={[styles.text, styles[`${variant}Text`]]}>
-        {loading ? 'Please wait...' : title}
-      </Text>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    flex: 1,
+    width: '100%',
     minHeight: TouchTargets.min,
     height: 48,
     flexDirection: 'row',

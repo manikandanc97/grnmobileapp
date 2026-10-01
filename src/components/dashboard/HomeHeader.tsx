@@ -38,7 +38,7 @@ export function HomeHeader({ onProfilePress }: HomeHeaderProps) {
           <View style={styles.brandIconWrapper}>
             <HardHat size={IconSizes.sm} color={Colors.light.brand} strokeWidth={2.4} />
           </View>
-          <Text style={styles.brandText}>GRN CONSTRUCTIONS</Text>
+          <Text style={styles.brandText}>GRN</Text>
         </View>
 
         <Text style={styles.greetingText}>

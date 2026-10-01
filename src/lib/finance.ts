@@ -1,5 +1,5 @@
 /**
- * Financial utilities for the GRN Construction app.
+ * Financial utilities for the GRN app.
  */
 
 /**

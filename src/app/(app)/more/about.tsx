@@ -22,7 +22,7 @@ export default function AboutScreen() {
           <View style={styles.logoContainer}>
             <Building2 size={40} color={Colors.light.primary} />
           </View>
-          <Text style={styles.brandName}>GRN Constructions</Text>
+          <Text style={styles.brandName}>GRN</Text>
           <Text style={styles.tagline}>Construction management made simple.</Text>
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>Version 1.0.0 (Build 57)</Text>

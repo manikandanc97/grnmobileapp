@@ -1,23 +1,21 @@
 {
   "expo": {
-    "name": "grnmobileapp",
+    "name": "GRN",
     "slug": "grnmobileapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/grn-icon.png",
     "scheme": "grnconstruction",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.grnconstruction.app",
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/grn-icon.png"
     },
     "android": {
       "package": "com.grnconstruction.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#C9863F",
+        "foregroundImage": "./assets/images/grn-adaptive-foreground.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,9 +28,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#C9863F",
+          "image": "./assets/images/logo.jpg",
+          "imageWidth": 200
         }
       ],
       "expo-secure-store",
