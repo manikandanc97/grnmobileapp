@@ -97,6 +97,13 @@ export function ExpenseForm({
   const referenceInputRef = useRef<TextInput>(null);
   const notesInputRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    if (initialData?.site_id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSiteId(initialData.site_id);
+    }
+  }, [initialData?.site_id]);
+
   // Derived effective site ID (default to first site if creating and none selected)
   const effectiveSiteId = siteId || (!isEdit && rawSites.length > 0 ? rawSites[0].id : '');
 

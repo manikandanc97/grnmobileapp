@@ -107,6 +107,13 @@ export function MaterialForm({
   const supplierInputRef = useRef<TextInput>(null);
   const notesInputRef = useRef<TextInput>(null);
 
+  useEffect(() => {
+    if (initialData?.site_id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSiteId(initialData.site_id);
+    }
+  }, [initialData?.site_id]);
+
   // Derived effective site ID (default to first site if creating and none selected)
   const effectiveSiteId = siteId || (!isEdit && sites.length > 0 ? sites[0].id : '');
 
@@ -282,7 +289,7 @@ export function MaterialForm({
     name.trim().length > 0 &&
     Boolean(category) &&
     Boolean(unit) &&
-    Boolean(siteId) &&
+    Boolean(effectiveSiteId) &&
     Boolean(quantity);
 
   if (isLoadingInitial) {

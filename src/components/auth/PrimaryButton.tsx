@@ -1,9 +1,8 @@
 import React from 'react';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, Text } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Radius, Shadows } from '@/constants/theme';
 
 interface PrimaryButtonProps extends TouchableOpacityProps {
   title: string;
@@ -15,41 +14,43 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 export function PrimaryButton({ title, loading = false, disabled, style, ...props }: PrimaryButtonProps) {
   const theme = useTheme();
   const primaryColor = theme.primary;
-  const primaryTextColor = theme.primaryText;
 
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
   const handlePressIn = (e: any) => { 
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); 
+    // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 }); 
     if (props.onPressIn) props.onPressIn(e);
   };
   const handlePressOut = (e: any) => { 
+    // eslint-disable-next-line react-hooks/immutability
     scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
     if (props.onPressOut) props.onPressOut(e);
   };
 
-
   return (
-    <AnimatedTouchableOpacity onPressIn={handlePressIn} onPressOut={handlePressOut}
+    <AnimatedTouchableOpacity 
+      onPressIn={handlePressIn} 
+      onPressOut={handlePressOut}
       style={[
         styles.button,
         { backgroundColor: primaryColor },
         (disabled || loading) && styles.disabled,
-        style,
         animatedStyle,
+        style,
       ]}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={primaryTextColor} />
+        <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <ThemedText style={[styles.text, { color: primaryTextColor }]}>
+        <Text style={styles.text}>
           {title}
-        </ThemedText>
+        </Text>
       )}
     </AnimatedTouchableOpacity>
   );
@@ -57,18 +58,23 @@ export function PrimaryButton({ title, loading = false, disabled, style, ...prop
 
 const styles = StyleSheet.create({
   button: {
-    height: 56,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: Radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.md,
+    ...Shadows.glow,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   text: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });

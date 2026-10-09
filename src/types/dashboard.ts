@@ -5,7 +5,7 @@ export type MetricItem = {
   label: string;
   value: string;
   subtext?: string;
-  iconName: 'Building2' | 'Briefcase' | 'CheckSquare' | 'IndianRupee';
+  iconName: 'Building2' | 'Briefcase' | 'CheckSquare' | 'IndianRupee' | 'Package' | 'Users' | 'ReceiptText';
   trend?: string;
 };
 

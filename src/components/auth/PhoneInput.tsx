@@ -1,8 +1,6 @@
-import React from 'react';
-import { StyleSheet, TextInput, View, TextInputProps } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import React, { useState } from 'react';
+import { StyleSheet, TextInput, View, TextInputProps, Text } from 'react-native';
+import { Spacing, Radius } from '@/constants/theme';
 
 interface PhoneInputProps extends TextInputProps {
   value: string;
@@ -10,25 +8,27 @@ interface PhoneInputProps extends TextInputProps {
 }
 
 export function PhoneInput({ value, onChangeText, ...props }: PhoneInputProps) {
-  const theme = useTheme();
-  const backgroundColor = theme.backgroundElement;
-  const borderColor = theme.border;
-  const textColor = theme.text;
-  const placeholderColor = theme.textSecondary;
+  const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <View style={[styles.container, { backgroundColor, borderColor }]}>
-      <View style={[styles.prefixContainer, { borderRightColor: borderColor }]}>
-        <ThemedText style={styles.prefixText}>+91</ThemedText>
+    <View style={[
+      styles.container,
+      isFocused && styles.containerFocused,
+    ]}>
+      <View style={styles.prefixContainer}>
+        <Text style={styles.flagText}>🇮🇳</Text>
+        <Text style={styles.prefixText}>+91</Text>
       </View>
       <TextInput
-        style={[styles.input, { color: textColor }]}
+        style={styles.input}
         value={value}
         onChangeText={onChangeText}
         keyboardType="phone-pad"
-        placeholder="Enter mobile number"
-        placeholderTextColor={placeholderColor}
+        placeholder="Enter 10-digit mobile number"
+        placeholderTextColor="#94A3B8"
         maxLength={10}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         {...props}
       />
     </View>
@@ -39,26 +39,43 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     height: 56,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
     overflow: 'hidden',
     alignItems: 'center',
-    marginBottom: Spacing.four,
+    marginBottom: Spacing.lg,
+  },
+  containerFocused: {
+    borderColor: '#E79524',
+    backgroundColor: '#FFFFFF',
   },
   prefixContainer: {
-    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
     height: '100%',
-    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
     borderRightWidth: 1,
+    borderRightColor: 'rgba(15, 23, 42, 0.08)',
+  },
+  flagText: {
+    fontSize: 18,
   },
   prefixText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   input: {
     flex: 1,
     height: '100%',
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: 16,
     fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    letterSpacing: 0.5,
   },
 });

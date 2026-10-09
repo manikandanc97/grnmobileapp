@@ -19,12 +19,7 @@ export function ActiveSitesSection({
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <View style={styles.titleRow}>
-          <Text style={styles.sectionTitle}>Active Sites</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{sites.length}</Text>
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Active Sites</Text>
 
         <Pressable
           accessibilityRole="button"
@@ -68,25 +63,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
   sectionTitle: {
-    ...Typography.sectionTitle,
-    color: Colors.light.brand,
-  },
-  countBadge: {
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-  },
-  countText: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.light.brand,
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.light.text,
   },
   viewAllButton: {
     paddingVertical: Spacing.xs,
@@ -100,11 +80,11 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     ...Typography.caption,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.light.primary,
   },
   list: {
-    gap: Spacing.sm,
+    gap: 2,
   },
   emptyStateContainer: {
     backgroundColor: Colors.light.surface,

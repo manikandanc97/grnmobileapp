@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { Colors, Typography, Spacing, Radius, IconSizes, TouchTargets } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 
 export interface SearchBarProps {
   value: string;
@@ -22,13 +22,13 @@ export function SearchBar({
 
   return (
     <View style={[styles.container, style]}>
-      <Search size={IconSizes.md} color={Colors.light.textMuted} style={styles.icon} />
+      <Search size={18} color="#64748B" style={styles.icon} />
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Colors.light.textMuted}
+        placeholderTextColor="#94A3B8"
         returnKeyType="search"
       />
       {showClear && (
@@ -39,7 +39,7 @@ export function SearchBar({
           accessibilityRole="button"
           accessibilityLabel="Clear search"
         >
-          <X size={IconSizes.sm} color={Colors.light.textSecondary} />
+          <X size={14} color="#64748B" />
         </Pressable>
       )}
     </View>
@@ -50,12 +50,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.surfaceMuted,
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: Radius.md,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
-    minHeight: 44, // Using 44 for search bars typically, or 48. Let's stick to min touch target.
+    height: 46,
   },
   icon: {
     marginRight: Spacing.sm,
@@ -64,15 +64,17 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     ...Typography.body,
-    color: Colors.light.text,
-    paddingVertical: Spacing.sm,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 0,
   },
   clearBtn: {
-    padding: Spacing.xs,
-    marginLeft: Spacing.xs,
-    minHeight: TouchTargets.min,
-    minWidth: TouchTargets.min,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: Spacing.xs,
   },
 });

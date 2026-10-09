@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
+import { dataSync } from '@/lib/dataSync';
+
 type AuthContextType = {
   session: Session | null;
   loading: boolean;
@@ -25,7 +27,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          dataSync.clearAll();
+        }
         setSession(session);
         setLoading(false);
       }

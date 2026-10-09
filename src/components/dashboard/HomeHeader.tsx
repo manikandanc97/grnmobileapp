@@ -1,68 +1,45 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { HardHat } from 'lucide-react-native';
-import { useAuth } from '@/providers/AuthProvider';
-import { Colors, Typography, Spacing, Radius, IconSizes, TouchTargets } from '@/constants/theme';
+import { View, StyleSheet, Pressable, Image, Text } from 'react-native';
+import { Bell } from 'lucide-react-native';
+import { Spacing, Radius } from '@/constants/theme';
 
 interface HomeHeaderProps {
   onProfilePress?: () => void;
 }
 
 export function HomeHeader({ onProfilePress }: HomeHeaderProps) {
-  const { session } = useAuth();
-  const user = session?.user;
-
-  // Extract display name or email username
-  const rawName = user?.user_metadata?.full_name || user?.user_metadata?.name;
-  const emailPrefix = user?.email ? user.email.split('@')[0] : '';
-  const displayName = rawName || emailPrefix || 'Supervisor';
-
-  // Format initials
-  const initials = displayName
-    .split(' ')
-    .map((part: string) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'GR';
-
-  // Dynamic greeting based on current time
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
   return (
     <View style={styles.container}>
-      {/* Left side: Brand + Greeting */}
-      <View style={styles.leftColumn}>
-        <View style={styles.brandRow}>
-          <View style={styles.brandIconWrapper}>
-            <HardHat size={IconSizes.sm} color={Colors.light.brand} strokeWidth={2.4} />
-          </View>
-          <Text style={styles.brandText}>GRN</Text>
+      {/* Left: Brand Logo and Title */}
+      <View style={styles.brandLeft}>
+        <View style={styles.logoWrapper}>
+          <Image 
+            source={require('@/assets/images/icon.png')} 
+            style={styles.logoImage} 
+            resizeMode="cover" 
+          />
         </View>
-
-        <Text style={styles.greetingText}>
-          {greeting} <Text style={styles.waveEmoji}>👋</Text>
-        </Text>
-        <Text style={styles.userNameText} numberOfLines={1}>
-          {displayName}
-        </Text>
+        <View style={styles.brandTitleContainer}>
+          <Text style={styles.brandText}>GRN Connect</Text>
+          <View style={styles.badgeContainer}>
+            <View style={styles.activePill} />
+            <Text style={styles.badgeText}>CONSTRUCTION SUITE</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Right side: Avatar / Profile Button */}
+      {/* Right side: Notification / Profile */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="User Profile"
+        accessibilityLabel="Notifications and profile"
         style={({ pressed }) => [
-          styles.avatarButton,
-          pressed && styles.avatarButtonPressed,
+          styles.notificationButton,
+          pressed && styles.notificationButtonPressed,
         ]}
         onPress={onProfilePress}
       >
-        <View style={styles.avatarInner}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={styles.activeDot} />
+        <Bell size={20} color="#0F172A" strokeWidth={2.4} />
+        <View style={styles.notificationDot} />
       </Pressable>
     </View>
   );
@@ -75,87 +52,85 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.light.surface,
+    paddingBottom: Spacing.sm,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderSubtle,
+    borderBottomColor: 'rgba(15, 23, 42, 0.05)',
   },
-  leftColumn: {
-    flex: 1,
-    paddingRight: Spacing.md,
-  },
-  brandRow: {
+  brandLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 12,
   },
-  brandIconWrapper: {
-    width: 22,
-    height: 22,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.light.primary,
-    alignItems: 'center',
+  logoWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    elevation: 2,
+    shadowColor: '#07566A',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  brandTitleContainer: {
     justifyContent: 'center',
   },
   brandText: {
-    fontSize: 11,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 1,
+  },
+  activePill: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  badgeText: {
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.8,
-    color: Colors.light.brand,
-    textTransform: 'uppercase',
+    color: '#64748B',
+    letterSpacing: 0.6,
   },
-  greetingText: {
-    ...Typography.caption,
-    fontWeight: '500',
-    color: Colors.light.textSecondary,
-  },
-  waveEmoji: {
-    fontSize: 13,
-  },
-  userNameText: {
-    ...Typography.sectionTitle,
-    color: Colors.light.brand,
-    marginTop: 2,
-  },
-  avatarButton: {
+  notificationButton: {
     position: 'relative',
-    padding: 2,
-    borderRadius: Radius.full,
-    minHeight: TouchTargets.min,
-    minWidth: TouchTargets.min,
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.05)',
   },
-  avatarButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.96 }],
+  notificationButtonPressed: {
+    backgroundColor: '#E2E8F0',
+    transform: [{ scale: 0.95 }],
   },
-  avatarInner: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.light.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.light.primary,
-  },
-  avatarText: {
-    ...Typography.body,
-    color: Colors.light.surface,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  activeDot: {
+  notificationDot: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 12,
-    height: 12,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.light.success,
-    borderWidth: 2,
-    borderColor: Colors.light.surface,
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E79524',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
 });

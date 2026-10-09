@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Radius } from '@/constants/theme';
 
 export type BadgeStatus = 'success' | 'warning' | 'error' | 'info';
 
@@ -27,14 +27,16 @@ export function StatusBadge({
     statusLower.includes('success') ||
     statusLower.includes('on track') ||
     statusLower.includes('active') ||
-    statusLower.includes('present')
+    statusLower.includes('present') ||
+    statusLower.includes('paid')
   ) {
     semanticType = 'success';
   } else if (
     statusLower.includes('warning') ||
     statusLower.includes('in progress') ||
     statusLower.includes('pending') ||
-    statusLower.includes('half day')
+    statusLower.includes('half day') ||
+    statusLower.includes('low stock')
   ) {
     semanticType = 'warning';
   } else if (
@@ -50,24 +52,32 @@ export function StatusBadge({
     switch (semanticType) {
       case 'success':
         return {
-          bg: Colors.light.successBg,
-          text: Colors.light.success,
+          bg: '#ECFDF5',
+          border: '#A7F3D0',
+          text: '#059669',
+          dot: '#10B981',
         };
       case 'warning':
         return {
-          bg: Colors.light.warningBg,
-          text: Colors.light.warning,
+          bg: '#FFFBEB',
+          border: '#FDE68A',
+          text: '#D97706',
+          dot: '#F59E0B',
         };
       case 'error':
         return {
-          bg: Colors.light.errorBg,
-          text: Colors.light.error,
+          bg: '#FEF2F2',
+          border: '#FECACA',
+          text: '#DC2626',
+          dot: '#EF4444',
         };
       case 'info':
       default:
         return {
-          bg: Colors.light.infoBg,
-          text: Colors.light.info,
+          bg: '#F0F9FF',
+          border: '#BAE6FD',
+          text: '#0284C7',
+          dot: '#0EA5E9',
         };
     }
   };
@@ -78,13 +88,13 @@ export function StatusBadge({
     <View
       style={[
         styles.badge,
-        { backgroundColor: colors.bg },
+        { backgroundColor: colors.bg, borderColor: colors.border },
         compact && styles.badgeCompact,
         style,
       ]}
     >
       {showDot && (
-        <View style={[styles.dot, { backgroundColor: colors.text }]} />
+        <View style={[styles.dot, { backgroundColor: colors.dot }]} />
       )}
       <Text
         style={[
@@ -103,16 +113,17 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: Radius.md,
+    borderRadius: Radius.full,
+    borderWidth: 1,
     gap: 6,
     alignSelf: 'flex-start',
   },
   badgeCompact: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.full,
     gap: 4,
   },
   dot: {
@@ -121,8 +132,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   text: {
-    ...Typography.caption,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'capitalize',
   },
   textCompact: {
     fontSize: 11,

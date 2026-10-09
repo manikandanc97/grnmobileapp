@@ -116,6 +116,7 @@ export function useAttendance(date: Date): UseAttendanceResult {
             status,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            owner_id: '',
           });
         }
         return next;

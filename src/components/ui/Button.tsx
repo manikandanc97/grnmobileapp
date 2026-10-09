@@ -1,7 +1,7 @@
 import React from 'react';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Pressable, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
-import { Colors, Typography, Spacing, Radius, TouchTargets } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius, TouchTargets, Shadows } from '@/constants/theme';
 
 interface ButtonProps {
   title: string;
@@ -28,8 +28,10 @@ export function Button({
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
-  const handlePressIn = () => { scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); };
-  const handlePressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
+  const handlePressIn = () => { // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); };
+  const handlePressOut = () => { // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
   
   return (
     <Pressable
@@ -50,7 +52,7 @@ export function Button({
         >
           {loading ? (
             <ActivityIndicator 
-              color={(variant === 'primary' || variant === 'danger') ? Colors.light.surface : Colors.light.textSecondary} 
+              color={(variant === 'primary' || variant === 'danger') ? '#FFFFFF' : Colors.light.textSecondary} 
               style={styles.icon} 
             />
           ) : (
@@ -74,40 +76,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
   },
   primary: {
     backgroundColor: Colors.light.primary,
+    ...Shadows.glow,
   },
   secondary: {
-    backgroundColor: Colors.light.surfaceMuted,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
   },
   danger: {
     backgroundColor: Colors.light.error,
+    elevation: 2,
+    shadowColor: Colors.light.error,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.light.borderStrong,
   },
   ghost: {
     backgroundColor: 'transparent',
   },
   disabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   text: {
     ...Typography.button,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   primaryText: {
-    color: Colors.light.surface,
+    color: '#FFFFFF',
   },
   secondaryText: {
-    color: Colors.light.textSecondary,
+    color: Colors.light.text,
   },
   dangerText: {
-    color: Colors.light.surface,
+    color: '#FFFFFF',
   },
   outlineText: {
     color: Colors.light.text,

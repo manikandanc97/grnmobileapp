@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { User, CreditCard, FileText, Bell, Settings, ChevronRight } from 'lucide-react-native';
+import { User, CreditCard, FileText, Bell, Settings, ChevronRight, Boxes, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -82,6 +82,20 @@ export default function MoreScreen() {
             onPress={() => router.push('/(app)/expenses')}
           />
           <SettingsRow
+            icon={<Boxes size={IconSizes.sm} color={Colors.light.info} />}
+            iconBgColor={Colors.light.infoBg}
+            title="Materials (All Sites)"
+            subtitle="Global inventory across all projects"
+            onPress={() => router.push('/(app)/materials')}
+          />
+          <SettingsRow
+            icon={<Users size={IconSizes.sm} color={Colors.light.primary} />}
+            iconBgColor={Colors.light.primaryBg}
+            title="Labor (All Sites)"
+            subtitle="Global worker logs & rates"
+            onPress={() => router.push('/(app)/labor')}
+          />
+          <SettingsRow
             icon={<FileText size={IconSizes.sm} color={Colors.light.brand} />}
             iconBgColor={Colors.light.brandBg}
             title="Reports"
@@ -120,67 +134,74 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 18,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
     marginBottom: Spacing.xl,
-    ...Shadows.sm,
+    ...Shadows.md,
   },
   profileCardPressed: {
-    backgroundColor: Colors.light.surfaceMuted,
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   },
   profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.light.primary,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: Colors.light.brand,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: Colors.light.brand,
+    borderColor: Colors.light.primary,
     marginRight: Spacing.md,
+    ...Shadows.sm,
   },
   profileAvatarText: {
-    color: Colors.light.surface,
-    ...Typography.sectionTitle,
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
   },
   profileInfo: {
     flex: 1,
     paddingRight: Spacing.sm,
   },
   profileName: {
-    ...Typography.cardTitle,
-    color: Colors.light.text,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
     marginBottom: 2,
+    letterSpacing: -0.3,
   },
   profileEmail: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
-    marginBottom: Spacing.sm,
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 6,
+    fontWeight: '500',
   },
   providerBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.full,
   },
   providerText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
+    fontWeight: '700',
+    color: Colors.light.brand,
     textTransform: 'capitalize',
+    letterSpacing: 0.2,
   },
   viewProfileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   viewProfileText: {
-    ...Typography.caption,
-    color: Colors.light.text,
-    fontWeight: '600',
+    fontSize: 12,
+    color: Colors.light.brand,
+    fontWeight: '700',
     marginRight: 2,
   },
 });

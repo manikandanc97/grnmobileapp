@@ -9,6 +9,14 @@ import { AuthProvider } from '@/providers/AuthProvider';
 import { AppLockProvider } from '@/providers/AppLockProvider';
 import { Colors } from '@/constants/theme';
 
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  '"shadow*" style props are deprecated',
+  'RNGoogleSignIn: you are calling a not-implemented method',
+  'Animated: `useNativeDriver` is not supported',
+]);
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {

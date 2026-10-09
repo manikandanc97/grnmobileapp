@@ -3,7 +3,7 @@ import { useMaterials } from './useMaterials';
 import { useExpenses } from './useExpenses';
 import { useSiteDetails } from './useSites';
 import { calculateBudgetSummary, BudgetSummary } from '@/lib/finance';
-import { getPayrollRecords } from '@/services/payroll';
+import { getSiteLaborHistory } from '@/services/siteLabor';
 import { dataSync } from '@/lib/dataSync';
 import { parseBudgetInput } from '@/services/sites';
 
@@ -25,11 +25,15 @@ export function useSiteBudget(siteId: string | undefined): UseSiteBudgetResult {
     if (!siteId) return;
     setPayrollLoading(true);
     try {
-      const records = await getPayrollRecords(siteId);
-      const total = records.reduce((acc, curr) => acc + curr.gross_amount, 0);
-      setPayrollTotal(total);
+      const history = await getSiteLaborHistory(siteId);
+      const totalLaborCost = history.reduce((sum, record) => {
+        return sum + (record.mason_count * record.mason_rate) +
+                     (record.men_helper_count * record.men_helper_rate) +
+                     (record.women_helper_count * record.women_helper_rate);
+      }, 0);
+      setPayrollTotal(totalLaborCost);
     } catch (e) {
-      console.warn('Could not fetch payroll records for budget:', e);
+      console.warn('Could not fetch site labor history for budget:', e);
     } finally {
       setPayrollLoading(false);
     }
@@ -43,13 +47,17 @@ export function useSiteBudget(siteId: string | undefined): UseSiteBudgetResult {
         return;
       }
       try {
-        const records = await getPayrollRecords(siteId);
+        const history = await getSiteLaborHistory(siteId);
         if (isMounted) {
-          const total = records.reduce((acc, curr) => acc + curr.gross_amount, 0);
-          setPayrollTotal(total);
+          const totalLaborCost = history.reduce((sum, record) => {
+            return sum + (record.mason_count * record.mason_rate) +
+                         (record.men_helper_count * record.men_helper_rate) +
+                         (record.women_helper_count * record.women_helper_rate);
+          }, 0);
+          setPayrollTotal(totalLaborCost);
         }
       } catch (e) {
-        console.warn('Could not fetch payroll records for budget:', e);
+        console.warn('Could not fetch site labor history for budget:', e);
       } finally {
         if (isMounted) {
           setPayrollLoading(false);
@@ -63,7 +71,7 @@ export function useSiteBudget(siteId: string | undefined): UseSiteBudgetResult {
   }, [siteId]);
 
   useEffect(() => {
-    const unsub = dataSync.subscribe('payroll', () => {
+    const unsub = dataSync.subscribe('site_labor', () => {
       void fetchPayroll();
     });
     return unsub;

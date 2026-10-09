@@ -47,6 +47,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -61,6 +62,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -75,6 +77,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Relationships: [];
       };
@@ -95,6 +98,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -112,6 +116,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -129,6 +134,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Relationships: [
           {
@@ -153,6 +159,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -166,6 +173,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -179,6 +187,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Relationships: [
           {
@@ -199,6 +208,7 @@ export type Database = {
           status: 'Present' | 'Absent' | 'Not Marked' | 'Half Day';
           created_at: string;
           updated_at: string;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -208,6 +218,7 @@ export type Database = {
           status?: 'Present' | 'Absent' | 'Not Marked' | 'Half Day';
           created_at?: string;
           updated_at?: string;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -217,6 +228,7 @@ export type Database = {
           status?: 'Present' | 'Absent' | 'Not Marked' | 'Half Day';
           created_at?: string;
           updated_at?: string;
+                  owner_id?: string;
         };
         Relationships: [
           {
@@ -251,6 +263,7 @@ export type Database = {
           status: 'Paid' | 'Pending';
           created_at: string;
           updated_at: string;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -267,6 +280,7 @@ export type Database = {
           status?: 'Paid' | 'Pending';
           created_at?: string;
           updated_at?: string;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -283,6 +297,7 @@ export type Database = {
           status?: 'Paid' | 'Pending';
           created_at?: string;
           updated_at?: string;
+                  owner_id?: string;
         };
         Relationships: [
           {
@@ -317,6 +332,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
+                  owner_id: string;
         };
         Insert: {
           id?: string;
@@ -333,6 +349,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Update: {
           id?: string;
@@ -349,6 +366,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
+                  owner_id?: string;
         };
         Relationships: [
           {
@@ -408,6 +426,103 @@ export type Database = {
           }
         ];
       };
+      site_labor_daily: {
+        Row: {
+          id: string;
+          owner_id: string;
+          site_id: string;
+          work_date: string;
+          mason_count: number;
+          mason_rate: number;
+          men_helper_count: number;
+          men_helper_rate: number;
+          women_helper_count: number;
+          women_helper_rate: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id?: string;
+          site_id: string;
+          work_date: string;
+          mason_count?: number;
+          mason_rate?: number;
+          men_helper_count?: number;
+          men_helper_rate?: number;
+          women_helper_count?: number;
+          women_helper_rate?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          site_id?: string;
+          work_date?: string;
+          mason_count?: number;
+          mason_rate?: number;
+          men_helper_count?: number;
+          men_helper_rate?: number;
+          women_helper_count?: number;
+          women_helper_rate?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'site_labor_daily_site_id_fkey';
+            columns: ['site_id'];
+            isOneToOne: false;
+            referencedRelation: 'sites';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      site_cash_transactions: {
+        Row: {
+          id: string;
+          owner_id: string;
+          site_id: string;
+          transaction_type: 'INWARD' | 'OUTWARD';
+          transaction_date: string;
+          particulars: string;
+          amount: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id?: string;
+          site_id: string;
+          transaction_type: 'INWARD' | 'OUTWARD';
+          transaction_date: string;
+          particulars: string;
+          amount: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          site_id?: string;
+          transaction_type?: 'INWARD' | 'OUTWARD';
+          transaction_date?: string;
+          particulars?: string;
+          amount?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'site_cash_transactions_site_id_fkey';
+            columns: ['site_id'];
+            isOneToOne: false;
+            referencedRelation: 'sites';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -430,3 +545,5 @@ export type AttendanceRow = Tables<'attendance'>;
 export type PayrollRecordRow = Tables<'payroll_records'>;
 export type ExpenseRow = Tables<'expenses'>;
 export type NotificationRow = Tables<'notifications'>;
+export type SiteLaborDailyRow = Tables<'site_labor_daily'>;
+export type SiteCashTransactionRow = Tables<'site_cash_transactions'>;

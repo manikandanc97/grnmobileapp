@@ -228,11 +228,18 @@ export default function ExpensesScreen() {
       <ScreenHeader
         title="Expenses"
         subtitle={siteId ? "Project expenses" : "Track all project spending"}
+        showBack={Boolean(siteId)}
         actionButton={
           <View style={{ width: 140 }}>
             <Button
               title="Add Expense"
-              onPress={() => router.push('/(app)/expenses/add')}
+              onPress={() =>
+                router.push(
+                  siteId
+                    ? ({ pathname: '/(app)/expenses/add', params: { siteId } } as any)
+                    : ('/(app)/expenses/add' as any)
+                )
+              }
               icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
               style={{ height: 40 }}
             />

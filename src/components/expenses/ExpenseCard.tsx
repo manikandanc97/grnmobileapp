@@ -4,7 +4,7 @@ import { MapPin, Calendar, CreditCard, Pencil, Trash2, FolderOpen } from 'lucide
 import { ExpenseItem } from '@/types/dashboard';
 import { Money } from '@/components/ui/Money';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 
 export interface ExpenseCardProps {
   expense: ExpenseItem;
@@ -27,7 +27,7 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
     >
       <View style={styles.header}>
         <View style={styles.categoryBadge}>
-          <FolderOpen size={10} color={Colors.light.textSecondary} />
+          <FolderOpen size={11} color="#64748B" />
           <Text style={styles.categoryText}>{expense.category}</Text>
         </View>
         <StatusBadge status={expense.paymentStatus} />
@@ -37,12 +37,12 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
 
       <View style={styles.subtextRow}>
         <View style={styles.detailItem}>
-          <MapPin size={12} color={Colors.light.textSecondary} />
+          <MapPin size={12} color="#64748B" />
           <Text style={styles.detailText} numberOfLines={1}>{expense.siteName}</Text>
         </View>
         <Text style={styles.bulletSeparator}>•</Text>
         <View style={styles.detailItem}>
-          <Calendar size={12} color={Colors.light.textSecondary} />
+          <Calendar size={12} color="#64748B" />
           <Text style={styles.detailText}>{formattedDate}</Text>
         </View>
       </View>
@@ -51,7 +51,7 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
         <View style={styles.footerLeft}>
           <Money amount={expense.amount} style={styles.amount} />
           <View style={styles.paymentMethodPill}>
-            <CreditCard size={12} color={Colors.light.textSecondary} />
+            <CreditCard size={11} color="#64748B" />
             <Text style={styles.paymentMethodText}>{expense.paymentMethod}</Text>
           </View>
         </View>
@@ -73,7 +73,7 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
                   onEdit();
                 }}
               >
-                <Pencil size={IconSizes.sm} color={Colors.light.primary} />
+                <Pencil size={13} color={Colors.light.brand} strokeWidth={2.2} />
               </Pressable>
             )}
 
@@ -92,7 +92,7 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
                   onDelete();
                 }}
               >
-                <Trash2 size={IconSizes.sm} color={Colors.light.error} />
+                <Trash2 size={13} color={Colors.light.error} strokeWidth={2.2} />
               </Pressable>
             )}
           </View>
@@ -104,51 +104,52 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 16,
     borderWidth: 1,
-    borderColor: Colors.light.border,
-    marginBottom: Spacing.md,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
+    marginBottom: 12,
     ...Shadows.sm,
   },
   pressed: {
     opacity: 0.9,
-    transform: [{ scale: 0.99 }],
+    transform: [{ scale: 0.98 }],
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.xs,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.light.borderSubtle,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.xs,
     gap: 4,
   },
   categoryText: {
-    ...Typography.caption,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   title: {
-    ...Typography.cardTitle,
-    color: Colors.light.text,
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   subtextRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   detailItem: {
     flexDirection: 'row',
@@ -157,29 +158,30 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   detailText: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '500',
   },
   bulletSeparator: {
     fontSize: 10,
-    color: Colors.light.textMuted,
+    color: '#CBD5E1',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     borderTopWidth: 1,
-    borderTopColor: Colors.light.borderSubtle,
-    paddingTop: Spacing.sm,
+    borderTopColor: 'rgba(15, 23, 42, 0.05)',
+    paddingTop: 10,
   },
   footerLeft: {
     flex: 1,
+    gap: 2,
   },
   amount: {
-    ...Typography.sectionTitle,
-    color: Colors.light.text,
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
   },
   paymentMethodPill: {
     flexDirection: 'row',
@@ -187,33 +189,31 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   paymentMethodText: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
   },
   cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 8,
   },
   actionPill: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+    backgroundColor: '#F1F5F9',
   },
   actionPillPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.96 }],
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
   editPill: {
-    backgroundColor: Colors.light.primaryBg,
-    borderColor: 'transparent',
+    backgroundColor: '#F0F9FF',
   },
   deletePill: {
-    backgroundColor: Colors.light.errorBg,
-    borderColor: 'transparent',
+    backgroundColor: '#FEF2F2',
   },
 });

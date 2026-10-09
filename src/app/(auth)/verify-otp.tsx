@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Alert, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -72,14 +73,12 @@ export default function VerifyOtpScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScreenWrapper style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
+        <KeyboardAwareScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            enableOnAndroid={true}
+            extraScrollHeight={Platform.OS === 'ios' ? 24 : 60}
           >
             <View style={styles.header}>
               <ThemedText type="title" style={styles.title}>Verify your number</ThemedText>
@@ -124,8 +123,7 @@ export default function VerifyOtpScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </ScreenWrapper>
     </ThemedView>
   );
@@ -149,22 +147,33 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.five,
+    marginBottom: Spacing.xl,
+    marginTop: Spacing.md,
   },
   title: {
-    fontSize: 28,
-    marginBottom: Spacing.two,
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 6,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
+    color: '#64748B',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   phoneText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
   },
   formContainer: {
     width: '100%',
@@ -173,23 +182,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verifyButton: {
-    marginTop: Spacing.two,
+    marginTop: Spacing.md,
   },
   actionsContainer: {
     alignItems: 'center',
-    marginTop: Spacing.four,
-    gap: Spacing.three,
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
   },
   resendText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#64748B',
   },
   actionButton: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   actionText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

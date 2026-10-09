@@ -24,8 +24,10 @@ export function FilterButton({
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
-  const handlePressIn = () => { scale.value = withSpring(0.94, { damping: 15, stiffness: 300 }); };
-  const handlePressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
+  const handlePressIn = () => { // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(0.94, { damping: 15, stiffness: 300 }); };
+  const handlePressOut = () => { // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
   return (
     <AnimatedPressable onPressIn={handlePressIn} onPressOut={handlePressOut}
       style={({ pressed }: { pressed: boolean }) => [

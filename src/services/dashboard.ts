@@ -4,7 +4,7 @@ import { ActivityItem } from '@/types/dashboard';
 export interface DashboardMetrics {
   activeSites: number;
   totalProjects: number;
-  workersPresent: number;
+  totalActiveLabor: number;
   thisMonthExpenses: number;
 }
 
@@ -39,7 +39,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     totalProjectsResult,
     activeSitesResult,
     expensesResult,
-    attendanceResult
+    laborResult
   ] = await Promise.all([
     // 1. Total Projects (non-deleted)
     supabase.from('sites').select('*', { count: 'exact', head: true }).is('deleted_at', null),
@@ -50,8 +50,8 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     // 3. This Month Expenses
     fetchThisMonthExpenses(),
     
-    // 4. Workers Present Today
-    supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', todayStr).eq('status', 'Present')
+    // 4. Total Active Labor for Today
+    supabase.from('site_labor_daily').select('mason_count, men_helper_count, women_helper_count').eq('work_date', todayStr)
   ]);
 
   if (totalProjectsResult.error) throw totalProjectsResult.error;
@@ -59,14 +59,19 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   if (expensesResult.error) {
     console.warn('[dashboard] Non-critical error fetching monthly expenses:', expensesResult.error);
   }
-  if (attendanceResult.error) throw attendanceResult.error;
+  if (laborResult.error) {
+    console.warn('[dashboard] Non-critical error fetching labor data:', laborResult.error);
+  }
 
   const thisMonthExpenses = expensesResult.data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+  const totalActiveLabor = laborResult.data?.reduce((sum, item) => {
+    return sum + (item.mason_count || 0) + (item.men_helper_count || 0) + (item.women_helper_count || 0);
+  }, 0) || 0;
 
   return {
     activeSites: activeSitesResult.count || 0,
     totalProjects: totalProjectsResult.count || 0,
-    workersPresent: attendanceResult.count || 0,
+    totalActiveLabor,
     thisMonthExpenses,
   };
 }
@@ -74,21 +79,17 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 export async function getRecentActivity(): Promise<ActivityItem[]> {
   const [
     materialsResult,
-    workersResult,
     expensesResult,
-    attendanceResult
+    laborResult
   ] = await Promise.all([
     // Fetch recent material added
     supabase.from('materials').select('id, name, created_at, sites(name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(3),
     
-    // Fetch recent workers added
-    supabase.from('workers').select('id, name, created_at, sites(name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(3),
-    
     // Fetch recent expenses
     supabase.from('expenses').select('id, title, created_at, sites(name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(3),
     
-    // Fetch recent attendance
-    supabase.from('attendance').select('id, date, created_at, sites(name)').order('created_at', { ascending: false }).limit(3)
+    // Fetch recent labor updates
+    supabase.from('site_labor_daily').select('id, mason_count, men_helper_count, women_helper_count, updated_at, sites(name)').order('updated_at', { ascending: false }).limit(3)
   ]);
 
   const activities: ActivityItem[] = [];
@@ -105,18 +106,6 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     });
   }
 
-  if (workersResult.data) {
-    workersResult.data.forEach(w => {
-      activities.push({
-        id: `work-${w.id}`,
-        title: `New worker joined: ${w.name}`,
-        siteName: (w.sites as any)?.name || 'Unknown Site',
-        timestamp: w.created_at,
-        type: 'labor'
-      });
-    });
-  }
-
   if (expensesResult.data) {
     expensesResult.data.forEach(e => {
       activities.push({
@@ -129,13 +118,14 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     });
   }
 
-  if (attendanceResult.data) {
-    attendanceResult.data.forEach(a => {
+  if (laborResult.data) {
+    laborResult.data.forEach(l => {
+      const totalWorkers = (l.mason_count || 0) + (l.men_helper_count || 0) + (l.women_helper_count || 0);
       activities.push({
-        id: `att-${a.id}`,
-        title: `Attendance marked for ${a.date}`,
-        siteName: (a.sites as any)?.name || 'Unknown Site',
-        timestamp: a.created_at,
+        id: `labor-${l.id}`,
+        title: `Labor logged: ${totalWorkers} workers`,
+        siteName: (l.sites as any)?.name || 'Unknown Site',
+        timestamp: l.updated_at,
         type: 'labor'
       });
     });

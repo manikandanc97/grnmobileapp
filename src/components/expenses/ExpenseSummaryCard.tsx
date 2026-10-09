@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { formatCurrency } from '@/lib/finance';
-import { Colors, Spacing, Typography, Radius, Shadows } from '@/constants/theme';
-import { Clock, Building2 } from 'lucide-react-native';
+import { Colors, Spacing, Radius, Shadows } from '@/constants/theme';
+import { Clock, Building2, Calendar } from 'lucide-react-native';
 
 interface ExpenseSummaryCardProps {
   totalAmount: number;
@@ -32,13 +32,13 @@ export function ExpenseSummaryCard({
       <View style={styles.header}>
         <Pressable
           onPress={onPressTotal}
-          style={({ pressed }) => [pressed && styles.pressedState]}
+          style={({ pressed }) => [styles.totalPressable, pressed && styles.pressedState]}
         >
-          <Text style={styles.title}>Total Expenses</Text>
+          <Text style={styles.title}>TOTAL EXPENSES</Text>
           <Text style={styles.totalValue}>{formatCurrency(totalAmount)}</Text>
         </Pressable>
         <View style={styles.sitesBadge}>
-          <Building2 size={12} color={Colors.light.textSecondary} />
+          <Building2 size={12} color={Colors.light.brand} />
           <Text style={styles.sitesBadgeText}>{activeSites} Sites</Text>
         </View>
       </View>
@@ -53,6 +53,7 @@ export function ExpenseSummaryCard({
           onPress={onPressThisMonth}
         >
           <View style={styles.statLabelRow}>
+            <Calendar size={12} color={isThisMonthSelected ? Colors.light.brand : '#64748B'} />
             <Text style={[styles.statLabel, isThisMonthSelected && styles.statLabelActive]}>
               This Month
             </Text>
@@ -74,13 +75,13 @@ export function ExpenseSummaryCard({
           onPress={onPressPending}
         >
           <View style={styles.statLabelRow}>
-            <Clock size={12} color={isPendingSelected ? Colors.light.error : Colors.light.textSecondary} />
-            <Text style={[styles.statLabel, isPendingSelected && { color: Colors.light.error, fontWeight: '700' }]}>
+            <Clock size={12} color={isPendingSelected ? '#EF4444' : '#64748B'} />
+            <Text style={[styles.statLabel, isPendingSelected && { color: '#DC2626', fontWeight: '700' }]}>
               Pending
             </Text>
-            {isPendingSelected && <View style={[styles.activeDot, { backgroundColor: Colors.light.error }]} />}
+            {isPendingSelected && <View style={[styles.activeDot, { backgroundColor: '#EF4444' }]} />}
           </View>
-          <Text style={[styles.statValue, { color: Colors.light.error }]}>
+          <Text style={[styles.statValue, { color: '#EF4444' }]}>
             {formatCurrency(pendingAmount)}
           </Text>
         </Pressable>
@@ -91,103 +92,115 @@ export function ExpenseSummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 20,
     borderWidth: 1,
-    borderColor: Colors.light.border,
-    ...Shadows.sm,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
+    ...Shadows.md,
     marginBottom: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Spacing.md,
+    marginBottom: 16,
+  },
+  totalPressable: {
+    gap: 4,
   },
   title: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.6,
   },
   totalValue: {
-    ...Typography.display,
-    color: Colors.light.text,
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.8,
   },
   sitesBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.light.borderSubtle,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
   },
   sitesBadgeText: {
-    ...Typography.caption,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.light.brand,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: Colors.light.surfaceMuted,
-    borderRadius: Radius.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: Radius.lg,
     padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
   },
   statItem: {
     flex: 1,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: Radius.md,
   },
   statItemActive: {
-    backgroundColor: Colors.light.warningBg,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.light.warning,
+    borderColor: Colors.light.brand,
+    elevation: 2,
+    shadowColor: Colors.light.brand,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statItemPendingActive: {
-    backgroundColor: Colors.light.errorBg,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.light.error,
+    borderColor: '#EF4444',
+    elevation: 2,
+    shadowColor: '#EF4444',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    gap: 4,
+    gap: 5,
   },
   statLabel: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
   statLabelActive: {
     color: Colors.light.brand,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   activeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: Colors.light.brand,
-    marginLeft: 4,
+    marginLeft: 2,
   },
   statValue: {
-    ...Typography.body,
-    fontWeight: '700',
-    color: Colors.light.text,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   divider: {
     width: 1,
-    backgroundColor: Colors.light.borderSubtle,
-    marginVertical: Spacing.xs,
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
+    marginVertical: 4,
   },
   pressedState: {
     opacity: 0.7,
-    transform: [{ scale: 0.98 }],
   },
 });

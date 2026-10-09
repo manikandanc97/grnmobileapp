@@ -238,11 +238,18 @@ export default function MaterialsScreen() {
       <ScreenHeader
         title="Materials"
         subtitle={siteId ? 'Materials for selected site' : 'Track materials across your sites'}
+        showBack={Boolean(siteId)}
         actionButton={
           <View style={{ width: 150 }}>
             <Button
               title="Add Material"
-              onPress={() => router.push('/(app)/materials/add')}
+              onPress={() =>
+                router.push(
+                  siteId
+                    ? ({ pathname: '/(app)/materials/add', params: { siteId } } as any)
+                    : ('/(app)/materials/add' as any)
+                )
+              }
               icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
               style={{ height: 40 }}
             />
@@ -386,30 +393,32 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     width: 140,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
     ...Shadows.sm,
   },
   summaryIconBox: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
   },
   summaryValue: {
-    ...Typography.sectionTitle,
-    color: Colors.light.text,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
     marginBottom: 2,
+    letterSpacing: -0.4,
   },
   summaryLabel: {
     ...Typography.caption,
-    color: Colors.light.textSecondary,
-    fontWeight: '500',
+    color: '#64748B',
+    fontWeight: '600',
   },
   listContent: {
     paddingBottom: Spacing['2xl'] * 2,
@@ -418,11 +427,11 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   materialCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
     ...Shadows.sm,
   },
   materialCardPressed: {
@@ -474,13 +483,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    backgroundColor: Colors.light.surfaceMuted,
-    borderRadius: Radius.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 10,
     marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.borderSubtle,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
   },
   financialCol: {
     flex: 1,

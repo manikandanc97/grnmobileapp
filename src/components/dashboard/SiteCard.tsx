@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MapPin, ChevronRight, Pencil, Trash2 } from 'lucide-react-native';
+import { Building2, ChevronRight, MapPin, Pencil, Trash2 } from 'lucide-react-native';
 import { SiteItem } from '@/types/dashboard';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Colors, Typography, Spacing, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 
 interface SiteCardProps {
   site: SiteItem;
@@ -13,282 +12,221 @@ interface SiteCardProps {
 }
 
 export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
-  const getTypeBadgeStyle = (type: SiteItem['type']) => {
-    switch (type) {
-      case 'Residential':
-        return { bg: Colors.light.infoBg, text: Colors.light.info };
-      case 'Commercial':
-        return { bg: Colors.light.primaryBg, text: Colors.light.primary };
-      case 'Renovation':
-        return { bg: Colors.light.warningBg, text: Colors.light.warning };
-      default:
-        return { bg: Colors.light.surfaceMuted, text: Colors.light.textSecondary };
-    }
+  const getProgressColor = (progress: number) => {
+    if (progress >= 80) return '#10B981';
+    if (progress >= 40) return '#E79524';
+    return '#0284C7';
   };
 
-  const typeStyle = getTypeBadgeStyle(site.type);
+  const progressColor = getProgressColor(site.progress);
 
   return (
     <Pressable
-      accessibilityLabel={`Site ${site.name}, ${site.location}, ${site.progress}% complete`}
+      accessibilityLabel={`Site ${site.name}, ${site.type}, ${site.progress}% complete`}
       style={({ pressed }) => [
         styles.card,
         pressed && styles.cardPressed,
       ]}
       onPress={() => onPress?.(site)}
     >
-      <View style={styles.topRow}>
-        <View style={styles.titleInfo}>
-          <Text style={styles.siteName}>{site.name}</Text>
-          <View style={styles.locationRow}>
-            <MapPin size={IconSizes.sm} color={Colors.light.textSecondary} strokeWidth={2.2} />
-            <Text style={styles.locationText}>{site.location}</Text>
+      <View style={styles.cardTop}>
+        <View style={styles.iconWrapper}>
+          <Building2 size={22} color={Colors.light.brand} strokeWidth={2.2} />
+        </View>
+
+        <View style={styles.titleWrapper}>
+          <View style={styles.nameRow}>
+            <Text style={styles.siteName} numberOfLines={1}>{site.name}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>{site.type}</Text>
+            </View>
+            {site.location ? (
+              <View style={styles.locationWrapper}>
+                <MapPin size={11} color="#64748B" />
+                <Text style={styles.locationText} numberOfLines={1}>{site.location}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
-        <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
-          <Text style={[styles.typeBadgeText, { color: typeStyle.text }]}>
-            {site.type}
-          </Text>
+        <View style={styles.progressPercentWrap}>
+          <Text style={[styles.progressNumber, { color: progressColor }]}>{site.progress}%</Text>
+          <ChevronRight size={16} color="#94A3B8" />
         </View>
       </View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressLabelRow}>
-          <Text style={styles.progressLabel}>Progress</Text>
-          <Text style={styles.progressPercentage}>{site.progress}%</Text>
-        </View>
-
+      {/* Progress Track */}
+      <View style={styles.progressSection}>
         <View style={styles.progressTrack}>
           <View
             style={[
               styles.progressFill,
               {
                 width: `${Math.min(100, Math.max(0, site.progress))}%`,
+                backgroundColor: progressColor,
               },
             ]}
           />
         </View>
       </View>
 
-      {site.budget ? (
-        <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Project Budget</Text>
-          <Text style={styles.budgetValue}>{site.budget}</Text>
+      {/* Optional action buttons if provided */}
+      {(onEdit || onDelete) && (
+        <View style={styles.actionRow}>
+          {onEdit && (
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+              onPress={(e) => {
+                e.stopPropagation();
+                onEdit(site);
+              }}
+              hitSlop={8}
+            >
+              <Pencil size={13} color={Colors.light.brand} />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
+              onPress={(e) => {
+                e.stopPropagation();
+                onDelete(site);
+              }}
+              hitSlop={8}
+            >
+              <Trash2 size={13} color={Colors.light.error} />
+              <Text style={[styles.actionButtonText, { color: Colors.light.error }]}>Delete</Text>
+            </Pressable>
+          )}
         </View>
-      ) : null}
-
-      <View style={styles.footerRow}>
-        <StatusBadge status={site.status} />
-
-        {onEdit || onDelete ? (
-          <View style={styles.cardActionsRow}>
-            {onEdit && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Edit site ${site.name}`}
-                style={({ pressed }) => [
-                  styles.actionPill,
-                  styles.editPill,
-                  pressed && styles.actionPillPressed,
-                ]}
-                hitSlop={6}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onEdit(site);
-                }}
-              >
-                <Pencil size={IconSizes.sm} color={Colors.light.brand} strokeWidth={2.4} />
-                <Text style={styles.editPillText}>Edit</Text>
-              </Pressable>
-            )}
-
-            {onDelete && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Delete site ${site.name}`}
-                style={({ pressed }) => [
-                  styles.actionPill,
-                  styles.deletePill,
-                  pressed && styles.actionPillPressed,
-                ]}
-                hitSlop={6}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onDelete(site);
-                }}
-              >
-                <Trash2 size={IconSizes.sm} color={Colors.light.error} strokeWidth={2.4} />
-                <Text style={styles.deletePillText}>Delete</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <View style={styles.actionPrompt}>
-            <Text style={styles.actionPromptText}>Details</Text>
-            <ChevronRight size={IconSizes.sm + 2} color={Colors.light.textSecondary} />
-          </View>
-        )}
-      </View>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
+    marginBottom: 12,
     ...Shadows.sm,
-    marginBottom: Spacing.md,
   },
   cardPressed: {
-    transform: [{ scale: 0.99 }],
-    backgroundColor: Colors.light.surfaceMuted,
+    transform: [{ scale: 0.98 }],
+    backgroundColor: '#F8FAFC',
+    opacity: 0.9,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
-  },
-  titleInfo: {
-    flex: 1,
-    paddingRight: Spacing.sm,
-  },
-  siteName: {
-    ...Typography.cardTitle,
-    color: Colors.light.brand,
-    marginBottom: 4,
-  },
-  locationRow: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleWrapper: {
+    flex: 1,
     gap: 4,
   },
-  locationText: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
-    fontWeight: '500',
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  siteName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   typeBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.xs,
   },
   typeBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    color: '#475569',
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  progressContainer: {
-    marginBottom: Spacing.sm,
-  },
-  progressLabelRow: {
+  locationWrapper: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 3,
+    flexShrink: 1,
   },
-  progressLabel: {
-    ...Typography.caption,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
+  locationText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
   },
-  progressPercentage: {
-    ...Typography.caption,
-    fontWeight: '800',
-    color: Colors.light.brand,
+  progressPercentWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressNumber: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  progressSection: {
+    marginTop: 12,
   },
   progressTrack: {
     height: 6,
-    backgroundColor: Colors.light.borderSubtle,
-    borderRadius: Radius.full,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.full,
+    borderRadius: 3,
   },
-  budgetRow: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.light.borderSubtle,
-  },
-  budgetLabel: {
-    ...Typography.caption,
-    fontWeight: '500',
-    color: Colors.light.textSecondary,
-  },
-  budgetValue: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.light.brand,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.borderSubtle,
-    paddingTop: Spacing.sm,
+    borderTopColor: 'rgba(15, 23, 42, 0.04)',
   },
-  actionPrompt: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minHeight: TouchTargets.min,
-  },
-  actionPromptText: {
-    ...Typography.caption,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  actionPill: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: Radius.sm,
-    borderWidth: 1,
-    minHeight: TouchTargets.min,
+    backgroundColor: '#F1F5F9',
   },
-  actionPillPressed: {
-    opacity: 0.75,
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
   },
-  editPill: {
-    backgroundColor: Colors.light.primaryBg,
-    borderColor: Colors.light.border,
+  actionButtonPressed: {
+    opacity: 0.7,
   },
-  editPillText: {
-    ...Typography.caption,
+  actionButtonText: {
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.light.brand,
-  },
-  deletePill: {
-    backgroundColor: Colors.light.errorBg,
-    borderColor: Colors.light.error,
-  },
-  deletePillText: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.light.error,
   },
 });

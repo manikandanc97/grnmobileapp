@@ -10,6 +10,9 @@ export type SyncEntity =
   | 'expenses'
   | 'attendance'
   | 'payroll'
+  | 'site_labor'
+  | 'site_budget'
+  | 'site_cash'
   | 'dashboard';
 
 export type SyncAction = 'create' | 'update' | 'delete' | 'invalidate';
@@ -21,6 +24,9 @@ export interface EntityPayloadMap {
   expenses: ExpenseWithSite;
   attendance: AttendanceRow;
   payroll: any;
+  site_labor: any;
+  site_budget: undefined;
+  site_cash: any;
   dashboard: undefined;
 }
 
@@ -121,6 +127,29 @@ class DataSyncEngine {
    */
   public markClean(entity: SyncEntity): void {
     this.staleEntities.delete(entity);
+  }
+
+  /**
+   * Clears all state and invalidates all entities. Used on logout.
+   */
+  public clearAll(): void {
+    const allEntities: SyncEntity[] = [
+      'workers', 'sites', 'materials', 'expenses', 'attendance', 'payroll', 'site_labor', 'site_cash', 'dashboard'
+    ];
+    allEntities.forEach(e => {
+      this.staleEntities.add(e);
+      const set = this.listeners.get(e);
+      if (set) {
+        const event: SyncEvent<any> = { entity: e, action: 'invalidate' };
+        set.forEach(listener => {
+          try {
+            listener(event);
+          } catch (err) {
+            console.error(`[DataSync] Error in invalidation listener for ${e}:`, err);
+          }
+        });
+      }
+    });
   }
 }
 

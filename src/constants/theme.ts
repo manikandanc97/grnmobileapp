@@ -183,10 +183,12 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 22,
+  '2xl': 28,
   full: 9999,
 } as const;
 
@@ -200,24 +202,31 @@ export const Shadows = {
   },
   sm: {
     shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   md: {
     shadowColor: '#07566A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 4,
   },
   lg: {
     shadowColor: '#07566A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  glow: {
+    shadowColor: '#E79524',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 5,
   },
 } as const;
 

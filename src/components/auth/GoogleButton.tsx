@@ -1,9 +1,7 @@
 import React from 'react';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, View, Text } from 'react-native';
+import { Spacing, Radius, Shadows } from '@/constants/theme';
 import { Image } from 'expo-image';
 
 interface GoogleButtonProps extends TouchableOpacityProps {
@@ -14,40 +12,37 @@ interface GoogleButtonProps extends TouchableOpacityProps {
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export function GoogleButton({ title = "Continue with Google", loading = false, disabled, style, ...props }: GoogleButtonProps) {
-  const theme = useTheme();
-  const backgroundColor = theme.backgroundElement;
-  const borderColor = theme.border;
-  const textColor = theme.text;
-
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
   const handlePressIn = (e: any) => { 
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 300 }); 
+    // eslint-disable-next-line react-hooks/immutability
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 }); 
     if (props.onPressIn) props.onPressIn(e);
   };
   const handlePressOut = (e: any) => { 
+    // eslint-disable-next-line react-hooks/immutability
     scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
     if (props.onPressOut) props.onPressOut(e);
   };
 
-
   return (
-    <AnimatedTouchableOpacity onPressIn={handlePressIn} onPressOut={handlePressOut}
+    <AnimatedTouchableOpacity 
+      onPressIn={handlePressIn} 
+      onPressOut={handlePressOut}
       style={[
         styles.button,
-        { backgroundColor, borderColor },
         (disabled || loading) && styles.disabled,
-        style,
         animatedStyle,
+        style,
       ]}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={textColor} />
+        <ActivityIndicator color="#0F172A" />
       ) : (
         <View style={styles.contentContainer}>
           <Image 
@@ -55,9 +50,9 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
             style={styles.icon} 
             contentFit="contain" 
           />
-          <ThemedText style={[styles.text, { color: textColor }]}>
+          <Text style={styles.text}>
             {title}
-          </ThemedText>
+          </Text>
         </View>
       )}
     </AnimatedTouchableOpacity>
@@ -66,16 +61,19 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
 
 const styles = StyleSheet.create({
   button: {
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1,
+    height: 52,
+    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.md,
+    ...Shadows.sm,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   contentContainer: {
     flexDirection: 'row',
@@ -83,12 +81,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: {
-    width: 24,
-    height: 24,
-    marginRight: Spacing.two,
+    width: 22,
+    height: 22,
+    marginRight: 10,
   },
   text: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });

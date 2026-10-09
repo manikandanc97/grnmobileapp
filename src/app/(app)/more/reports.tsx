@@ -24,8 +24,8 @@ export default function ReportsScreen() {
     },
     {
       id: 'labor',
-      title: 'Labor Attendance',
-      description: 'Workforce statistics and manpower reports',
+      title: 'Site Labor Summary',
+      description: 'Site-level labor counts and cost estimations',
       icon: <Users size={IconSizes.md} color={Colors.light.success} />,
       bgColor: Colors.light.successBg,
     },

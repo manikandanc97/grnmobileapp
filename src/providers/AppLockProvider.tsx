@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { AppState, AppStateStatus, StyleSheet, View, Text } from 'react-native';
+import { AppState, StyleSheet, View, Text } from 'react-native';
 import { Shield } from 'lucide-react-native';
 import { useAuth } from './AuthProvider';
 import { appLockService, AutoLockTimeout, getTimeoutMs } from '@/services/appLock';
@@ -128,7 +128,8 @@ const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
   };
 
   useEffect(() => {
-    handleUnlock();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void handleUnlock();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

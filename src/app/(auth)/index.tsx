@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Platform, Alert } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import * as Linking from 'expo-linking';
@@ -128,14 +129,12 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScreenWrapper style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
+        <KeyboardAwareScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            enableOnAndroid={true}
+            extraScrollHeight={Platform.OS === 'ios' ? 24 : 60}
           >
             <AuthHeader
               title="Welcome back"
@@ -174,8 +173,7 @@ export default function LoginScreen() {
                 Secure access for GRN Constructions team
               </ThemedText>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </ScreenWrapper>
     </ThemedView>
   );

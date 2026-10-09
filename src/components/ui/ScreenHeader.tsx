@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Typography, Spacing, IconSizes, TouchTargets } from '@/constants/theme';
+import { Spacing, TouchTargets, Radius } from '@/constants/theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -12,7 +12,13 @@ interface ScreenHeaderProps {
   showBack?: boolean;
 }
 
-export function ScreenHeader({ title, subtitle, actionButton, showBorder = true, showBack = false }: ScreenHeaderProps) {
+export function ScreenHeader({ 
+  title, 
+  subtitle, 
+  actionButton, 
+  showBorder = true, 
+  showBack = false 
+}: ScreenHeaderProps) {
   const router = useRouter();
 
   return (
@@ -22,8 +28,10 @@ export function ScreenHeader({ title, subtitle, actionButton, showBorder = true,
           style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
           onPress={() => router.back()}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <ArrowLeft size={IconSizes.lg} color={Colors.light.text} />
+          <ArrowLeft size={18} color="#0F172A" strokeWidth={2.5} />
         </Pressable>
       )}
       <View style={styles.headerTextContainer}>
@@ -43,27 +51,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: Spacing.md, // 16px
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.light.surface,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
+    backgroundColor: '#FFFFFF',
   },
   headerBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderSubtle,
+    borderBottomColor: 'rgba(15, 23, 42, 0.05)',
   },
   headerTextContainer: {
     flex: 1,
-    paddingRight: Spacing.md,
+    paddingRight: Spacing.sm,
   },
   headerTitle: {
-    ...Typography.pageTitle,
-    color: Colors.light.text,
-    marginBottom: Spacing.xs,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.4,
   },
   headerSubtitle: {
-    ...Typography.secondary,
-    color: Colors.light.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 2,
   },
   actionContainer: {
     justifyContent: 'center',
@@ -71,14 +83,17 @@ const styles = StyleSheet.create({
     minHeight: TouchTargets.min,
   },
   backButton: {
-    marginRight: Spacing.md,
-    minHeight: TouchTargets.min,
-    minWidth: TouchTargets.min,
+    width: 38,
+    height: 38,
+    borderRadius: Radius.md,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: -Spacing.sm, // pull slightly to left to align visual left edge
+    marginRight: Spacing.md,
   },
   backButtonPressed: {
-    opacity: 0.5,
+    opacity: 0.7,
+    backgroundColor: '#E2E8F0',
+    transform: [{ scale: 0.95 }],
   },
 });

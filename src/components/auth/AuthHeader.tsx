@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Radius, Shadows } from '@/constants/theme';
 
 interface AuthHeaderProps {
   title: string;
@@ -12,13 +12,15 @@ interface AuthHeaderProps {
 export function AuthHeader({ title, subtitle }: AuthHeaderProps) {
   return (
     <View style={styles.container}>
-      <Image
-        source={require('@/assets/images/logo.jpg')}
-        style={styles.logo}
-        contentFit="contain"
-      />
+      <View style={styles.logoCard}>
+        <Image
+          source={require('@/assets/images/logo.jpg')}
+          style={styles.logo}
+          contentFit="contain"
+        />
+      </View>
       <View style={styles.textContainer}>
-        <ThemedText type="title" style={styles.title}>{title}</ThemedText>
+        <ThemedText style={styles.title}>{title}</ThemedText>
         <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
       </View>
     </View>
@@ -28,27 +30,45 @@ export function AuthHeader({ title, subtitle }: AuthHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: Spacing.five,
-    marginTop: Spacing.four,
+    marginBottom: Spacing.xl,
+    marginTop: Spacing.lg,
+  },
+  logoCard: {
+    width: 88,
+    height: 88,
+    borderRadius: Radius.xl,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    marginBottom: Spacing.four,
+    width: '100%',
+    height: '100%',
+    borderRadius: Radius.md,
   },
   textContainer: {
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: 6,
+    paddingHorizontal: Spacing.md,
   },
   title: {
     textAlign: 'center',
     fontSize: 28,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.6,
   },
   subtitle: {
     textAlign: 'center',
-    fontSize: 16,
-    opacity: 0.8,
-    paddingHorizontal: Spacing.three,
+    fontSize: 15,
+    color: '#64748B',
+    lineHeight: 22,
+    fontWeight: '500',
+    paddingHorizontal: Spacing.sm,
   },
 });

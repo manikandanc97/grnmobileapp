@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Colors, Spacing, Typography, Radius, IconSizes, TouchTargets } from '@/constants/theme';
+import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -89,33 +89,34 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   groupTitle: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.light.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.xs,
   },
   groupContainer: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.light.borderSubtle,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
     overflow: 'hidden',
+    ...Shadows.sm,
   },
   wrapper: {
-    backgroundColor: Colors.light.surface,
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.md,
+    padding: 14,
     minHeight: TouchTargets.min,
   },
   pressed: {
-    backgroundColor: Colors.light.surfaceMuted,
+    backgroundColor: '#F8FAFC',
   },
   left: {
     flexDirection: 'row',
@@ -124,8 +125,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.md,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -136,14 +137,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    ...Typography.body,
-    fontWeight: '600',
-    color: Colors.light.text,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
   },
   subtitle: {
-    ...Typography.caption,
-    color: Colors.light.textSecondary,
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 2,
+    fontWeight: '500',
   },
   right: {
     flexDirection: 'row',
@@ -152,14 +154,15 @@ const styles = StyleSheet.create({
   },
   valueText: {
     ...Typography.body,
-    color: Colors.light.textSecondary,
+    color: '#64748B',
+    fontWeight: '500',
   },
   chevron: {
     marginLeft: 4,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.light.borderSubtle,
-    marginLeft: 16 + 36 + 16, // padding + icon + margin
+    backgroundColor: 'rgba(15, 23, 42, 0.04)',
+    marginLeft: 14 + 38 + 14, // padding + icon + margin
   },
 });

@@ -4,8 +4,6 @@ import { View, StyleSheet } from 'react-native';
 import {
   Home,
   Building2,
-  Boxes,
-  Users,
   MoreHorizontal,
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
@@ -17,7 +15,7 @@ function TabIcon({ focused, IconComponent }: { focused: boolean, IconComponent: 
     <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
       <IconComponent
         size={22}
-        color={focused ? Colors.light.brand : Colors.light.textMuted}
+        color={focused ? Colors.light.brand : '#94A3B8'}
         strokeWidth={focused ? 2.5 : 2}
       />
     </View>
@@ -41,17 +39,17 @@ export default function AppLayout() {
       isFormScreen
         ? { display: 'none' as const }
         : {
-            backgroundColor: Colors.light.surface,
-            borderTopColor: Colors.light.border,
+            backgroundColor: '#FFFFFF',
+            borderTopColor: 'rgba(15, 23, 42, 0.06)',
             borderTopWidth: 1,
-            minHeight: 64 + (insets.bottom || 0),
-            paddingBottom: insets.bottom || 12,
+            minHeight: 66 + (insets.bottom || 0),
+            paddingBottom: insets.bottom || 10,
             paddingTop: 8,
-            shadowColor: Colors.light.text,
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 5,
+            shadowColor: '#07566A',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 12,
+            elevation: 8,
           },
     [isFormScreen, insets.bottom],
   );
@@ -70,12 +68,13 @@ export default function AppLayout() {
         headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: Colors.light.brand,
-        tabBarInactiveTintColor: Colors.light.textMuted,
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
-          marginTop: 4,
+          fontWeight: '700',
+          marginTop: 2,
+          letterSpacing: 0.2,
         },
       }}
     >
@@ -96,15 +95,13 @@ export default function AppLayout() {
       <Tabs.Screen
         name="materials"
         options={{
-          title: 'Materials',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} IconComponent={Boxes} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="labor"
         options={{
-          title: 'Labor',
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} IconComponent={Users} />,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -121,6 +118,13 @@ export default function AppLayout() {
           href: null,
         }}
       />
+      {/* Cash Book — accessed from Site Details, not a tab */}
+      <Tabs.Screen
+        name="cash-book"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
@@ -128,11 +132,13 @@ export default function AppLayout() {
 const styles = StyleSheet.create({
   iconContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingVertical: 5,
+    borderRadius: 16,
     backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconContainerActive: {
-    backgroundColor: `${Colors.light.brand}15`, // Teal with low opacity
+    backgroundColor: 'rgba(7, 86, 106, 0.1)',
   },
 });
