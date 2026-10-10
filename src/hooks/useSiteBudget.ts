@@ -3,7 +3,7 @@ import { useMaterials } from './useMaterials';
 import { useExpenses } from './useExpenses';
 import { useSiteDetails } from './useSites';
 import { calculateBudgetSummary, BudgetSummary } from '@/lib/finance';
-import { getSiteLaborHistory } from '@/services/siteLabor';
+import { getSiteLaborHistory, calculateRecordLaborCost } from '@/services/siteLabor';
 import { dataSync } from '@/lib/dataSync';
 import { parseBudgetInput } from '@/services/sites';
 
@@ -26,11 +26,7 @@ export function useSiteBudget(siteId: string | undefined): UseSiteBudgetResult {
     setPayrollLoading(true);
     try {
       const history = await getSiteLaborHistory(siteId);
-      const totalLaborCost = history.reduce((sum, record) => {
-        return sum + (record.mason_count * record.mason_rate) +
-                     (record.men_helper_count * record.men_helper_rate) +
-                     (record.women_helper_count * record.women_helper_rate);
-      }, 0);
+      const totalLaborCost = history.reduce((sum, record) => sum + calculateRecordLaborCost(record), 0);
       setPayrollTotal(totalLaborCost);
     } catch (e) {
       console.warn('Could not fetch site labor history for budget:', e);
@@ -49,11 +45,7 @@ export function useSiteBudget(siteId: string | undefined): UseSiteBudgetResult {
       try {
         const history = await getSiteLaborHistory(siteId);
         if (isMounted) {
-          const totalLaborCost = history.reduce((sum, record) => {
-            return sum + (record.mason_count * record.mason_rate) +
-                         (record.men_helper_count * record.men_helper_rate) +
-                         (record.women_helper_count * record.women_helper_rate);
-          }, 0);
+          const totalLaborCost = history.reduce((sum, record) => sum + calculateRecordLaborCost(record), 0);
           setPayrollTotal(totalLaborCost);
         }
       } catch (e) {

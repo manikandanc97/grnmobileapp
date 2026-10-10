@@ -10,6 +10,7 @@ interface ScreenHeaderProps {
   actionButton?: React.ReactNode;
   showBorder?: boolean;
   showBack?: boolean;
+  onBack?: () => void;
 }
 
 export function ScreenHeader({ 
@@ -17,7 +18,8 @@ export function ScreenHeader({
   subtitle, 
   actionButton, 
   showBorder = true, 
-  showBack = false 
+  showBack = false,
+  onBack,
 }: ScreenHeaderProps) {
   const router = useRouter();
 
@@ -26,7 +28,7 @@ export function ScreenHeader({
       {showBack && (
         <Pressable
           style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
-          onPress={() => router.back()}
+          onPress={() => (onBack ? onBack() : router.back())}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Go back"

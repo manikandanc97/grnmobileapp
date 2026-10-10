@@ -99,11 +99,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.md,
     marginTop: Spacing.md,
   },
   mainAvatar: {

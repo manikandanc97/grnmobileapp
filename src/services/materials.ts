@@ -18,6 +18,7 @@ export interface CreateMaterialParams {
   received?: number;
   unit_price?: number;
   total_cost?: number;
+  created_at?: string;
 }
 
 export function transformMaterialRow(row: MaterialRow & { sites?: { name: string } | { name: string }[] | null }): MaterialItem {
@@ -26,20 +27,25 @@ export function transformMaterialRow(row: MaterialRow & { sites?: { name: string
     ? row.sites[0]?.name 
     : row.sites?.name;
 
+  const qty = Number(row.quantity) || 0;
+  const unitPrice = Number(row.unit_price) || 0;
+  const totalCost = Number(row.total_cost) || (qty * unitPrice);
+
   return {
     id: row.id,
     name: row.name,
     category: row.category as MaterialCategory,
     siteId: row.site_id,
     siteName: siteName || 'Unknown Site',
-    quantity: Number(row.quantity) || 0,
+    quantity: qty,
     unit: row.unit as MaterialUnit,
     status: row.status as MaterialStatus,
     used: Number(row.used) || 0,
     received: Number(row.received) || 0,
-    unitPrice: Number(row.unit_price) || 0,
-    totalCost: Number(row.total_cost) || 0,
+    unitPrice,
+    totalCost,
     lastUpdated: new Date(row.last_updated || row.updated_at).toLocaleDateString(),
+    createdAt: row.created_at,
   };
 }
 
@@ -92,6 +98,7 @@ export async function createMaterial(params: CreateMaterialParams): Promise<Mate
     received: params.received || params.quantity,
     unit_price: params.unit_price || 0,
     total_cost: params.total_cost || 0,
+    ...(params.created_at ? { created_at: params.created_at } : {}),
   };
 
   const { data, error } = await supabase

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { ActivityItem } from '@/types/dashboard';
+import { calculateRecordLaborCount } from '@/services/siteLabor';
 
 export interface DashboardMetrics {
   activeSites: number;
@@ -51,7 +52,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     fetchThisMonthExpenses(),
     
     // 4. Total Active Labor for Today
-    supabase.from('site_labor_daily').select('mason_count, men_helper_count, women_helper_count').eq('work_date', todayStr)
+    supabase.from('site_labor_daily').select('*').eq('work_date', todayStr)
   ]);
 
   if (totalProjectsResult.error) throw totalProjectsResult.error;
@@ -65,7 +66,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 
   const thisMonthExpenses = expensesResult.data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
   const totalActiveLabor = laborResult.data?.reduce((sum, item) => {
-    return sum + (item.mason_count || 0) + (item.men_helper_count || 0) + (item.women_helper_count || 0);
+    return sum + calculateRecordLaborCount(item);
   }, 0) || 0;
 
   return {
@@ -89,7 +90,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     supabase.from('expenses').select('id, title, created_at, sites(name)').is('deleted_at', null).order('created_at', { ascending: false }).limit(3),
     
     // Fetch recent labor updates
-    supabase.from('site_labor_daily').select('id, mason_count, men_helper_count, women_helper_count, updated_at, sites(name)').order('updated_at', { ascending: false }).limit(3)
+    supabase.from('site_labor_daily').select('*, sites(name)').order('updated_at', { ascending: false }).limit(3)
   ]);
 
   const activities: ActivityItem[] = [];
@@ -120,7 +121,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
 
   if (laborResult.data) {
     laborResult.data.forEach(l => {
-      const totalWorkers = (l.mason_count || 0) + (l.men_helper_count || 0) + (l.women_helper_count || 0);
+      const totalWorkers = calculateRecordLaborCount(l as any);
       activities.push({
         id: `labor-${l.id}`,
         title: `Labor logged: ${totalWorkers} workers`,

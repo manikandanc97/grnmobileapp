@@ -12,13 +12,7 @@ interface SiteCardProps {
 }
 
 export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
-  const getProgressColor = (progress: number) => {
-    if (progress >= 80) return '#10B981';
-    if (progress >= 40) return '#E79524';
-    return '#0284C7';
-  };
 
-  const progressColor = getProgressColor(site.progress);
 
   return (
     <Pressable
@@ -52,25 +46,11 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
         </View>
 
         <View style={styles.progressPercentWrap}>
-          <Text style={[styles.progressNumber, { color: progressColor }]}>{site.progress}%</Text>
           <ChevronRight size={16} color="#94A3B8" />
         </View>
       </View>
 
-      {/* Progress Track */}
-      <View style={styles.progressSection}>
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.min(100, Math.max(0, site.progress))}%`,
-                backgroundColor: progressColor,
-              },
-            ]}
-          />
-        </View>
-      </View>
+
 
       {/* Optional action buttons if provided */}
       {(onEdit || onDelete) && (
@@ -183,23 +163,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  progressNumber: {
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  progressSection: {
-    marginTop: 12,
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
+
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

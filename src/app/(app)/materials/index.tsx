@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     gap: Spacing.md,

@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing['2xl'],
   },
   listContent: {
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
   },

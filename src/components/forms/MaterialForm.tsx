@@ -215,6 +215,7 @@ export function MaterialForm({
           used: 0,
           unit_price: priceNum,
           total_cost: calculateMaterialCost(qtyNum, priceNum),
+          created_at: purchaseDate ? purchaseDate.toISOString() : undefined,
         };
         result = await createMaterial(payload);
       }

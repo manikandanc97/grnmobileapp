@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: Spacing.md,
   },
   toastContainer: {
     position: 'absolute',

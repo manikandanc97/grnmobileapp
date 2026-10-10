@@ -193,6 +193,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
   },
 });

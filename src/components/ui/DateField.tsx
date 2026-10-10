@@ -4,6 +4,7 @@ import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius, TouchTargets, IconSizes } from '@/constants/theme';
+import { datePickerStyles } from '@/constants/datePickerTheme';
 
 export interface DateFieldProps {
   value?: Date | string | null;
@@ -88,6 +89,7 @@ export function DateField({
                 date={parsedDate || new Date()}
                 minDate={minDate}
                 maxDate={maxDate}
+                styles={datePickerStyles}
                 components={{
                   IconNext: <ChevronRight size={IconSizes.lg} color={Colors.light.text} />,
                   IconPrev: <ChevronLeft size={IconSizes.lg} color={Colors.light.text} />,
@@ -142,8 +144,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   modalContent: {
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 440 : '100%',
     backgroundColor: Colors.light.surface,
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,

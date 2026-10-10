@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Tabs, useRouter, usePathname, useSegments } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import {
   Home,
   Building2,
@@ -42,8 +42,8 @@ export default function AppLayout() {
             backgroundColor: '#FFFFFF',
             borderTopColor: 'rgba(15, 23, 42, 0.06)',
             borderTopWidth: 1,
-            minHeight: 66 + (insets.bottom || 0),
-            paddingBottom: insets.bottom || 10,
+            height: Platform.OS === 'ios' ? 86 : 66,
+            paddingBottom: Platform.OS === 'ios' ? 24 : 10,
             paddingTop: 8,
             shadowColor: '#07566A',
             shadowOffset: { width: 0, height: -4 },
@@ -51,7 +51,7 @@ export default function AppLayout() {
             shadowRadius: 12,
             elevation: 8,
           },
-    [isFormScreen, insets.bottom],
+    [isFormScreen],
   );
 
   React.useEffect(() => {
@@ -70,6 +70,7 @@ export default function AppLayout() {
         tabBarActiveTintColor: Colors.light.brand,
         tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle,
+        safeAreaInsets: { bottom: Platform.OS === 'android' ? 0 : undefined },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',

@@ -17,7 +17,11 @@
         "backgroundColor": "#C9863F",
         "foregroundImage": "./assets/images/grn-adaptive-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "navigationBar": {
+        "backgroundColor": "#FFFFFF",
+        "barStyle": "dark-content"
+      }
     },
     "web": {
       "output": "static",

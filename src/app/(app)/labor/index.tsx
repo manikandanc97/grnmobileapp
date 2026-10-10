@@ -10,6 +10,7 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useSiteLabor } from '@/hooks/useSiteLabor';
 import { useSites } from '@/hooks/useSites';
+import { WORKER_ROLES, calculateRecordLaborCost, calculateRecordLaborCount } from '@/services/siteLabor';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 import { SelectField } from '@/components/ui/SelectField';
 
@@ -52,48 +53,43 @@ export default function LaborScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   
-  // Edit Form State
-  const [masonCount, setMasonCount] = useState('0');
-  const [masonRate, setMasonRate] = useState('0');
-  const [menCount, setMenCount] = useState('0');
-  const [menRate, setMenRate] = useState('0');
-  const [womenCount, setWomenCount] = useState('0');
-  const [womenRate, setWomenRate] = useState('0');
+  // Edit Form State (Supports all worker roles)
+  const [counts, setCounts] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    WORKER_ROLES.forEach((r) => { init[r.key] = '0'; });
+    return init;
+  });
+  const [rates, setRates] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    WORKER_ROLES.forEach((r) => { init[r.key] = String(r.defaultRate); });
+    return init;
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isEditing) {
       if (labor) {
+        const nextCounts: Record<string, string> = {};
+        const nextRates: Record<string, string> = {};
+        WORKER_ROLES.forEach((role) => {
+          nextCounts[role.key] = String((labor as any)[role.countKey] ?? 0);
+        });
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMasonCount(String(labor.mason_count));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMasonRate(String(labor.mason_rate));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMenCount(String(labor.men_helper_count));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMenRate(String(labor.men_helper_rate));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setWomenCount(String(labor.women_helper_count));
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setWomenRate(String(labor.women_helper_rate));
+        setCounts(nextCounts);
+        setRates(nextRates);
       } else {
         // PREFILL with recent rates if available
-        getRecentRates().then(recent => {
-          if (recent) {
-            setMasonCount('0');
-            setMasonRate(String(recent.mason_rate));
-            setMenCount('0');
-            setMenRate(String(recent.men_helper_rate));
-            setWomenCount('0');
-            setWomenRate(String(recent.women_helper_rate));
-          } else {
-            setMasonCount('0');
-            setMasonRate('0');
-            setMenCount('0');
-            setMenRate('0');
-            setWomenCount('0');
-            setWomenRate('0');
-          }
+        getRecentRates().then((recent) => {
+          const nextCounts: Record<string, string> = {};
+          const nextRates: Record<string, string> = {};
+          WORKER_ROLES.forEach((role) => {
+            nextCounts[role.key] = '0';
+            nextRates[role.key] = String(
+              (recent as any)?.[role.rateKey] ?? role.defaultRate
+            );
+          });
+          setCounts(nextCounts);
+          setRates(nextRates);
         });
       }
     }
@@ -112,14 +108,11 @@ export default function LaborScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = {
-        mason_count: parseInt(masonCount, 10) || 0,
-        mason_rate: parseFloat(masonRate) || 0,
-        men_helper_count: parseInt(menCount, 10) || 0,
-        men_helper_rate: parseFloat(menRate) || 0,
-        women_helper_count: parseInt(womenCount, 10) || 0,
-        women_helper_rate: parseFloat(womenRate) || 0,
-      };
+      const data: any = {};
+      WORKER_ROLES.forEach((role) => {
+        data[role.countKey] = parseInt(counts[role.key] || '0', 10) || 0;
+        data[role.rateKey] = parseFloat(rates[role.key] || '0') || role.defaultRate;
+      });
 
       if (labor) {
         await editLabor(labor.id, data);
@@ -150,24 +143,27 @@ export default function LaborScreen() {
 
   const calculateTotalWorkers = () => {
     if (isEditing) {
-      return (parseInt(masonCount)||0) + (parseInt(menCount)||0) + (parseInt(womenCount)||0);
+      return WORKER_ROLES.reduce(
+        (sum, role) => sum + (parseInt(counts[role.key] || '0', 10) || 0),
+        0
+      );
     }
     if (labor) {
-      return labor.mason_count + labor.men_helper_count + labor.women_helper_count;
+      return calculateRecordLaborCount(labor);
     }
     return 0;
   };
 
   const calculateTotalCost = () => {
     if (isEditing) {
-      return ((parseInt(masonCount)||0) * (parseFloat(masonRate)||0)) +
-             ((parseInt(menCount)||0) * (parseFloat(menRate)||0)) +
-             ((parseInt(womenCount)||0) * (parseFloat(womenRate)||0));
+      return WORKER_ROLES.reduce((sum, role) => {
+        const c = parseInt(counts[role.key] || '0', 10) || 0;
+        const r = parseFloat(rates[role.key] || '0') || role.defaultRate;
+        return sum + c * r;
+      }, 0);
     }
     if (labor) {
-      return (labor.mason_count * labor.mason_rate) +
-             (labor.men_helper_count * labor.men_helper_rate) +
-             (labor.women_helper_count * labor.women_helper_rate);
+      return calculateRecordLaborCost(labor);
     }
     return 0;
   };
@@ -243,86 +239,69 @@ export default function LaborScreen() {
               </View>
             </View>
 
-            <View style={styles.divider} />
+            {WORKER_ROLES.map((role) => {
+              const countNum = isEditing
+                ? parseInt(counts[role.key] || '0', 10) || 0
+                : (labor as any)?.[role.countKey] ?? 0;
+              const rateNum = isEditing
+                ? parseFloat(rates[role.key] || '0') || role.defaultRate
+                : (labor as any)?.[role.rateKey] ?? role.defaultRate;
 
-            {/* MASON */}
-            <View style={styles.categoryRow}>
-              <View style={styles.catInfo}>
-                <Text style={styles.catTitle}>Mason</Text>
-                {!isEditing && labor && (
-                  <Text style={styles.catSub}>{labor.mason_count} workers × ₹{labor.mason_rate}/day</Text>
-                )}
-              </View>
-              <View style={styles.catTotal}>
-                {!isEditing && labor && <Money amount={labor.mason_count * labor.mason_rate} />}
-              </View>
-            </View>
-            {isEditing && (
-              <View style={styles.editFieldsRow}>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Count</Text>
-                  <TextInput style={styles.input} value={masonCount} onChangeText={setMasonCount} keyboardType="numeric" />
-                </View>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Rate (₹)</Text>
-                  <TextInput style={styles.input} value={masonRate} onChangeText={setMasonRate} keyboardType="numeric" />
-                </View>
-              </View>
-            )}
+              if (!isEditing && labor && countNum === 0 && calculateTotalWorkers() > 0) {
+                return null;
+              }
 
-            <View style={styles.divider} />
-
-            {/* MEN HELPER */}
-            <View style={styles.categoryRow}>
-              <View style={styles.catInfo}>
-                <Text style={styles.catTitle}>Men Helper</Text>
-                {!isEditing && labor && (
-                  <Text style={styles.catSub}>{labor.men_helper_count} workers × ₹{labor.men_helper_rate}/day</Text>
-                )}
-              </View>
-              <View style={styles.catTotal}>
-                {!isEditing && labor && <Money amount={labor.men_helper_count * labor.men_helper_rate} />}
-              </View>
-            </View>
-            {isEditing && (
-              <View style={styles.editFieldsRow}>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Count</Text>
-                  <TextInput style={styles.input} value={menCount} onChangeText={setMenCount} keyboardType="numeric" />
-                </View>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Rate (₹)</Text>
-                  <TextInput style={styles.input} value={menRate} onChangeText={setMenRate} keyboardType="numeric" />
-                </View>
-              </View>
-            )}
-
-            <View style={styles.divider} />
-
-            {/* WOMEN HELPER */}
-            <View style={styles.categoryRow}>
-              <View style={styles.catInfo}>
-                <Text style={styles.catTitle}>Women Helper</Text>
-                {!isEditing && labor && (
-                  <Text style={styles.catSub}>{labor.women_helper_count} workers × ₹{labor.women_helper_rate}/day</Text>
-                )}
-              </View>
-              <View style={styles.catTotal}>
-                {!isEditing && labor && <Money amount={labor.women_helper_count * labor.women_helper_rate} />}
-              </View>
-            </View>
-            {isEditing && (
-              <View style={styles.editFieldsRow}>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Count</Text>
-                  <TextInput style={styles.input} value={womenCount} onChangeText={setWomenCount} keyboardType="numeric" />
-                </View>
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Rate (₹)</Text>
-                  <TextInput style={styles.input} value={womenRate} onChangeText={setWomenRate} keyboardType="numeric" />
-                </View>
-              </View>
-            )}
+              return (
+                <React.Fragment key={role.key}>
+                  <View style={styles.divider} />
+                  <View style={styles.categoryRow}>
+                    <View style={styles.catInfo}>
+                      <Text style={styles.catTitle}>{role.label}</Text>
+                      {!isEditing && labor && (
+                        <Text style={styles.catSub}>
+                          {countNum} workers × ₹{rateNum}/day
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.catTotal}>
+                      {!isEditing && labor && <Money amount={countNum * rateNum} />}
+                    </View>
+                  </View>
+                  {isEditing && (
+                    <View style={styles.editFieldsRow}>
+                      <View style={styles.inputWrap}>
+                        <Text style={styles.inputLabel}>Count</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={counts[role.key] || '0'}
+                          onChangeText={(text) =>
+                            setCounts((prev) => ({
+                              ...prev,
+                              [role.key]: text.replace(/[^0-9]/g, ''),
+                            }))
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={styles.inputWrap}>
+                        <Text style={styles.inputLabel}>Rate (₹)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={rates[role.key] || String(role.defaultRate)}
+                          onChangeText={(text) =>
+                            setRates((prev) => ({
+                              ...prev,
+                              [role.key]: text.replace(/[^0-9.]/g, ''),
+                            }))
+                          }
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+                  )}
+                </React.Fragment>
+              );
+            })}
 
             {!labor && !isEditing && (
               <View style={styles.emptyWrap}>
@@ -351,7 +330,7 @@ export default function LaborScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
   },
   selectorCard: {
     backgroundColor: '#FFFFFF',

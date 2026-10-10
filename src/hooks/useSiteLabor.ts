@@ -59,7 +59,7 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
     return unsub;
   }, [siteId, fetchLabor]);
 
-  const addLabor = async (data: Omit<SiteLaborDailyInsert, 'site_id' | 'work_date'>) => {
+  const addLabor = useCallback(async (data: Omit<SiteLaborDailyInsert, 'site_id' | 'work_date'>) => {
     if (!siteId) throw new Error('Site ID is required');
     try {
       const newLabor = await createSiteLabor({
@@ -75,9 +75,9 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       console.error('addLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to create site labor');
     }
-  };
+  }, [siteId, selectedDate]);
 
-  const editLabor = async (id: string, data: SiteLaborDailyUpdate) => {
+  const editLabor = useCallback(async (id: string, data: SiteLaborDailyUpdate) => {
     if (!siteId) throw new Error('Site ID is required');
     try {
       const updatedLabor = await updateSiteLabor(id, data);
@@ -89,12 +89,12 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       console.error('editLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to update site labor');
     }
-  };
+  }, [siteId]);
 
-  const getRecentRates = async () => {
+  const getRecentRates = useCallback(async () => {
     if (!siteId) return null;
     return await getMostRecentSiteLabor(siteId);
-  };
+  }, [siteId]);
 
   return { 
     selectedDate, 

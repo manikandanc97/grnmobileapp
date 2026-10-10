@@ -292,7 +292,7 @@ export default function EditCashTransactionScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['2xl'] * 2,
+    paddingBottom: Spacing.md,
     gap: Spacing.lg,
   },
   errorContainer: {

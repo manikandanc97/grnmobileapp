@@ -47,7 +47,8 @@ export function KeyboardAwareForm({
     scrollToField: () => {},
   };
 
-  const dynamicBottomPadding = insets.bottom + (bottomBar ? 80 : Spacing.xl);
+  const bottomInset = Platform.OS === 'ios' ? insets.bottom : 0;
+  const dynamicBottomPadding = bottomInset + (bottomBar ? 80 : Spacing.md);
 
   return (
     <FormContext.Provider value={contextValue}>

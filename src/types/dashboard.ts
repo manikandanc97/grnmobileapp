@@ -86,6 +86,7 @@ export type MaterialItem = {
   received: number;
   unitPrice: number;
   totalCost: number;
+  createdAt?: string;
 };
 
 

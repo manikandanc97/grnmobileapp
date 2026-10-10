@@ -15,7 +15,7 @@ export function BottomActionBar({ children, style }: BottomActionBarProps) {
     <View 
       style={[
         styles.container, 
-        { paddingBottom: Math.max(insets.bottom, Spacing.md) },
+        { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, Spacing.md) : Spacing.md },
         style
       ]}
     >
