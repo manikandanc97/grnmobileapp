@@ -15,18 +15,17 @@ import { useLocalSearchParams, router } from 'expo-router';
 import {
   MapPin,
   Calendar,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus,
   Package,
   Boxes,
   Users,
-  DollarSign,
-  Plus,
-  Minus,
-  ChevronRight,
-  ChevronLeft,
-  Calendar as CalendarIcon,
   Tag,
   Coins,
-  Receipt,
+  IndianRupee,
   Pencil,
   Check,
   Trash2,
@@ -948,7 +947,7 @@ export default function SiteDetailsScreen() {
                   onPress={handleOpenAddExpenseModal}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: '#FEE2E2' }]}>
-                    <Receipt size={18} color="#DC2626" />
+                    <IndianRupee size={18} color="#DC2626" />
                   </View>
                   <Text style={styles.quickActionLabel}>+ Expense</Text>
                 </Pressable>
@@ -1050,7 +1049,7 @@ export default function SiteDetailsScreen() {
               {/* Table Top Header Bar */}
               <View style={styles.dailyTableHeaderBar}>
                 <View style={styles.dailyTableTitleWrap}>
-                  <Receipt size={18} color={Colors.light.brand} />
+                  <IndianRupee size={18} color={Colors.light.brand} />
                   <View>
                     <Text style={styles.dailyTableTitle}>Daily Expense Sheet</Text>
                     <Text style={styles.dailyTableSubtitle}>
@@ -1310,7 +1309,7 @@ export default function SiteDetailsScreen() {
               {/* ---------------- SECTION 3: DIRECT SITE EXPENSES ---------------- */}
               <View style={styles.tableSectionHeaderRow}>
                 <View style={styles.tableSectionTitleWrap}>
-                  <Receipt size={14} color="#DC2626" />
+                  <IndianRupee size={14} color="#DC2626" />
                   <Text style={styles.tableSectionTitle}>Site Expenses</Text>
                   <View style={styles.expenseCountPill}>
                     <Text style={styles.expenseCountPillText}>{selectedDateExpenses.length} Items</Text>
@@ -1446,7 +1445,7 @@ export default function SiteDetailsScreen() {
                 <View style={styles.kpiHeroHeader}>
                   <View style={styles.kpiHeroLabelWrap}>
                     <View style={styles.kpiHeroIconBox}>
-                      <DollarSign size={16} color={Colors.light.brand} />
+                      <IndianRupee size={16} color={Colors.light.brand} />
                     </View>
                     <Text style={styles.kpiHeroLabel}>Total Project Cost</Text>
                   </View>
@@ -2048,7 +2047,7 @@ export default function SiteDetailsScreen() {
             <View style={styles.moduleSection}>
               <View style={styles.sectionHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Receipt size={18} color="#DC2626" style={{ marginRight: 6 }} />
+                  <IndianRupee size={18} color="#DC2626" style={{ marginRight: 6 }} />
                   <Text style={styles.sectionTitle}>Project Expenses & Bills</Text>
                 </View>
                 <Pressable
@@ -2538,7 +2537,7 @@ export default function SiteDetailsScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleWrap}>
                 <View style={[styles.modalHeaderIconBox, { backgroundColor: '#FEE2E2' }]}>
-                  <Receipt size={18} color="#DC2626" />
+                  <IndianRupee size={18} color="#DC2626" />
                 </View>
                 <View>
                   <Text style={styles.modalTitle}>

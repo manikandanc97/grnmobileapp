@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Bell, Box, Users, Receipt, Activity, X } from 'lucide-react-native';
+import { Bell, Box, Users, IndianRupee, Activity, X } from 'lucide-react-native';
 import { useNotifications } from '@/providers/NotificationProvider';
 import { Colors, Typography, Radius, Shadows } from '@/constants/theme';
 import { NotificationType } from '@/services/notifications';
@@ -64,7 +64,7 @@ export function NotificationBanner() {
       case 'attendance':
         return <Users size={18} color={Colors.light.success} />;
       case 'expense':
-        return <Receipt size={18} color={Colors.light.primary} />;
+        return <IndianRupee size={18} color={Colors.light.primary} />;
       case 'progress':
         return <Activity size={18} color={Colors.light.info} />;
       default:

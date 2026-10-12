@@ -12,7 +12,7 @@ import {
   Bell,
   Box,
   Users,
-  Receipt,
+  IndianRupee,
   CheckCircle2,
   Trash2,
   Activity,
@@ -71,7 +71,7 @@ export default function NotificationsScreen() {
       case 'attendance':
         return <Users size={IconSizes.sm} color={Colors.light.success} />;
       case 'expense':
-        return <Receipt size={IconSizes.sm} color={Colors.light.primary} />;
+        return <IndianRupee size={IconSizes.sm} color={Colors.light.primary} />;
       case 'progress':
         return <Activity size={IconSizes.sm} color={Colors.light.info} />;
       default:

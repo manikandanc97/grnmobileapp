@@ -6,7 +6,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Plus, Receipt } from 'lucide-react-native';
+import { Plus, IndianRupee } from 'lucide-react-native';
 
 import { ExpenseCategory, ExpenseItem, PaymentMethod, PaymentStatus } from '@/types/dashboard';
 import { ExpenseSummaryCard } from '@/components/expenses/ExpenseSummaryCard';
@@ -330,7 +330,7 @@ export default function ExpensesScreen() {
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
                 <EmptyState
-                  icon={<Receipt size={48} color={Colors.light.textMuted} />}
+                  icon={<IndianRupee size={48} color={Colors.light.textMuted} />}
                   title={expenses.length === 0 ? "No expenses found" : "No results matching criteria"}
                   description={expenses.length === 0 
                     ? "Record your first project expense to start tracking."

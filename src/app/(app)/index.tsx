@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { useRouter } from 'expo-router';
-import { ArrowRight, Receipt } from 'lucide-react-native';
+import { ArrowRight, IndianRupee } from 'lucide-react-native';
 import { HomeHeader } from '@/components/dashboard/HomeHeader';
 import { OverviewSection } from '@/components/dashboard/OverviewSection';
 import { ActiveSitesSection } from '@/components/dashboard/ActiveSitesSection';
@@ -184,7 +184,7 @@ export default function HomeDashboardScreen() {
                 >
                   <View style={styles.expensesInfo}>
                     <View style={styles.expenseBadge}>
-                      <Receipt size={12} color="#EF4444" />
+                      <IndianRupee size={12} color="#EF4444" />
                       <Text style={styles.expenseBadgeText}>Total Incurred</Text>
                     </View>
                     <Text style={styles.expensesAmount}>

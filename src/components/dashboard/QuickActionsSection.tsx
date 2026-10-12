@@ -4,7 +4,7 @@ import {
   Building2,
   PackagePlus,
   UserCheck,
-  Receipt,
+  IndianRupee,
 } from 'lucide-react-native';
 import { QuickActionItem, QUICK_ACTIONS } from '@/types/dashboard';
 import { Colors, Typography, Spacing, Radius, Shadows, BrandColors, TouchTargets, IconSizes } from '@/constants/theme';
@@ -36,9 +36,10 @@ export function QuickActionsSection({
           icon: <UserCheck {...iconProps} color={Colors.light.success} />,
           bg: Colors.light.successBg,
         };
+      case 'IndianRupee':
       case 'Receipt':
         return {
-          icon: <Receipt {...iconProps} color={BrandColors.brand} />,
+          icon: <IndianRupee {...iconProps} color={BrandColors.brand} />,
           bg: Colors.light.brandBg,
         };
       default:

@@ -31,7 +31,7 @@ export type SiteItem = {
 export type QuickActionItem = {
   id: string;
   title: string;
-  iconName: 'Building2' | 'PackagePlus' | 'UserCheck' | 'Receipt';
+  iconName: 'Building2' | 'PackagePlus' | 'UserCheck' | 'Receipt' | 'IndianRupee';
   badge?: string;
 };
 
@@ -63,7 +63,7 @@ export const QUICK_ACTIONS: QuickActionItem[] = [
   {
     id: 'add-expense',
     title: 'Add Expense',
-    iconName: 'Receipt',
+    iconName: 'IndianRupee',
   },
 ];
 

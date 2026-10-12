@@ -4,6 +4,7 @@ import {
   Building2,
   Package,
   Users,
+  IndianRupee,
   ReceiptText,
   ArrowUpRight,
 } from 'lucide-react-native';
@@ -23,7 +24,7 @@ interface CardMeta {
   label: string;
   value: string;
   subtext: string;
-  iconName: 'Building2' | 'Package' | 'Users' | 'ReceiptText';
+  iconName: 'Building2' | 'Package' | 'Users' | 'ReceiptText' | 'IndianRupee';
   accentColor: string;
   iconBg: string;
   iconBorder: string;
@@ -121,7 +122,7 @@ export function OverviewSection({
       label: 'This Month',
       value: metricsData ? formatCurrency(metricsData.thisMonthExpenses) : '-',
       subtext: 'Expenses logged',
-      iconName: 'ReceiptText',
+      iconName: 'IndianRupee',
       accentColor: '#6366F1',
       iconBg: '#EEF2FF',
       iconBorder: '#C7D2FE',
@@ -141,6 +142,8 @@ export function OverviewSection({
         return <Package {...props} />;
       case 'Users':
         return <Users {...props} />;
+      case 'IndianRupee':
+        return <IndianRupee {...props} />;
       case 'ReceiptText':
         return <ReceiptText {...props} />;
       default:
