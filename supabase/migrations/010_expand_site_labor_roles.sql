@@ -22,3 +22,5 @@ ADD COLUMN IF NOT EXISTS welder_rate NUMERIC NOT NULL DEFAULT 0 CHECK (welder_ra
 
 ADD COLUMN IF NOT EXISTS flooring_count INTEGER NOT NULL DEFAULT 0 CHECK (flooring_count >= 0),
 ADD COLUMN IF NOT EXISTS flooring_rate NUMERIC NOT NULL DEFAULT 0 CHECK (flooring_rate >= 0);
+
+NOTIFY pgrst, 'reload schema';

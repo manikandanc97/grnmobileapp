@@ -10,12 +10,27 @@ import {
 import { MetricItem, SiteItem } from '@/types/dashboard';
 import { DashboardMetrics } from '@/services/dashboard';
 import { formatCurrency } from '@/lib/finance';
-import { Colors, Spacing, Radius, Shadows } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 interface OverviewSectionProps {
   metricsData?: DashboardMetrics | null;
   sites?: SiteItem[];
   onCardPress?: (metric: MetricItem) => void;
+}
+
+interface CardMeta {
+  id: string;
+  label: string;
+  value: string;
+  subtext: string;
+  iconName: 'Building2' | 'Package' | 'Users' | 'ReceiptText';
+  accentColor: string;
+  iconBg: string;
+  iconBorder: string;
+  badgeBg: string;
+  badgeText: string;
+  arrowBg: string;
+  arrowBorder: string;
 }
 
 export function OverviewSection({
@@ -24,59 +39,123 @@ export function OverviewSection({
   onCardPress,
 }: OverviewSectionProps) {
   const currentHour = new Date().getHours();
-  const greeting = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting =
+    currentHour < 12
+      ? 'Good morning'
+      : currentHour < 17
+      ? 'Good afternoon'
+      : 'Good evening';
 
-  const metrics: MetricItem[] = [
+  const getTodayFormatted = () => {
+    try {
+      return new Intl.DateTimeFormat('en-IN', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      }).format(new Date());
+    } catch {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      const d = new Date();
+      return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+    }
+  };
+
+  const cards: CardMeta[] = [
     {
       id: 'active-sites',
       label: 'Active Sites',
       value: metricsData ? metricsData.activeSites.toString() : '-',
+      subtext:
+        metricsData && metricsData.activeSites > 0
+          ? `${metricsData.activeSites} operational`
+          : 'No active sites',
       iconName: 'Building2',
+      accentColor: '#0284C7',
+      iconBg: '#F0F9FF',
+      iconBorder: '#BAE6FD',
+      badgeBg: '#F0F9FF',
+      badgeText: '#0369A1',
+      arrowBg: '#F0F9FF',
+      arrowBorder: '#E0F2FE',
     },
     {
       id: 'total-projects',
       label: 'Total Projects',
       value: metricsData ? metricsData.totalProjects.toString() : '-',
+      subtext:
+        metricsData && metricsData.totalProjects > 0
+          ? `${metricsData.totalProjects} in portfolio`
+          : '0 projects',
       iconName: 'Package',
+      accentColor: '#D97706',
+      iconBg: '#FFFBEB',
+      iconBorder: '#FDE68A',
+      badgeBg: '#FFFBEB',
+      badgeText: '#B45309',
+      arrowBg: '#FFFBEB',
+      arrowBorder: '#FEF3C7',
     },
     {
       id: 'workers-present',
       label: 'Labor Today',
       value: metricsData ? metricsData.totalActiveLabor.toString() : '-',
+      subtext:
+        metricsData && metricsData.totalActiveLabor > 0
+          ? `${metricsData.totalActiveLabor} on site`
+          : 'Shift pending',
       iconName: 'Users',
+      accentColor: '#059669',
+      iconBg: '#ECFDF5',
+      iconBorder: '#A7F3D0',
+      badgeBg: '#ECFDF5',
+      badgeText: '#047857',
+      arrowBg: '#ECFDF5',
+      arrowBorder: '#D1FAE5',
     },
     {
       id: 'this-month',
       label: 'This Month',
       value: metricsData ? formatCurrency(metricsData.thisMonthExpenses) : '-',
+      subtext: 'Expenses logged',
       iconName: 'ReceiptText',
+      accentColor: '#6366F1',
+      iconBg: '#EEF2FF',
+      iconBorder: '#C7D2FE',
+      badgeBg: '#EEF2FF',
+      badgeText: '#4338CA',
+      arrowBg: '#EEF2FF',
+      arrowBorder: '#E0E7FF',
     },
   ];
 
-  const renderIcon = (iconName: string) => {
-    const props = { size: 22, strokeWidth: 2.3 };
-    switch (iconName) {
+  const renderIcon = (card: CardMeta) => {
+    const props = { size: 19, strokeWidth: 2.2, color: card.accentColor };
+    switch (card.iconName) {
       case 'Building2':
-        return <Building2 {...props} color="#0284C7" />;
+        return <Building2 {...props} />;
       case 'Package':
-        return <Package {...props} color="#E79524" />;
+        return <Package {...props} />;
       case 'Users':
-        return <Users {...props} color="#10B981" />;
+        return <Users {...props} />;
       case 'ReceiptText':
-        return <ReceiptText {...props} color="#EF4444" />;
+        return <ReceiptText {...props} />;
       default:
-        return <Building2 {...props} color={Colors.light.brand} />;
+        return <Building2 {...props} />;
     }
   };
 
-  const getIconContainerStyle = (iconName: string) => {
-    switch (iconName) {
-      case 'Building2': return { backgroundColor: '#E0F2FE' };
-      case 'Package': return { backgroundColor: '#FEF3C7' };
-      case 'Users': return { backgroundColor: '#D1FAE5' };
-      case 'ReceiptText': return { backgroundColor: '#FEE2E2' };
-      default: return { backgroundColor: '#F1F5F9' };
-    }
+  const handlePress = (card: CardMeta) => {
+    onCardPress?.({
+      id: card.id,
+      label: card.label,
+      value: card.value,
+      subtext: card.subtext,
+      iconName: card.iconName,
+    });
   };
 
   return (
@@ -84,36 +163,91 @@ export function OverviewSection({
       {/* Greeting Section */}
       <View style={styles.greetingContainer}>
         <View style={styles.greetingHeader}>
-          <Text style={styles.greetingTitle}>{greeting},</Text>
+          <View style={styles.greetingTopRow}>
+            <Text style={styles.greetingTitle}>{greeting},</Text>
+            <View style={styles.liveDateBadge}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.liveDateText}>{getTodayFormatted()}</Text>
+            </View>
+          </View>
           <Text style={styles.greetingSubtitle}>Here is today&apos;s construction overview</Text>
         </View>
       </View>
 
       {/* Statistics Grid */}
       <View style={styles.grid}>
-        {metrics.map((metric) => (
-          <Pressable
-            key={metric.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${metric.label}: ${metric.value}`}
-            style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
-            ]}
-            onPress={() => onCardPress?.(metric)}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconContainer, getIconContainerStyle(metric.iconName || '')]}>
-                {renderIcon(metric.iconName || 'Building2')}
+        {cards.map((card) => {
+          const isCurrency = card.value.startsWith('₹');
+          const displayAmount = isCurrency ? card.value.replace('₹', '') : card.value;
+
+          return (
+            <Pressable
+              key={card.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${card.label}: ${card.value}, ${card.subtext}`}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => handlePress(card)}
+            >
+              {/* Header: Icon badge on left, subtle action pill button on right */}
+              <View style={styles.cardHeader}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    {
+                      backgroundColor: card.iconBg,
+                      borderColor: card.iconBorder,
+                    },
+                  ]}
+                >
+                  {renderIcon(card)}
+                </View>
+                <View
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor: card.arrowBg,
+                      borderColor: card.arrowBorder,
+                    },
+                  ]}
+                >
+                  <ArrowUpRight size={13} strokeWidth={2.4} color={card.accentColor} />
+                </View>
               </View>
-              <ArrowUpRight size={14} color="#94A3B8" />
-            </View>
-            <View style={styles.metricDetails}>
-              <Text style={styles.metricLabel}>{metric.label}</Text>
-              <Text style={styles.metricValue} numberOfLines={1}>{metric.value}</Text>
-            </View>
-          </Pressable>
-        ))}
+
+              {/* Metric Details */}
+              <View style={styles.metricDetails}>
+                <Text style={styles.metricLabel}>{card.label}</Text>
+                <View style={styles.valueRow}>
+                  {isCurrency && <Text style={styles.currencySymbol}>₹</Text>}
+                  <Text
+                    style={styles.metricValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {displayAmount}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Footer: Status micro-badge */}
+              <View style={styles.cardFooter}>
+                <View style={[styles.statusBadge, { backgroundColor: card.badgeBg }]}>
+                  <View style={[styles.statusDot, { backgroundColor: card.accentColor }]} />
+                  <Text
+                    style={[styles.statusBadgeText, { color: card.badgeText }]}
+                    numberOfLines={1}
+                  >
+                    {card.subtext}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -129,65 +263,146 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   greetingHeader: {
-    gap: 2,
+    gap: 3,
+  },
+  greetingTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   greetingTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
     color: '#0F172A',
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
+  },
+  liveDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    gap: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  liveDateText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
   greetingSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
     justifyContent: 'space-between',
+    rowGap: 12,
   },
   card: {
-    width: '48%',
+    width: '48.2%',
     backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
-    padding: 16,
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
-    ...Shadows.sm,
+    borderColor: 'rgba(15, 23, 42, 0.07)',
+    shadowColor: '#07566A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    minHeight: 144,
+    justifyContent: 'space-between',
   },
   cardPressed: {
-    transform: [{ scale: 0.97 }],
-    backgroundColor: '#F8FAFC',
-    opacity: 0.9,
+    transform: [{ scale: 0.975 }],
+    backgroundColor: '#FAFCFD',
+    borderColor: 'rgba(15, 23, 42, 0.14)',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   iconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: Radius.md,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  actionButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   metricDetails: {
-    gap: 4,
+    marginTop: 10,
+    marginBottom: 8,
+    gap: 2,
   },
   metricLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#64748B',
+    marginRight: 2,
   },
   metricValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '900',
     color: '#0F172A',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 5,
+    maxWidth: '100%',
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  statusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
 });

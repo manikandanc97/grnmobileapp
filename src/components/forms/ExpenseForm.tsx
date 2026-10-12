@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router';
 import { IndianRupee, User, Check, Building2 } from 'lucide-react-native';
 import { useSites } from '@/hooks/useSites';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import {
   createExpense,
   updateExpense,
@@ -31,6 +32,7 @@ import { BottomActionBar } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { SuccessDialog } from '@/components/ui/SuccessDialog';
 import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { toast } from '@/lib/toast';
 
 import {
   ExpenseCategory,
@@ -39,6 +41,7 @@ import {
   EXPENSE_CATEGORIES,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
+  normalizeExpenseCategory,
 } from '@/lib/constants/expenses';
 import { parseSafeDate } from '@/lib/dateUtils';
 
@@ -56,13 +59,14 @@ export function ExpenseForm({
   onSuccess,
 }: ExpenseFormProps) {
   const isEdit = mode === 'edit';
+  const { isOffline } = useNetworkStatus();
 
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [amount, setAmount] = useState(
     initialData?.amount !== undefined ? String(initialData.amount) : ''
   );
-  const [category, setCategory] = useState<ExpenseCategory>(
-    (initialData?.category as ExpenseCategory) ?? 'Materials'
+  const [category, setCategory] = useState<ExpenseCategory>(() =>
+    normalizeExpenseCategory(initialData?.category)
   );
   const [siteId, setSiteId] = useState<string>(initialData?.site_id ?? '');
   const [vendor, setVendor] = useState(initialData?.vendor ?? '');
@@ -211,6 +215,10 @@ export function ExpenseForm({
       Keyboard.dismiss();
       setSaving(false);
       setSavedExpenseTitle(expenseTitle);
+      toast.success(
+        isEdit ? 'Expense Updated' : 'Expense Added',
+        `₹${Number(amount).toLocaleString('en-IN')} • ${expenseTitle}`
+      );
       setShowSuccess(true);
       if (onSuccess) {
         onSuccess(result);
@@ -478,9 +486,11 @@ export function ExpenseForm({
       {/* Success Dialog */}
       <SuccessDialog
         visible={showSuccess}
-        title={isEdit ? 'Changes Saved' : 'Expense Added'}
+        title={isOffline ? 'Saved Locally' : isEdit ? 'Changes Saved' : 'Expense Added'}
         message={
-          isEdit
+          isOffline
+            ? `"${savedExpenseTitle || 'Expense'}" has been saved to this device and will sync automatically once an internet connection is available.`
+            : isEdit
             ? `"${savedExpenseTitle || 'Expense'}" has been updated.`
             : `"${savedExpenseTitle || 'Expense'}" has been successfully recorded.`
         }

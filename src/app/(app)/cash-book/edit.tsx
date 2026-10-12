@@ -30,7 +30,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 
 export default function EditCashTransactionScreen() {
-  const { id, siteId } = useLocalSearchParams<{ id: string; siteId: string }>();
+  const { id } = useLocalSearchParams<{ id: string; siteId: string }>();
 
   const [transactionType, setTransactionType] = useState<TransactionType>('INWARD');
   const [date, setDate] = useState('');
@@ -292,7 +292,7 @@ export default function EditCashTransactionScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
     gap: Spacing.lg,
   },
   errorContainer: {

@@ -2,6 +2,20 @@ import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 import { formatDatabaseError } from './sites';
 import { dataSync } from '@/lib/dataSync';
+import { createNotification } from './notifications';
+import { offlineStorage } from './offlineStorage';
+import { offlineQueue, generateUUID } from './offlineQueue';
+import { networkStatus } from './networkStatus';
+
+async function resolveUserId(userId?: string): Promise<string> {
+  if (userId) return userId;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || '';
+  } catch {
+    return '';
+  }
+}
 
 export type CashTransactionRow = Database['public']['Tables']['site_cash_transactions']['Row'];
 export type CashTransactionInsert = Database['public']['Tables']['site_cash_transactions']['Insert'];
@@ -20,6 +34,18 @@ export interface CashBookPeriodSummary extends CashBookSummary {
   closingBalance: number;
   periodInward: number;
   periodOutward: number;
+}
+
+export interface CashTransactionsFetchResult {
+  data: CashTransactionRow[];
+  isCached: boolean;
+  cachedAt: string | null;
+}
+
+export interface CashBookSummaryFetchResult {
+  data: CashBookSummary;
+  isCached: boolean;
+  cachedAt: string | null;
 }
 
 /**
@@ -53,6 +79,112 @@ export function formatDisplayDate(dateStr: string): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+/**
+ * Fetch all non-deleted cash transactions for a site with offline caching
+ */
+export async function getCashTransactionsWithCache(
+  siteId: string,
+  options?: {
+    fromDate?: string;
+    toDate?: string;
+    searchQuery?: string;
+    transactionType?: TransactionType;
+  },
+  userId?: string,
+): Promise<CashTransactionsFetchResult> {
+  const currentUserId = await resolveUserId(userId);
+  const cacheKey = `cash_tx_${siteId}_${options?.fromDate || 'all'}_${options?.toDate || 'all'}_${options?.transactionType || 'all'}`;
+  const isConnected = networkStatus.getNetworkState().isConnected;
+
+  if (isConnected) {
+    try {
+      const data = await getCashTransactions(siteId, options);
+      if (currentUserId && !options?.searchQuery) {
+        await offlineStorage.set(currentUserId, cacheKey, data);
+      }
+      return { data, isCached: false, cachedAt: null };
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[cashBook] Remote fetch failed, trying cache:', err);
+      }
+      if (currentUserId) {
+        const cached = await offlineStorage.get<CashTransactionRow[]>(currentUserId, cacheKey);
+        if (cached && cached.data) {
+          let filtered = cached.data;
+          if (options?.searchQuery?.trim()) {
+            const q = options.searchQuery.trim().toLowerCase();
+            filtered = filtered.filter((t) => t.particulars.toLowerCase().includes(q));
+          }
+          return { data: filtered, isCached: true, cachedAt: cached.cachedAt };
+        }
+      }
+      throw new Error(formatDatabaseError(err, 'Failed to fetch cash transactions.'));
+    }
+  }
+
+  // Offline
+  if (currentUserId) {
+    const cached = await offlineStorage.get<CashTransactionRow[]>(currentUserId, cacheKey);
+    if (cached && cached.data) {
+      let filtered = cached.data;
+      if (options?.searchQuery?.trim()) {
+        const q = options.searchQuery.trim().toLowerCase();
+        filtered = filtered.filter((t) => t.particulars.toLowerCase().includes(q));
+      }
+      return { data: filtered, isCached: true, cachedAt: cached.cachedAt };
+    }
+  }
+
+  throw new Error('No offline cash records available for this site. Connect to internet to download.');
+}
+
+/**
+ * Compute Cash Book summary with offline cache fallback
+ */
+export async function getCashBookSummaryWithCache(
+  siteId: string,
+  userId?: string,
+): Promise<CashBookSummaryFetchResult> {
+  const currentUserId = await resolveUserId(userId);
+  const cacheKey = `cash_summary_${siteId}`;
+  const isConnected = networkStatus.getNetworkState().isConnected;
+
+  if (isConnected) {
+    try {
+      const summary = await getCashBookSummary(siteId);
+      if (currentUserId) {
+        await offlineStorage.set(currentUserId, cacheKey, summary);
+      }
+      return { data: summary, isCached: false, cachedAt: null };
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[cashBook] Remote summary failed, trying cache:', err);
+      }
+      if (currentUserId) {
+        const cached = await offlineStorage.get<CashBookSummary>(currentUserId, cacheKey);
+        if (cached && cached.data) {
+          return { data: cached.data, isCached: true, cachedAt: cached.cachedAt };
+        }
+      }
+      throw new Error(formatDatabaseError(err, 'Failed to compute cash book summary.'));
+    }
+  }
+
+  // Offline
+  if (currentUserId) {
+    const cached = await offlineStorage.get<CashBookSummary>(currentUserId, cacheKey);
+    if (cached && cached.data) {
+      return { data: cached.data, isCached: true, cachedAt: cached.cachedAt };
+    }
+  }
+
+  return {
+    data: { totalInward: 0, totalOutward: 0, cashOnHand: 0 },
+    isCached: true,
+    cachedAt: null,
+  };
 }
 
 /**
@@ -220,24 +352,107 @@ export async function getCashBookPeriodSummary(
 }
 
 /**
- * Create a new cash transaction.
- * owner_id is NOT accepted from the UI — it's set via the RLS default.
+ * Create a new cash transaction with offline queue support and client-generated UUID.
+ * owner_id is derived from active session.
  */
 export async function createCashTransaction(
   params: Omit<CashTransactionInsert, 'owner_id' | 'id'>,
+  userId?: string,
 ): Promise<CashTransactionRow> {
-  const { data, error } = await supabase
-    .from('site_cash_transactions')
-    .insert(params)
-    .select()
-    .single();
+  const currentUserId = await resolveUserId(userId);
+  const isConnected = networkStatus.getNetworkState().isConnected;
+  const clientUUID = generateUUID();
 
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to add cash transaction.'));
+  if (!isConnected) {
+    if (!currentUserId) {
+      throw new Error('You must be signed in to record cash transactions offline.');
+    }
+
+    const localRecord: CashTransactionRow = {
+      id: clientUUID,
+      owner_id: currentUserId,
+      site_id: params.site_id,
+      transaction_date: params.transaction_date,
+      transaction_type: params.transaction_type,
+      particulars: params.particulars,
+      amount: params.amount,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    await offlineQueue.enqueue({
+      owner_id: currentUserId,
+      entity_type: 'site_cash',
+      entity_id: clientUUID,
+      operation_type: 'create',
+      payload: params,
+      parent_id: params.site_id,
+    });
+
+    // Update offline cache for this site's general transactions list
+    const cacheKey = `cash_tx_${params.site_id}_all_all_all`;
+    const cached = await offlineStorage.get<CashTransactionRow[]>(currentUserId, cacheKey);
+    const existing = cached?.data ?? [];
+    await offlineStorage.set(currentUserId, cacheKey, [localRecord, ...existing]);
+
+    dataSync.notify({ entity: 'site_cash', action: 'create', payload: localRecord });
+    return localRecord;
   }
 
-  dataSync.notify({ entity: 'site_cash', action: 'create', payload: data });
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('site_cash_transactions')
+      .upsert({ id: clientUUID, ...params }, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(formatDatabaseError(error, 'Failed to add cash transaction.'));
+    }
+
+    if (currentUserId) {
+      const cacheKey = `cash_tx_${params.site_id}_all_all_all`;
+      const cached = await offlineStorage.get<CashTransactionRow[]>(currentUserId, cacheKey);
+      const existing = (cached?.data ?? []).filter((t) => t.id !== data.id);
+      await offlineStorage.set(currentUserId, cacheKey, [data, ...existing]);
+    }
+
+    dataSync.notify({ entity: 'site_cash', action: 'create', payload: data });
+
+    createNotification({
+      title: params.transaction_type === 'INWARD' ? 'Cash Inward Received' : 'Cash Outward Payment',
+      message: `₹${Number(data.amount || 0).toLocaleString('en-IN')} - ${data.particulars || 'Transaction'}`,
+      type: 'expense',
+      site_id: data.site_id,
+    }).catch(() => {});
+
+    return data;
+  } catch (err: any) {
+    if (currentUserId && !networkStatus.getNetworkState().isConnected) {
+      await offlineQueue.enqueue({
+        owner_id: currentUserId,
+        entity_type: 'site_cash',
+        entity_id: clientUUID,
+        operation_type: 'create',
+        payload: params,
+        parent_id: params.site_id,
+      });
+      const localRecord: CashTransactionRow = {
+        id: clientUUID,
+        owner_id: currentUserId,
+        site_id: params.site_id,
+        transaction_date: params.transaction_date,
+        transaction_type: params.transaction_type,
+        particulars: params.particulars,
+        amount: params.amount,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      dataSync.notify({ entity: 'site_cash', action: 'create', payload: localRecord });
+      return localRecord;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -247,27 +462,75 @@ export async function createCashTransaction(
 export async function updateCashTransaction(
   id: string,
   params: Pick<CashTransactionUpdate, 'transaction_type' | 'transaction_date' | 'particulars' | 'amount'>,
+  userId?: string,
 ): Promise<CashTransactionRow> {
-  const { data, error } = await supabase
-    .from('site_cash_transactions')
-    .update({ ...params, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
+  const currentUserId = await resolveUserId(userId);
+  const isConnected = networkStatus.getNetworkState().isConnected;
 
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to update cash transaction.'));
+  if (!isConnected) {
+    if (!currentUserId) throw new Error('Offline update requires active login.');
+    await offlineQueue.enqueue({
+      owner_id: currentUserId,
+      entity_type: 'site_cash',
+      entity_id: id,
+      operation_type: 'update',
+      payload: params,
+    });
+    dataSync.notify({ entity: 'site_cash', action: 'update', payload: { id, ...params } as any });
+    return { id, ...params } as any;
   }
 
-  dataSync.notify({ entity: 'site_cash', action: 'update', payload: data });
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('site_cash_transactions')
+      .update({ ...params, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(formatDatabaseError(error, 'Failed to update cash transaction.'));
+    }
+
+    dataSync.notify({ entity: 'site_cash', action: 'update', payload: data });
+    return data;
+  } catch (err: any) {
+    if (currentUserId && !networkStatus.getNetworkState().isConnected) {
+      await offlineQueue.enqueue({
+        owner_id: currentUserId,
+        entity_type: 'site_cash',
+        entity_id: id,
+        operation_type: 'update',
+        payload: params,
+      });
+      dataSync.notify({ entity: 'site_cash', action: 'update', payload: { id, ...params } as any });
+      return { id, ...params } as any;
+    }
+    throw err;
+  }
 }
 
 /**
  * Delete a cash transaction (hard delete — cash ledger should be accurate).
  * Balance recalculates automatically on next query.
  */
-export async function deleteCashTransaction(id: string): Promise<void> {
+export async function deleteCashTransaction(id: string, userId?: string): Promise<void> {
+  const currentUserId = await resolveUserId(userId);
+  const isConnected = networkStatus.getNetworkState().isConnected;
+
+  if (!isConnected) {
+    if (!currentUserId) throw new Error('Offline delete requires active login.');
+    await offlineQueue.enqueue({
+      owner_id: currentUserId,
+      entity_type: 'site_cash',
+      entity_id: id,
+      operation_type: 'delete',
+      payload: {},
+    });
+    dataSync.notify({ entity: 'site_cash', action: 'delete', payload: { id } });
+    return;
+  }
+
   const { error } = await supabase
     .from('site_cash_transactions')
     .delete()

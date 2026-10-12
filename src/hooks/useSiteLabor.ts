@@ -9,6 +9,9 @@ import {
   SiteLaborDailyUpdate 
 } from '@/services/siteLabor';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
+import { parseAppError } from '@/lib/errorHandler';
 
 function getTodayStr() {
   const d = new Date();
@@ -19,10 +22,15 @@ function getTodayStr() {
 }
 
 export function useSiteLabor(siteId: string | undefined, initialDateStr?: string) {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [selectedDate, setSelectedDate] = useState(initialDateStr || getTodayStr());
   const [labor, setLabor] = useState<SiteLaborDailyRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const fetchLabor = useCallback(async () => {
     if (!siteId) {
@@ -31,20 +39,18 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
     }
     setLoading(true);
     try {
-      const data = await getSiteLaborByDate(siteId, selectedDate);
+      const data = await getSiteLaborByDate(siteId, selectedDate, userId);
       setLabor(data);
+      setIsCached(isOffline && Boolean(data));
+      setLastUpdated(data?.updated_at || null);
       setError(null);
     } catch (err: any) {
-      console.error('Fetch labor error:', err);
-      let errMsg = err?.message || 'Failed to fetch site labor';
-      if (err?.code === 'PGRST205' || errMsg.includes('schema cache')) {
-        errMsg = 'Database table is missing. Please run `npx supabase db push` to apply migrations.';
-      }
-      setError(new Error(errMsg));
+      const parsed = parseAppError(err, 'Failed to fetch site labor');
+      setError(new Error(parsed.message));
     } finally {
       setLoading(false);
     }
-  }, [siteId, selectedDate]);
+  }, [siteId, selectedDate, userId, isOffline]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -66,7 +72,7 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
         ...data,
         site_id: siteId,
         work_date: selectedDate
-      });
+      }, userId);
       setLabor(newLabor);
       dataSync.invalidate('site_labor');
       dataSync.invalidate('site_budget');
@@ -75,12 +81,16 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       console.error('addLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to create site labor');
     }
-  }, [siteId, selectedDate]);
+  }, [siteId, selectedDate, userId]);
 
   const editLabor = useCallback(async (id: string, data: SiteLaborDailyUpdate) => {
     if (!siteId) throw new Error('Site ID is required');
     try {
-      const updatedLabor = await updateSiteLabor(id, data);
+      const updatedLabor = await updateSiteLabor(id, {
+        ...data,
+        site_id: siteId,
+        work_date: selectedDate,
+      }, userId);
       setLabor(updatedLabor);
       dataSync.invalidate('site_labor');
       dataSync.invalidate('site_budget');
@@ -89,7 +99,7 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       console.error('editLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to update site labor');
     }
-  }, [siteId]);
+  }, [siteId, selectedDate, userId]);
 
   const getRecentRates = useCallback(async () => {
     if (!siteId) return null;
@@ -102,6 +112,9 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
     labor, 
     loading, 
     error, 
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch: fetchLabor, 
     addLabor, 
     editLabor,

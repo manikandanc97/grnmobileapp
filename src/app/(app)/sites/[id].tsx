@@ -48,9 +48,10 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useSiteBudget } from '@/hooks/useSiteBudget';
 import { useCashBook } from '@/hooks/useCashBook';
 import { softDeleteSite } from '@/services/sites';
-import { softDeleteMaterial, createMaterial } from '@/services/materials';
-import { createExpense } from '@/services/expenses';
+import { softDeleteMaterial, createMaterial, updateMaterial } from '@/services/materials';
+import { createExpense, updateExpense, softDeleteExpense, ExpenseWithSite } from '@/services/expenses';
 import { MaterialItem } from '@/types/dashboard';
+import { toast } from '@/lib/toast';
 
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
@@ -66,6 +67,9 @@ import { ErrorDialog } from '@/components/ui/ErrorDialog';
 import { Money } from '@/components/ui/Money';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
@@ -107,7 +111,7 @@ export default function SiteDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   // Core Data Hooks
-  const { site, loading, error, refetch: refetchSite } = useSiteDetails(id);
+  const { site, loading, error, isOffline, isCached, lastUpdated, refetch: refetchSite } = useSiteDetails(id);
   const { materials, loading: materialsLoading, refetch: refetchMaterials } = useMaterials(id);
   const { budgetSummary, refetch: refetchBudget } = useSiteBudget(id);
   const { expenses: siteExpenses, refetch: refetchExpenses } = useExpenses(id);
@@ -155,6 +159,14 @@ export default function SiteDetailsScreen() {
 
   // Operation Popups State
   const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [initialMaterialValues, setInitialMaterialValues] = useState<{
+    name: string;
+    category: string;
+    quantity: string;
+    unit: string;
+    unitPrice: string;
+  } | null>(null);
   const [matName, setMatName] = useState('');
   const [matCategory, setMatCategory] = useState('Cement');
   const [matQuantity, setMatQuantity] = useState('1');
@@ -165,11 +177,19 @@ export default function SiteDetailsScreen() {
   const [showLabourModal, setShowLabourModal] = useState(false);
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [initialExpenseValues, setInitialExpenseValues] = useState<{
+    title: string;
+    amount: string;
+    category: string;
+    paymentMethod: string;
+    paymentStatus: 'Paid' | 'Pending';
+  } | null>(null);
   const [expTitle, setExpTitle] = useState('');
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Fuel');
-  const [expPaymentMethod, setExpPaymentMethod] = useState('Cash');
   const [expPaymentStatus, setExpPaymentStatus] = useState<'Paid' | 'Pending'>('Paid');
+  const [expPaymentMethod, setExpPaymentMethod] = useState('Cash');
   const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   // Material Search filter on Materials tab
@@ -297,6 +317,14 @@ export default function SiteDetailsScreen() {
       setEditingRates({});
       setIsEditingAttendance(false);
       setShowLabourModal(false);
+      const totalSavedWorkers = WORKER_ROLES.reduce(
+        (sum, r) => sum + (parseInt(workerCounts[r.key] || '0', 10) || 0),
+        0
+      );
+      toast.success(
+        'Labor Attendance Saved',
+        `${totalSavedWorkers} worker${totalSavedWorkers === 1 ? '' : 's'} recorded for ${dayjs(selectedDate).format('DD MMM')}`
+      );
       await Promise.all([refetchLabor(), refetchBudget()]);
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to save daily labor');
@@ -337,14 +365,78 @@ export default function SiteDetailsScreen() {
     }, 0);
   }, [workerCounts, workerRates]);
 
-  // Save Material from Quick Modal
+  // Material Modal Handlers (Add & In-Place Edit)
   const resetMaterialForm = () => {
+    setEditingMaterialId(null);
+    setInitialMaterialValues(null);
     setMatName('');
     setMatCategory('Cement');
     setMatQuantity('1');
     setMatUnit('Bags');
     setMatUnitPrice('');
   };
+
+  const handleOpenAddMaterialModal = () => {
+    resetMaterialForm();
+    setShowMaterialModal(true);
+  };
+
+  const handleOpenEditMaterialModal = (mat: MaterialItem) => {
+    const rawName = (mat.name || '').trim();
+    const rawCat = mat.category || 'Cement';
+    const rawQty = String(mat.quantity || '1');
+    const rawUnit = mat.unit || 'Bags';
+    const rawPrice = mat.unitPrice ? String(mat.unitPrice) : '';
+
+    setEditingMaterialId(mat.id);
+    setMatName(rawName);
+    setMatCategory(rawCat);
+    setMatQuantity(rawQty);
+    setMatUnit(rawUnit);
+    setMatUnitPrice(rawPrice);
+    setInitialMaterialValues({
+      name: rawName,
+      category: rawCat,
+      quantity: rawQty,
+      unit: rawUnit,
+      unitPrice: rawPrice,
+    });
+    setShowMaterialModal(true);
+  };
+
+  const isMaterialFormChanged = useMemo(() => {
+    if (!editingMaterialId || !initialMaterialValues) return true;
+    const nameDiff = matName.trim() !== initialMaterialValues.name;
+    const catDiff = matCategory !== initialMaterialValues.category;
+    const unitDiff = matUnit !== initialMaterialValues.unit;
+
+    const currentQty = parseFloat(matQuantity);
+    const initialQty = parseFloat(initialMaterialValues.quantity);
+    const qtyDiff =
+      isNaN(currentQty) || isNaN(initialQty)
+        ? matQuantity.trim() !== initialMaterialValues.quantity
+        : currentQty !== initialQty || matQuantity.trim() !== initialMaterialValues.quantity;
+
+    const currentPrice = parseFloat(matUnitPrice) || 0;
+    const initialPrice = parseFloat(initialMaterialValues.unitPrice) || 0;
+    const priceDiff =
+      currentPrice !== initialPrice || matUnitPrice.trim() !== initialMaterialValues.unitPrice;
+
+    return nameDiff || catDiff || unitDiff || qtyDiff || priceDiff;
+  }, [editingMaterialId, initialMaterialValues, matName, matCategory, matQuantity, matUnit, matUnitPrice]);
+
+  const isMaterialValid = useMemo(() => {
+    const trimmed = matName.trim();
+    const qty = parseFloat(matQuantity);
+    return trimmed.length > 0 && !isNaN(qty) && qty > 0;
+  }, [matName, matQuantity]);
+
+  const isSaveMaterialDisabled = useMemo(() => {
+    if (isSavingMaterial) return true;
+    if (!isMaterialValid) return true;
+    if (editingMaterialId && !isMaterialFormChanged) return true;
+    return false;
+  }, [isSavingMaterial, isMaterialValid, editingMaterialId, isMaterialFormChanged]);
 
   const handleSaveMaterialModal = async () => {
     if (!id || !site) return;
@@ -363,37 +455,145 @@ export default function SiteDetailsScreen() {
 
     setIsSavingMaterial(true);
     try {
-      await createMaterial({
-        site_id: site.id,
-        name: nameTrimmed,
-        category: matCategory,
-        quantity: qty,
-        unit: matUnit,
-        status: 'Available',
-        received: qty,
-        used: 0,
-        unit_price: price,
-        total_cost: total,
-        created_at: dayjs(selectedDate).toISOString(),
-      });
-      setShowMaterialModal(false);
-      resetMaterialForm();
+      if (editingMaterialId) {
+        await updateMaterial(editingMaterialId, {
+          site_id: site.id,
+          name: nameTrimmed,
+          category: matCategory,
+          quantity: qty,
+          unit: matUnit,
+          unit_price: price,
+          total_cost: total,
+        });
+        setShowMaterialModal(false);
+        resetMaterialForm();
+        toast.success(
+          'Material Updated',
+          `${qty} ${matUnit} of ${nameTrimmed} (₹${total.toLocaleString('en-IN')})`
+        );
+      } else {
+        await createMaterial({
+          site_id: site.id,
+          name: nameTrimmed,
+          category: matCategory,
+          quantity: qty,
+          unit: matUnit,
+          status: 'Available',
+          received: qty,
+          used: 0,
+          unit_price: price,
+          total_cost: total,
+          created_at: dayjs(selectedDate).toISOString(),
+        });
+        setShowMaterialModal(false);
+        resetMaterialForm();
+        toast.success(
+          'Material Added',
+          `${qty} ${matUnit} of ${nameTrimmed} (₹${total.toLocaleString('en-IN')})`
+        );
+      }
       await Promise.all([refetchMaterials(), refetchBudget()]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to add material');
+      Alert.alert('Error', err?.message || (editingMaterialId ? 'Failed to update material' : 'Failed to add material'));
     } finally {
       setIsSavingMaterial(false);
     }
   };
 
-  // Save Expense from Quick Modal
+  const handleDeleteMaterialFromModal = (matId: string) => {
+    const target = materials.find((m) => m.id === matId);
+    Alert.alert(
+      'Delete Material',
+      `Are you sure you want to delete "${target?.name || 'this material'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await softDeleteMaterial(matId);
+              setShowMaterialModal(false);
+              resetMaterialForm();
+              toast.success('Material Deleted', 'Material removed successfully');
+              await Promise.all([refetchMaterials(), refetchBudget()]);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete material');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Expense Modal Handlers (Add & In-Place Edit)
   const resetExpenseForm = () => {
+    setEditingExpenseId(null);
+    setInitialExpenseValues(null);
     setExpTitle('');
     setExpAmount('');
     setExpCategory('Fuel');
-    setExpPaymentMethod('Cash');
     setExpPaymentStatus('Paid');
+    setExpPaymentMethod('Cash');
   };
+
+  const handleOpenAddExpenseModal = () => {
+    resetExpenseForm();
+    setShowExpenseModal(true);
+  };
+
+  const handleOpenEditExpenseModal = (exp: ExpenseWithSite) => {
+    const rawTitle = (exp.title || exp.notes || exp.category || '').trim();
+    const rawAmount = exp.amount ? String(exp.amount) : '';
+    const rawCategory = exp.category || 'Fuel';
+    const rawStatus = (exp.payment_status as any) === 'Pending' ? 'Pending' : 'Paid';
+    const rawMethod = exp.payment_method || 'Cash';
+
+    setEditingExpenseId(exp.id);
+    setExpTitle(rawTitle);
+    setExpAmount(rawAmount);
+    setExpCategory(rawCategory);
+    setExpPaymentStatus(rawStatus);
+    setExpPaymentMethod(rawMethod);
+    setInitialExpenseValues({
+      title: rawTitle,
+      amount: rawAmount,
+      category: rawCategory,
+      paymentStatus: rawStatus,
+      paymentMethod: rawMethod,
+    });
+    setShowExpenseModal(true);
+  };
+
+  const isExpenseFormChanged = useMemo(() => {
+    if (!editingExpenseId || !initialExpenseValues) return true;
+    const titleDiff = expTitle.trim() !== initialExpenseValues.title;
+    const catDiff = expCategory !== initialExpenseValues.category;
+    const statusDiff = expPaymentStatus !== initialExpenseValues.paymentStatus;
+    const methodDiff = expPaymentMethod !== initialExpenseValues.paymentMethod;
+
+    const currentAmount = parseFloat(expAmount);
+    const initialAmount = parseFloat(initialExpenseValues.amount);
+    const amountDiff =
+      isNaN(currentAmount) || isNaN(initialAmount)
+        ? expAmount.trim() !== initialExpenseValues.amount
+        : currentAmount !== initialAmount || expAmount.trim() !== initialExpenseValues.amount;
+
+    return titleDiff || catDiff || statusDiff || methodDiff || amountDiff;
+  }, [editingExpenseId, initialExpenseValues, expTitle, expAmount, expCategory, expPaymentStatus, expPaymentMethod]);
+
+  const isExpenseValid = useMemo(() => {
+    const trimmed = expTitle.trim();
+    const amt = parseFloat(expAmount);
+    return trimmed.length > 0 && !isNaN(amt) && amt > 0;
+  }, [expTitle, expAmount]);
+
+  const isSaveExpenseDisabled = useMemo(() => {
+    if (isSavingExpense) return true;
+    if (!isExpenseValid) return true;
+    if (editingExpenseId && !isExpenseFormChanged) return true;
+    return false;
+  }, [isSavingExpense, isExpenseValid, editingExpenseId, isExpenseFormChanged]);
 
   const handleSaveExpenseModal = async () => {
     if (!id || !site) return;
@@ -410,24 +610,71 @@ export default function SiteDetailsScreen() {
 
     setIsSavingExpense(true);
     try {
-      await createExpense({
-        site_id: site.id,
-        title: titleTrimmed,
-        amount: amt,
-        category: expCategory,
-        expense_date: selectedDate,
-        payment_method: expPaymentMethod,
-        payment_status: expPaymentStatus,
-        notes: '',
-      });
-      setShowExpenseModal(false);
-      resetExpenseForm();
+      if (editingExpenseId) {
+        await updateExpense(editingExpenseId, {
+          site_id: site.id,
+          title: titleTrimmed,
+          amount: amt,
+          category: expCategory,
+          payment_method: expPaymentMethod || 'Cash',
+          payment_status: expPaymentStatus,
+        });
+        setShowExpenseModal(false);
+        resetExpenseForm();
+        toast.success(
+          'Expense Updated',
+          `₹${amt.toLocaleString('en-IN')} • ${titleTrimmed}`
+        );
+      } else {
+        await createExpense({
+          site_id: site.id,
+          title: titleTrimmed,
+          amount: amt,
+          category: expCategory,
+          expense_date: selectedDate,
+          payment_method: expPaymentMethod || 'Cash',
+          payment_status: expPaymentStatus,
+          notes: '',
+        });
+        setShowExpenseModal(false);
+        resetExpenseForm();
+        toast.success(
+          'Expense Added',
+          `₹${amt.toLocaleString('en-IN')} • ${titleTrimmed}`
+        );
+      }
       await Promise.all([refetchExpenses(), refetchBudget()]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to add expense');
+      Alert.alert('Error', err?.message || (editingExpenseId ? 'Failed to update expense' : 'Failed to add expense'));
     } finally {
       setIsSavingExpense(false);
     }
+  };
+
+  const handleDeleteExpense = (expId: string) => {
+    const target = siteExpenses.find((e) => e.id === expId);
+    Alert.alert(
+      'Delete Expense',
+      `Are you sure you want to delete "${target?.title || 'this expense'}" (₹${target?.amount ? target.amount.toLocaleString('en-IN') : ''})?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await softDeleteExpense(expId);
+              setShowExpenseModal(false);
+              resetExpenseForm();
+              toast.success('Expense Deleted', 'Expense removed successfully');
+              await Promise.all([refetchExpenses(), refetchBudget()]);
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete expense');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Save Rates
@@ -606,13 +853,22 @@ export default function SiteDetailsScreen() {
   }
 
   if (!site || error) {
+    if (!site && (isOffline || (error && parseAppError(error).isNetworkError))) {
+      return (
+        <ScreenWrapper>
+          <ScreenHeader title="Offline" showBack />
+          <NoInternetScreen onRetry={refetchSite} />
+        </ScreenWrapper>
+      );
+    }
+    const parsed = error ? parseAppError(error) : { title: 'Site not found', message: 'The requested site could not be found.' };
     return (
       <ScreenWrapper>
-        <ScreenHeader title="Error" showBack />
+        <ScreenHeader title={parsed.title} showBack />
         <View style={styles.errorContainer}>
           <ErrorState
-            title={!site ? 'Site not found' : 'Error'}
-            message={error || 'The requested site could not be found.'}
+            title={parsed.title}
+            message={parsed.message}
             onRetry={refetchSite}
             retryLabel="Retry"
           />
@@ -645,6 +901,14 @@ export default function SiteDetailsScreen() {
         }
       />
 
+      {isCached && (
+        <OfflineIndicator
+          lastUpdated={lastUpdated}
+          onRetry={refetchSite}
+          style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm }}
+        />
+      )}
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {activeTab !== 'overview' && (
           <Pressable style={styles.backToOverviewBtn} onPress={() => setActiveTab('overview')}>
@@ -661,7 +925,7 @@ export default function SiteDetailsScreen() {
               <View style={styles.quickActionsRow}>
                 <Pressable
                   style={styles.quickActionBtn}
-                  onPress={() => setShowMaterialModal(true)}
+                  onPress={handleOpenAddMaterialModal}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
                     <Package size={18} color="#0284C7" />
@@ -681,7 +945,7 @@ export default function SiteDetailsScreen() {
 
                 <Pressable
                   style={styles.quickActionBtn}
-                  onPress={() => setShowExpenseModal(true)}
+                  onPress={handleOpenAddExpenseModal}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: '#FEE2E2' }]}>
                     <Receipt size={18} color="#DC2626" />
@@ -803,9 +1067,15 @@ export default function SiteDetailsScreen() {
 
               {/* Table Column Headers */}
               <View style={styles.tableColHeaderRow}>
-                <Text style={[styles.tableColHeaderText, styles.colParticulars]}>Particulars</Text>
-                <Text style={[styles.tableColHeaderText, styles.colQtyRate]}>Qty / Rate</Text>
-                <Text style={[styles.tableColHeaderText, styles.colAmount]}>Amount (₹)</Text>
+                <View style={styles.colParticulars}>
+                  <Text style={styles.tableColHeaderText}>Particulars</Text>
+                </View>
+                <View style={styles.colQtyRate}>
+                  <Text style={[styles.tableColHeaderText, { textAlign: 'center' }]}>Qty / Rate</Text>
+                </View>
+                <View style={styles.colAmount}>
+                  <Text style={[styles.tableColHeaderText, { textAlign: 'right' }]}>Amount (₹)</Text>
+                </View>
               </View>
 
               {/* ---------------- SECTION 1: LABOUR ATTENDANCE & WAGES ---------------- */}
@@ -877,18 +1147,22 @@ export default function SiteDetailsScreen() {
                     />
                   </View>
                 </View>
+              ) : todayWorkersCount === 0 ? (
+                <View style={styles.tableEmptyExpenseRow}>
+                  <Text style={styles.tableEmptyExpenseText}>
+                    No labour attendance recorded for {formatDateHuman(selectedDate)}.
+                  </Text>
+                </View>
               ) : (
                 /* Normal Labour Table Rows */
                 <>
                   {WORKER_ROLES.map((role) => {
                     const count = Number((labor as any)?.[role.countKey]) || 0;
+                    if (count === 0) return null;
                     const rate =
                       Number((labor as any)?.[role.rateKey]) ||
                       (cachedRecentRates as any)?.[role.rateKey] ||
                       role.defaultRate;
-
-                    if (count === 0 && todayWorkersCount > 0) return null;
-                    if (count === 0 && !['mason', 'men_helper', 'women_helper'].includes(role.key)) return null;
 
                     return (
                       <View key={role.key} style={styles.tableDataRow}>
@@ -911,13 +1185,19 @@ export default function SiteDetailsScreen() {
                   })}
 
                   {/* Labour Subtotal */}
-                  <View style={styles.tableSubtotalRow}>
-                    <Text style={[styles.tableSubtotalLabel, styles.colParticulars]}>Labour Subtotal</Text>
-                    <Text style={[styles.tableSubtotalQty, styles.colQtyRate]}>{todayWorkersCount} Workers</Text>
-                    <View style={styles.colAmount}>
-                      <Money amount={todayLaborCost} style={styles.tableSubtotalAmount} />
+                  {todayWorkersCount > 0 && (
+                    <View style={styles.tableSubtotalRow}>
+                      <View style={styles.colParticulars}>
+                        <Text style={styles.tableSubtotalLabel}>Labour Subtotal</Text>
+                      </View>
+                      <View style={styles.colQtyRate}>
+                        <Text style={styles.tableSubtotalQty}>{todayWorkersCount} Workers</Text>
+                      </View>
+                      <View style={styles.colAmount}>
+                        <Money amount={todayLaborCost} style={styles.tableSubtotalAmount} />
+                      </View>
                     </View>
-                  </View>
+                  )}
                 </>
               )}
 
@@ -933,7 +1213,7 @@ export default function SiteDetailsScreen() {
 
                 <Pressable
                   style={styles.tableHeaderActionBtn}
-                  onPress={() => setShowMaterialModal(true)}
+                  onPress={handleOpenAddMaterialModal}
                 >
                   <Text style={styles.tableHeaderActionText}>+ Add Material</Text>
                 </Pressable>
@@ -949,8 +1229,12 @@ export default function SiteDetailsScreen() {
                 selectedDateMaterials.map((mat) => (
                   <Pressable
                     key={mat.id}
-                    style={styles.tableDataRow}
-                    onPress={() => router.push({ pathname: '/(app)/materials/[id]', params: { id: mat.id } })}
+                    style={({ pressed }) => [
+                      styles.tableDataRow,
+                      styles.tableInteractiveRow,
+                      pressed && styles.tableRowPressed,
+                    ]}
+                    onPress={() => handleOpenEditMaterialModal(mat)}
                   >
                     <View style={styles.colParticulars}>
                       <Text style={styles.tableRowTitle} numberOfLines={1}>
@@ -958,7 +1242,7 @@ export default function SiteDetailsScreen() {
                       </Text>
                       <View style={styles.tableExpenseBadgeRow}>
                         <Text style={styles.tableMaterialCategoryBadge}>{mat.category || 'Material'}</Text>
-                        {mat.status && (
+                        {Boolean(mat.status) && (
                           <Text style={styles.tableMaterialStatusText}>
                             • {mat.status}
                           </Text>
@@ -974,6 +1258,35 @@ export default function SiteDetailsScreen() {
 
                     <View style={styles.colAmount}>
                       <Money amount={mat.totalCost} style={styles.tableAmountText} />
+                      <View style={styles.tableRowActionGroup}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.tableRowActionBtn,
+                            pressed && styles.tableRowActionBtnPressed,
+                          ]}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditMaterialModal(mat);
+                          }}
+                        >
+                          <Pencil size={11} color="#2563EB" />
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.tableRowActionBtn,
+                            styles.tableRowDeleteActionBtn,
+                            pressed && styles.tableRowActionBtnPressed,
+                          ]}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMaterialFromModal(mat.id);
+                          }}
+                        >
+                          <Trash2 size={11} color="#DC2626" />
+                        </Pressable>
+                      </View>
                     </View>
                   </Pressable>
                 ))
@@ -982,8 +1295,12 @@ export default function SiteDetailsScreen() {
               {/* Materials Subtotal */}
               {selectedDateMaterials.length > 0 && (
                 <View style={styles.tableSubtotalRow}>
-                  <Text style={[styles.tableSubtotalLabel, styles.colParticulars]}>Materials Subtotal</Text>
-                  <Text style={[styles.tableSubtotalQty, styles.colQtyRate]}>{selectedDateMaterials.length} Items</Text>
+                  <View style={styles.colParticulars}>
+                    <Text style={styles.tableSubtotalLabel}>Materials Subtotal</Text>
+                  </View>
+                  <View style={styles.colQtyRate}>
+                    <Text style={styles.tableSubtotalQty}>{selectedDateMaterials.length} Items</Text>
+                  </View>
                   <View style={styles.colAmount}>
                     <Money amount={selectedDateMaterialTotal} style={styles.tableSubtotalAmount} />
                   </View>
@@ -1002,7 +1319,7 @@ export default function SiteDetailsScreen() {
 
                 <Pressable
                   style={styles.tableHeaderActionBtn}
-                  onPress={() => setShowExpenseModal(true)}
+                  onPress={handleOpenAddExpenseModal}
                 >
                   <Text style={styles.tableHeaderActionText}>+ Add Expense</Text>
                 </Pressable>
@@ -1018,8 +1335,12 @@ export default function SiteDetailsScreen() {
                 selectedDateExpenses.map((exp) => (
                   <Pressable
                     key={exp.id}
-                    style={styles.tableDataRow}
-                    onPress={() => router.push({ pathname: '/(app)/expenses/[id]', params: { id: exp.id } })}
+                    style={({ pressed }) => [
+                      styles.tableDataRow,
+                      styles.tableInteractiveRow,
+                      pressed && styles.tableRowPressed,
+                    ]}
+                    onPress={() => handleOpenEditExpenseModal(exp)}
                   >
                     <View style={styles.colParticulars}>
                       <Text style={styles.tableRowTitle} numberOfLines={1}>
@@ -1027,7 +1348,7 @@ export default function SiteDetailsScreen() {
                       </Text>
                       <View style={styles.tableExpenseBadgeRow}>
                         <Text style={styles.tableExpenseCategoryBadge}>{exp.category || 'General'}</Text>
-                        {exp.payment_status && (
+                        {Boolean(exp.payment_status) && (
                           <Text
                             style={[
                               styles.tableExpenseStatusText,
@@ -1042,12 +1363,41 @@ export default function SiteDetailsScreen() {
 
                     <View style={styles.colQtyRate}>
                       <Text style={styles.tableQtyText} numberOfLines={1}>
-                        {exp.payment_method || '1 item'}
+                        {exp.payment_method || 'Cash'}
                       </Text>
                     </View>
 
                     <View style={styles.colAmount}>
                       <Money amount={exp.amount} style={styles.tableAmountText} />
+                      <View style={styles.tableRowActionGroup}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.tableRowActionBtn,
+                            pressed && styles.tableRowActionBtnPressed,
+                          ]}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditExpenseModal(exp);
+                          }}
+                        >
+                          <Pencil size={11} color="#2563EB" />
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.tableRowActionBtn,
+                            styles.tableRowDeleteActionBtn,
+                            pressed && styles.tableRowActionBtnPressed,
+                          ]}
+                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteExpense(exp.id);
+                          }}
+                        >
+                          <Trash2 size={11} color="#DC2626" />
+                        </Pressable>
+                      </View>
                     </View>
                   </Pressable>
                 ))
@@ -1056,8 +1406,12 @@ export default function SiteDetailsScreen() {
               {/* Expenses Subtotal */}
               {selectedDateExpenses.length > 0 && (
                 <View style={styles.tableSubtotalRow}>
-                  <Text style={[styles.tableSubtotalLabel, styles.colParticulars]}>Expenses Subtotal</Text>
-                  <Text style={[styles.tableSubtotalQty, styles.colQtyRate]}>{selectedDateExpenses.length} Items</Text>
+                  <View style={styles.colParticulars}>
+                    <Text style={styles.tableSubtotalLabel}>Expenses Subtotal</Text>
+                  </View>
+                  <View style={styles.colQtyRate}>
+                    <Text style={styles.tableSubtotalQty}>{selectedDateExpenses.length} Items</Text>
+                  </View>
                   <View style={styles.colAmount}>
                     <Money amount={selectedDateExpenseTotal} style={styles.tableSubtotalAmount} />
                   </View>
@@ -1280,7 +1634,7 @@ export default function SiteDetailsScreen() {
                 </Text>
                 <Button
                   title="+ Add First Material"
-                  onPress={() => setShowMaterialModal(true)}
+                  onPress={handleOpenAddMaterialModal}
                   style={{ marginTop: 16 }}
                 />
               </View>
@@ -1289,7 +1643,7 @@ export default function SiteDetailsScreen() {
                 <Pressable
                   key={mat.id}
                   style={styles.itemCard}
-                  onPress={() => router.push(`/(app)/materials/${mat.id}` as any)}
+                  onPress={() => handleOpenEditMaterialModal(mat)}
                 >
                   <View style={styles.itemCardHeader}>
                     <View style={styles.itemCardTitleWrap}>
@@ -1321,7 +1675,7 @@ export default function SiteDetailsScreen() {
                       style={styles.itemActionBtn}
                       onPress={(e) => {
                         e.stopPropagation();
-                        router.push({ pathname: '/(app)/materials/edit', params: { id: mat.id } } as any);
+                        handleOpenEditMaterialModal(mat);
                       }}
                     >
                       <Pencil size={14} color={Colors.light.primary} />
@@ -1453,17 +1807,30 @@ export default function SiteDetailsScreen() {
                   />
                 </View>
               </View>
+            ) : todayWorkersCount === 0 ? (
+              <View style={styles.emptyCard}>
+                <Users size={36} color={Colors.light.textMuted} />
+                <Text style={styles.emptyTitle}>No Labour Attendance Logged</Text>
+                <Text style={styles.emptySub}>
+                  No workers recorded for {formatDateHuman(selectedDate)}.
+                </Text>
+                <Button
+                  title="+ Log Attendance"
+                  onPress={() => setIsEditingAttendance(true)}
+                  style={{ marginTop: 16 }}
+                />
+              </View>
             ) : (
               <View style={styles.breakdownCard}>
                 <Text style={styles.breakdownCardTitle}>Worker Breakdown</Text>
 
                 {WORKER_ROLES.map((role) => {
                   const count = (labor as any)?.[role.countKey] ?? 0;
+                  if (count === 0) return null;
                   const rate =
                     (labor as any)?.[role.rateKey] ??
                     (cachedRecentRates as any)?.[role.rateKey] ??
                     role.defaultRate;
-                  if (count === 0 && todayWorkersCount > 0) return null;
                   return (
                     <View key={role.key} style={styles.categoryDetailRow}>
                       <View>
@@ -1707,12 +2074,7 @@ export default function SiteDetailsScreen() {
                   </View>
                   <Button
                     title="+ Add Expense"
-                    onPress={() =>
-                      router.push({
-                        pathname: '/(app)/expenses/add',
-                        params: { siteId: site.id },
-                      })
-                    }
+                    onPress={handleOpenAddExpenseModal}
                     icon={<Plus size={15} color="#FFFFFF" />}
                     style={{ height: 38, paddingHorizontal: 12 }}
                   />
@@ -1722,7 +2084,11 @@ export default function SiteDetailsScreen() {
                   <View style={styles.recentTxList}>
                     <Text style={styles.recentTxTitle}>Recent Project Expenses</Text>
                     {siteExpenses.slice(0, 3).map((exp) => (
-                      <View key={exp.id} style={styles.recentTxItem}>
+                      <Pressable
+                        key={exp.id}
+                        style={styles.recentTxItem}
+                        onPress={() => handleOpenEditExpenseModal(exp)}
+                      >
                         <View style={styles.recentTxLeft}>
                           <Text style={styles.recentTxParticulars} numberOfLines={1}>
                             {exp.title}
@@ -1732,7 +2098,7 @@ export default function SiteDetailsScreen() {
                           </Text>
                         </View>
                         <Money amount={exp.amount} style={styles.recentTxExpenseVal} />
-                      </View>
+                      </Pressable>
                     ))}
                   </View>
                 )}
@@ -1821,7 +2187,9 @@ export default function SiteDetailsScreen() {
                   <Package size={18} color="#0284C7" />
                 </View>
                 <View>
-                  <Text style={styles.modalTitle}>Add Material</Text>
+                  <Text style={styles.modalTitle}>
+                    {editingMaterialId ? 'Edit Material' : 'Add Material'}
+                  </Text>
                   <Text style={styles.modalSubtitle}>
                     {formatDateHuman(selectedDate)} • {site.name}
                   </Text>
@@ -1942,10 +2310,16 @@ export default function SiteDetailsScreen() {
                 disabled={isSavingMaterial}
               />
               <Button
-                title={isSavingMaterial ? 'Saving...' : 'Save Material'}
+                title={
+                  isSavingMaterial
+                    ? 'Saving...'
+                    : editingMaterialId
+                    ? 'Update Material'
+                    : 'Save Material'
+                }
                 onPress={handleSaveMaterialModal}
                 style={{ flex: 1 }}
-                disabled={isSavingMaterial || !matName.trim()}
+                disabled={isSaveMaterialDisabled}
               />
             </View>
           </View>
@@ -2167,7 +2541,9 @@ export default function SiteDetailsScreen() {
                   <Receipt size={18} color="#DC2626" />
                 </View>
                 <View>
-                  <Text style={styles.modalTitle}>Add Expense</Text>
+                  <Text style={styles.modalTitle}>
+                    {editingExpenseId ? 'Edit Expense' : 'Add Expense'}
+                  </Text>
                   <Text style={styles.modalSubtitle}>
                     {formatDateHuman(selectedDate)} • {site.name}
                   </Text>
@@ -2219,32 +2595,40 @@ export default function SiteDetailsScreen() {
               <View style={styles.modalField}>
                 <Text style={styles.modalFieldLabel}>Category</Text>
                 <View style={styles.modalChipRow}>
-                  {['Fuel', 'Transport', 'Refreshments', 'Tools', 'Equipment', 'Repair', 'Site Work', 'Other'].map((cat) => (
+                  {[
+                    { label: 'Fuel', value: 'Fuel' },
+                    { label: 'Transport', value: 'Transport' },
+                    { label: 'Food / Tea', value: 'Food / Refreshments' },
+                    { label: 'Tools', value: 'Tools' },
+                    { label: 'Equipment', value: 'Equipment Rental' },
+                    { label: 'Repair', value: 'Repair / Maintenance' },
+                    { label: 'Other', value: 'Miscellaneous' },
+                  ].map((item) => (
                     <Pressable
-                      key={cat}
-                      style={[styles.modalChip, expCategory === cat && styles.modalChipActive]}
-                      onPress={() => setExpCategory(cat)}
+                      key={item.value}
+                      style={[styles.modalChip, expCategory === item.value && styles.modalChipActive]}
+                      onPress={() => setExpCategory(item.value)}
                     >
-                      <Text style={[styles.modalChipText, expCategory === cat && styles.modalChipTextActive]}>
-                        {cat}
+                      <Text style={[styles.modalChipText, expCategory === item.value && styles.modalChipTextActive]}>
+                        {item.label}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
-              {/* Payment Method */}
+              {/* Payment Method selector */}
               <View style={styles.modalField}>
                 <Text style={styles.modalFieldLabel}>Payment Method</Text>
                 <View style={styles.modalChipRow}>
-                  {['Cash', 'UPI', 'Bank Transfer'].map((m) => (
+                  {['Cash', 'Online / UPI', 'Bank Transfer', 'Cheque'].map((method) => (
                     <Pressable
-                      key={m}
-                      style={[styles.modalChip, expPaymentMethod === m && styles.modalChipActive]}
-                      onPress={() => setExpPaymentMethod(m)}
+                      key={method}
+                      style={[styles.modalChip, expPaymentMethod === method && styles.modalChipActive]}
+                      onPress={() => setExpPaymentMethod(method)}
                     >
-                      <Text style={[styles.modalChipText, expPaymentMethod === m && styles.modalChipTextActive]}>
-                        {m}
+                      <Text style={[styles.modalChipText, expPaymentMethod === method && styles.modalChipTextActive]}>
+                        {method}
                       </Text>
                     </Pressable>
                   ))}
@@ -2290,10 +2674,16 @@ export default function SiteDetailsScreen() {
                 disabled={isSavingExpense}
               />
               <Button
-                title={isSavingExpense ? 'Saving...' : 'Save Expense'}
+                title={
+                  isSavingExpense
+                    ? 'Saving...'
+                    : editingExpenseId
+                    ? 'Update Expense'
+                    : 'Save Expense'
+                }
                 onPress={handleSaveExpenseModal}
                 style={{ flex: 1 }}
-                disabled={isSavingExpense || !expTitle.trim() || !expAmount}
+                disabled={isSaveExpenseDisabled}
               />
             </View>
           </View>
@@ -2456,8 +2846,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: Spacing.md,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
 
   backToOverviewBtn: {
@@ -2674,15 +3065,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   colParticulars: {
-    flex: 1.8,
+    flex: 1.6,
   },
   colQtyRate: {
-    flex: 1.3,
+    flex: 1.1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   colAmount: {
-    flex: 1.1,
+    flex: 1.3,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
@@ -4090,5 +4481,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.light.text,
+  },
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalHeaderDeleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+  },
+  tableInteractiveRow: {
+    // Interactive press feedback
+  },
+  tableRowPressed: {
+    backgroundColor: '#F1F5F9',
+  },
+  tableRowActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  tableRowActionBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.sm,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableRowDeleteActionBtn: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FEE2E2',
+  },
+  tableRowActionBtnPressed: {
+    opacity: 0.6,
+    transform: [{ scale: 0.92 }],
   },
 });

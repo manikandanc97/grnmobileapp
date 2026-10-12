@@ -1,14 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { getDashboardMetrics, getRecentActivity, DashboardMetrics } from '@/services/dashboard';
+import { getDashboardMetricsWithCache, getRecentActivity, DashboardMetrics } from '@/services/dashboard';
 import { ActivityItem } from '@/types/dashboard';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
+import { parseAppError } from '@/lib/errorHandler';
 
 export function useDashboard() {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -23,29 +31,22 @@ export function useDashboard() {
       }
       setError(null);
 
-      const [fetchedMetrics, fetchedActivities] = await Promise.all([
-        getDashboardMetrics(),
-        getRecentActivity(),
+      const [metricsRes, fetchedActivities] = await Promise.all([
+        getDashboardMetricsWithCache(userId),
+        getRecentActivity(userId),
       ]);
 
       if (isMountedRef.current) {
-        setMetrics(fetchedMetrics);
+        setMetrics(metricsRes.data);
+        setIsCached(metricsRes.isCached);
+        setLastUpdated(metricsRes.cachedAt);
         setActivities(fetchedActivities);
         dataSync.markClean('dashboard');
       }
     } catch (err: unknown) {
       if (isMountedRef.current) {
-        console.error('Error fetching dashboard data:', err);
-        const isErrObj = typeof err === 'object' && err !== null;
-        const code = isErrObj && 'code' in err ? String((err as { code: unknown }).code) : '';
-        const message = isErrObj && 'message' in err ? String((err as { message: unknown }).message) : '';
-
-        const isMissingTable = code === 'PGRST205' || message.includes('schema cache');
-        setError(
-          isMissingTable
-            ? "Database tables not found. Please execute 'supabase/migrations/001_initial_schema.sql' in your Supabase SQL Editor."
-            : (message || 'Failed to fetch dashboard data')
-        );
+        const parsed = parseAppError(err, 'Failed to fetch dashboard data');
+        setError(parsed.message);
       }
     } finally {
       if (isMountedRef.current) {
@@ -53,7 +54,7 @@ export function useDashboard() {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [userId]);
 
   // Initial load — single authoritative fetch path
   useEffect(() => {
@@ -64,8 +65,7 @@ export function useDashboard() {
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  }, [userId]);
 
   // Live synchronization subscription
   useEffect(() => {
@@ -90,6 +90,9 @@ export function useDashboard() {
     activities,
     loading,
     error,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch: fetchDashboardData,
   };
 }

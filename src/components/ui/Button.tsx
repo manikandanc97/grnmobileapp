@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.45,
   },
   text: {
     ...Typography.button,

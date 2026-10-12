@@ -47,7 +47,7 @@ export function KeyboardAwareForm({
     scrollToField: () => {},
   };
 
-  const bottomInset = Platform.OS === 'ios' ? insets.bottom : 0;
+  const bottomInset = insets.bottom;
   const dynamicBottomPadding = bottomInset + (bottomBar ? 80 : Spacing.md);
 
   return (

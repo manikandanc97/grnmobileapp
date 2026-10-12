@@ -34,11 +34,14 @@ import { ErrorDialog } from '@/components/ui/ErrorDialog';
 import { Money } from '@/components/ui/Money';
 import { Button } from '@/components/ui/Button';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { FilterButton } from '@/components/ui/FilterButton';
+
 import { SelectField } from '@/components/ui/SelectField';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
@@ -51,7 +54,7 @@ export default function MaterialsScreen() {
   const allCategories = useMemo(() => ['All', ...categories], [categories]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   
-  const { materials, loading, refreshing, error, onRefresh, refetch } = useMaterials(siteId);
+  const { materials, loading, refreshing, error, isOffline, isCached, lastUpdated, onRefresh, refetch } = useMaterials(siteId);
 
   // Card action states
   const [materialToDelete, setMaterialToDelete] = useState<MaterialItem | null>(null);
@@ -280,44 +283,61 @@ export default function MaterialsScreen() {
           <LoadingSkeleton type="card" height={160} />
           <LoadingSkeleton type="card" height={160} />
         </View>
-      ) : error ? (
-        <View style={styles.centerContainer}>
-           <ErrorState 
-             title="Unable to load materials" 
-             message={error} 
-             onRetry={refetch} 
-           />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredMaterials}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMaterialCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderSummaryCards}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={Colors.light.primary}
-              colors={[Colors.light.primary]}
-            />
+      ) : error && materials.length === 0 ? (
+        (() => {
+          const parsed = parseAppError(error);
+          if (parsed.isNetworkError || isOffline) {
+            return <NoInternetScreen onRetry={refetch} />;
           }
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <EmptyState
-                icon={<Boxes size={48} color={Colors.light.textMuted} />}
-                title={materials.length === 0 ? "No materials yet" : "No materials found"}
-                description={materials.length === 0 
-                  ? "Add materials to start tracking construction inventory."
-                  : "Try adjusting your search or category filters."}
-                actionLabel={materials.length === 0 ? "Add Material" : "Clear Filters"}
-                onAction={materials.length === 0 ? () => router.push('/(app)/materials/add') : () => { setSearchQuery(''); setActiveCategory('All'); }}
+          return (
+            <View style={styles.centerContainer}>
+              <ErrorState 
+                title={parsed.title} 
+                message={parsed.message} 
+                onRetry={refetch} 
               />
             </View>
+          );
+        })()
+      ) : (
+        <>
+          {isCached && (
+            <OfflineIndicator 
+              lastUpdated={lastUpdated} 
+              onRetry={onRefresh} 
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            />
           )}
-        />
+          <FlatList
+            data={filteredMaterials}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMaterialCard}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={renderSummaryCards}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={Colors.light.primary}
+                colors={[Colors.light.primary]}
+              />
+            }
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon={<Boxes size={48} color={Colors.light.textMuted} />}
+                  title={materials.length === 0 ? "No materials yet" : "No materials found"}
+                  description={materials.length === 0 
+                    ? "Add materials to start tracking construction inventory."
+                    : "Try adjusting your search or category filters."}
+                  actionLabel={materials.length === 0 ? "Add Material" : "Clear Filters"}
+                  onAction={materials.length === 0 ? () => router.push('/(app)/materials/add') : () => { setSearchQuery(''); setActiveCategory('All'); }}
+                />
+              </View>
+            )}
+          />
+        </>
       )}
 
       {/* Confirm Delete Dialog */}
@@ -421,7 +441,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     gap: Spacing.md,

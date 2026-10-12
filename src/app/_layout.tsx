@@ -1,15 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, View, Platform, StyleSheet } from 'react-native';
+import { useColorScheme, View, Platform, StyleSheet, LogBox } from 'react-native';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { AuthProvider } from '@/providers/AuthProvider';
+import { NotificationProvider } from '@/providers/NotificationProvider';
+import { NotificationBanner } from '@/components/ui/NotificationBanner';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { AppLockProvider } from '@/providers/AppLockProvider';
+import { ToastProvider } from '@/providers/ToastProvider';
 import { Colors } from '@/constants/theme';
-
-import { LogBox } from 'react-native';
 
 LogBox.ignoreLogs([
   '"shadow*" style props are deprecated',
@@ -29,19 +31,25 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppLockProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <View style={styles.container}>
-              <View style={styles.mobileWrapper}>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.surface } }}>
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                </Stack>
-              </View>
-            </View>
-            <StatusBar style="dark" />
-          </ThemeProvider>
-        </AppLockProvider>
+        <NotificationProvider>
+          <AppLockProvider>
+            <ToastProvider>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <View style={styles.container}>
+                  <View style={styles.mobileWrapper}>
+                    <OfflineBanner />
+                    <NotificationBanner />
+                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.surface } }}>
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                    </Stack>
+                  </View>
+                </View>
+                <StatusBar style="dark" />
+              </ThemeProvider>
+            </ToastProvider>
+          </AppLockProvider>
+        </NotificationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

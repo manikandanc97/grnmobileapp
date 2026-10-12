@@ -1,22 +1,32 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ExpenseWithSite, getExpenses, getExpenseById } from '@/services/expenses';
+import { ExpenseWithSite, getExpensesWithCache, getExpenseById } from '@/services/expenses';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
 
 export interface UseExpensesResult {
   expenses: ExpenseWithSite[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (isSilent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
 export function useExpenses(siteId?: string): UseExpensesResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [expenses, setExpenses] = useState<ExpenseWithSite[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -34,9 +44,11 @@ export function useExpenses(siteId?: string): UseExpensesResult {
       setError(null);
 
       try {
-        const data = await getExpenses(siteId);
+        const res = await getExpensesWithCache(siteId, userId);
         if (isMountedRef.current) {
-          setExpenses(data);
+          setExpenses(res.data);
+          setIsCached(res.isCached);
+          setLastUpdated(res.cachedAt);
           dataSync.markClean('expenses');
         }
       } catch (err) {
@@ -52,7 +64,7 @@ export function useExpenses(siteId?: string): UseExpensesResult {
         isFetchingRef.current = false;
       }
     },
-    [siteId],
+    [siteId, userId],
   );
 
   // Initial load — single authoritative fetch path
@@ -121,7 +133,7 @@ export function useExpenses(siteId?: string): UseExpensesResult {
     [loadData, expenses.length],
   );
 
-  return { expenses, loading, refreshing, error, refetch, onRefresh };
+  return { expenses, loading, refreshing, error, isOffline, isCached, lastUpdated, refetch, onRefresh };
 }
 
 export interface UseExpenseDetailsResult {

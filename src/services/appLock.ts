@@ -30,7 +30,7 @@ export const appLockService = {
         biometric: biometricStr !== 'false', // default to true if null
         timeout: (timeoutStr as AutoLockTimeout) || 'Immediately'
       };
-    } catch (e) {
+    } catch {
       return { enabled: false, biometric: true, timeout: 'Immediately' as AutoLockTimeout };
     }
   },

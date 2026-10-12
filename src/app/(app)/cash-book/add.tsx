@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { TrendingUp, TrendingDown, IndianRupee, FileText, Calendar } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, IndianRupee, FileText } from 'lucide-react-native';
 
 import { createCashTransaction, getTodayLocalDate, TransactionType } from '@/services/cashBook';
 
@@ -22,6 +22,7 @@ import { DateField } from '@/components/ui/DateField';
 import { ErrorDialog } from '@/components/ui/ErrorDialog';
 
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
+import { toast } from '@/lib/toast';
 
 export default function AddCashTransactionScreen() {
   const { siteId, siteName } = useLocalSearchParams<{ siteId: string; siteName?: string }>();
@@ -81,6 +82,10 @@ export default function AddCashTransactionScreen() {
         particulars: particulars.trim(),
         amount: amt,
       });
+      toast.success(
+        isInward ? 'Inward Cash Recorded' : 'Outward Cash Recorded',
+        `₹${amt.toLocaleString('en-IN')} • ${particulars.trim()}`
+      );
       router.back();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save transaction.');
@@ -229,7 +234,7 @@ export default function AddCashTransactionScreen() {
           </FormField>
 
           {/* Preview box */}
-          {particulars.trim() && amountStr && parseFloat(amountStr.replace(/[₹,\s]/g, '')) > 0 && (
+          {Boolean(particulars.trim() && amountStr && parseFloat(amountStr.replace(/[₹,\s]/g, '')) > 0) && (
             <View style={[styles.preview, isInward ? styles.previewInward : styles.previewOutward]}>
               <Text style={styles.previewLabel}>Transaction Preview</Text>
               <Text style={styles.previewParticulars}>{particulars.trim()}</Text>
@@ -274,7 +279,7 @@ export default function AddCashTransactionScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
     gap: Spacing.lg,
   },
   section: {

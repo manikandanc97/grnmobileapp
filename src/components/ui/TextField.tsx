@@ -85,7 +85,11 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         containerStyle,
       ]}
     >
-      {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
+      {leftIcon && (
+        <View style={[styles.leftIconContainer, multiline && styles.leftIconContainerMultiline]}>
+          {leftIcon}
+        </View>
+      )}
 
       <TextInput
         ref={inputRef}
@@ -137,6 +141,9 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  leftIconContainerMultiline: {
+    paddingTop: Spacing.md,
   },
   rightIconContainer: {
     paddingRight: Spacing.md,

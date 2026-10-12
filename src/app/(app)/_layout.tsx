@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
@@ -26,13 +27,19 @@ export default function AppLayout() {
   const { session, loading } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
   const pathname = usePathname();
   const segments = useSegments();
 
   const isFormScreen =
     segments[segments.length - 1] === 'add' ||
+    segments[segments.length - 1] === 'edit' ||
     pathname.endsWith('/add') ||
-    pathname.includes('/add');
+    pathname.endsWith('/edit') ||
+    pathname.includes('/add') ||
+    pathname.includes('/edit');
+
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 8);
 
   const tabBarStyle = useMemo(
     () =>
@@ -42,8 +49,8 @@ export default function AppLayout() {
             backgroundColor: '#FFFFFF',
             borderTopColor: 'rgba(15, 23, 42, 0.06)',
             borderTopWidth: 1,
-            height: Platform.OS === 'ios' ? 86 : 66,
-            paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+            height: 54 + bottomInset,
+            paddingBottom: bottomInset,
             paddingTop: 8,
             shadowColor: '#07566A',
             shadowOffset: { width: 0, height: -4 },
@@ -51,7 +58,7 @@ export default function AppLayout() {
             shadowRadius: 12,
             elevation: 8,
           },
-    [isFormScreen],
+    [isFormScreen, bottomInset],
   );
 
   React.useEffect(() => {
@@ -70,7 +77,6 @@ export default function AppLayout() {
         tabBarActiveTintColor: Colors.light.brand,
         tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle,
-        safeAreaInsets: { bottom: Platform.OS === 'android' ? 0 : undefined },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',

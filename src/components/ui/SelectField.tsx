@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, FlatList, Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, X, Plus, Trash2 } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius, TouchTargets, IconSizes } from '@/constants/theme';
 
@@ -32,6 +33,7 @@ export function SelectField({
   onDeleteOption,
   manageLabel
 }: SelectFieldProps) {
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   
   const selectedOption = options.find(o => o.value === value);
@@ -42,6 +44,7 @@ export function SelectField({
   };
 
   const hasError = Boolean(error);
+  const bottomInset = Math.max(insets.bottom, Spacing.md);
 
   return (
     <>
@@ -68,7 +71,7 @@ export function SelectField({
         onRequestClose={() => setModalVisible(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.modalContent, { paddingBottom: bottomInset }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{placeholder}</Text>

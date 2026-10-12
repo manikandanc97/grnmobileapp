@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-
 import { dataSync } from '@/lib/dataSync';
 
 type AuthContextType = {
   session: Session | null;
+  user: User | null;
+  userId: string;
   loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
+  user: null,
+  userId: '',
   loading: true,
 });
 
@@ -39,8 +42,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const user = session?.user ?? null;
+  const userId = user?.id ?? '';
+
   return (
-    <AuthContext.Provider value={{ session, loading }}>
+    <AuthContext.Provider value={{ session, user, userId, loading }}>
       {children}
     </AuthContext.Provider>
   );

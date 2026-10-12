@@ -20,6 +20,7 @@ import {
   getSiteById,
   CreateSiteParams,
 } from '@/services/sites';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Spacing } from '@/constants/theme';
 
 // Shared UI Architecture
@@ -31,6 +32,7 @@ import { BottomActionBar } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { SuccessDialog } from '@/components/ui/SuccessDialog';
 import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { toast } from '@/lib/toast';
 
 dayjs.extend(customParseFormat);
 
@@ -74,6 +76,7 @@ export function SiteForm({
   onSuccess,
 }: SiteFormProps) {
   const isEdit = mode === 'edit';
+  const { isOffline } = useNetworkStatus();
 
   const [name, setName] = useState(initialData?.name ?? '');
   const [location, setLocation] = useState(initialData?.location ?? '');
@@ -212,6 +215,10 @@ export function SiteForm({
       Keyboard.dismiss();
       setIsSubmitting(false);
       setSavedSiteName(siteName);
+      toast.success(
+        isEdit ? 'Site Updated' : 'Site Created',
+        `${siteName} • ${location.trim()}`
+      );
       setShowSuccess(true);
       if (onSuccess) {
         onSuccess(result);
@@ -471,9 +478,11 @@ export function SiteForm({
       {/* Success Dialog */}
       <SuccessDialog
         visible={showSuccess}
-        title={isEdit ? 'Changes Saved' : 'Site Created'}
+        title={isOffline ? 'Saved Locally' : isEdit ? 'Changes Saved' : 'Site Created'}
         message={
-          isEdit
+          isOffline
+            ? `"${savedSiteName || 'Site'}" has been saved to this device and will sync automatically once an internet connection is available.`
+            : isEdit
             ? `"${savedSiteName || 'Site'}" has been successfully updated.`
             : `"${savedSiteName || 'Site'}" has been successfully created.`
         }

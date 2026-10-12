@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -21,34 +21,22 @@ import { useDashboard } from '@/hooks/useDashboard';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Colors, Spacing, Typography, Shadows, Radius } from '@/constants/theme';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
+import { toast } from '@/lib/toast';
+import { Colors, Spacing, Shadows, Radius } from '@/constants/theme';
 import { formatCurrency } from '@/lib/finance';
 
 export default function HomeDashboardScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Fetch real sites from Supabase for Active Sites section
   const { sites, refetch: refetchSites } = useSites();
   // Fetch dashboard metrics and activity
-  const { metrics, loading, error, refetch: refetchDashboard } = useDashboard();
-
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showToast = (message: string) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToastMessage(message);
-    toastTimerRef.current = setTimeout(() => {
-      setToastMessage(null);
-      toastTimerRef.current = null;
-    }, 2800);
-  };
-
-  useEffect(() => () => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-  }, []);
+  const { metrics, loading, error, isOffline, isCached, lastUpdated, refetch: refetchDashboard } = useDashboard();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -57,9 +45,9 @@ export default function HomeDashboardScreen() {
         refetchSites(),
         refetchDashboard(),
       ]);
-      showToast('Dashboard updated');
+      toast.success('Dashboard Updated', 'Metrics and active sites refreshed');
     } catch {
-      showToast('Failed to refresh dashboard');
+      toast.error('Refresh Failed', 'Unable to refresh dashboard data');
     } finally {
       setRefreshing(false);
     }
@@ -85,7 +73,7 @@ export default function HomeDashboardScreen() {
         router.push('/(app)/labor' as never);
         break;
       default:
-        showToast(`${metric.label}: ${metric.value}`);
+        toast.info(metric.label, metric.value);
         break;
     }
   };
@@ -95,15 +83,6 @@ export default function HomeDashboardScreen() {
       <View style={styles.webContainer}>
         {/* Top Header */}
         <HomeHeader onProfilePress={() => setProfileVisible(true)} />
-
-        {/* Floating feedback toast */}
-        {toastMessage && (
-          <View style={styles.toastContainer}>
-            <View style={styles.toast}>
-              <Text style={styles.toastText}>{toastMessage}</Text>
-            </View>
-          </View>
-        )}
 
         {/* Dashboard Scroll Body */}
         <ScrollView
@@ -136,17 +115,32 @@ export default function HomeDashboardScreen() {
               <LoadingSkeleton type="text" height={24} width={150} style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }} />
               <LoadingSkeleton type="card" height={180} />
             </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <ErrorState 
-                title="Database Setup Required" 
-                message={error} 
-                onRetry={onRefresh} 
-                retryLabel="Retry Connection" 
-              />
-            </View>
+          ) : error && !metrics ? (
+            (() => {
+              const parsed = parseAppError(error);
+              if (parsed.isNetworkError || isOffline) {
+                return <NoInternetScreen onRetry={onRefresh} />;
+              }
+              return (
+                <View style={styles.errorContainer}>
+                  <ErrorState 
+                    title={parsed.title} 
+                    message={parsed.message} 
+                    onRetry={onRefresh} 
+                    retryLabel="Retry" 
+                  />
+                </View>
+              );
+            })()
           ) : (
             <>
+              {isCached && (
+                <OfflineIndicator 
+                  lastUpdated={lastUpdated} 
+                  onRetry={onRefresh}
+                  style={{ marginBottom: Spacing.md }} 
+                />
+              )}
               {/* 1. Overview Metrics & Financial Snapshot */}
               <OverviewSection metricsData={metrics} sites={sites} onCardPress={handleMetricPress} />
 
@@ -242,29 +236,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
-  toastContainer: {
-    position: 'absolute',
-    top: 80,
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    alignItems: 'center',
-    pointerEvents: 'none',
-  },
-  toast: {
-    backgroundColor: 'rgba(15, 23, 42, 0.94)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderRadius: Radius.full,
-    ...Shadows.sm,
-  },
-  toastText: {
-    ...Typography.caption,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
+
   loadingContainer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,

@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { Check, Building2 } from 'lucide-react-native';
 import { useSites } from '@/hooks/useSites';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import {
   createMaterial,
   updateMaterial,
@@ -34,6 +35,7 @@ import { BottomActionBar } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { SuccessDialog } from '@/components/ui/SuccessDialog';
 import { ErrorDialog } from '@/components/ui/ErrorDialog';
+import { toast } from '@/lib/toast';
 
 const MATERIAL_STATUSES: MaterialStatus[] = [
   'Available',
@@ -59,6 +61,7 @@ export function MaterialForm({
 
   const { sites, loading: sitesLoading } = useSites();
   const { categories, units, addCategory, deleteCategory } = useMasterData();
+  const { isOffline } = useNetworkStatus();
 
   const [name, setName] = useState(initialData?.name ?? '');
   const [category, setCategory] = useState<MaterialCategory>(
@@ -223,6 +226,10 @@ export function MaterialForm({
       Keyboard.dismiss();
       setIsSaving(false);
       setSavedMaterialName(materialName);
+      toast.success(
+        isEdit ? 'Material Updated' : 'Material Added',
+        `${materialName} • ${quantity} ${unit}`
+      );
       setShowSuccess(true);
       if (onSuccess) {
         onSuccess(result);
@@ -542,9 +549,11 @@ export function MaterialForm({
       {/* Success Dialog */}
       <SuccessDialog
         visible={showSuccess}
-        title={isEdit ? 'Changes Saved' : 'Material Added'}
+        title={isOffline ? 'Saved Locally' : isEdit ? 'Changes Saved' : 'Material Added'}
         message={
-          isEdit
+          isOffline
+            ? `"${savedMaterialName || 'Material'}" has been saved to this device and will sync automatically once an internet connection is available.`
+            : isEdit
             ? `"${savedMaterialName || 'Material'}" has been updated.`
             : `"${savedMaterialName || 'Material'}" has been successfully added.`
         }

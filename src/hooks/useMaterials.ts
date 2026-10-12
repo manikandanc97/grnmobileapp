@@ -1,23 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { MaterialItem } from '@/types/dashboard';
-import { getMaterials, getMaterialById } from '@/services/materials';
+import { getMaterialsWithCache, getMaterialById } from '@/services/materials';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
 
 export interface UseMaterialsResult {
   materials: MaterialItem[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (isSilent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
 export function useMaterials(siteId?: string): UseMaterialsResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -35,9 +45,11 @@ export function useMaterials(siteId?: string): UseMaterialsResult {
       setError(null);
 
       try {
-        const data = await getMaterials(siteId);
+        const res = await getMaterialsWithCache(siteId, userId);
         if (isMountedRef.current) {
-          setMaterials(data);
+          setMaterials(res.data);
+          setIsCached(res.isCached);
+          setLastUpdated(res.cachedAt);
           dataSync.markClean('materials');
         }
       } catch (err) {
@@ -53,7 +65,7 @@ export function useMaterials(siteId?: string): UseMaterialsResult {
         isFetchingRef.current = false;
       }
     },
-    [siteId],
+    [siteId, userId],
   );
 
   // Initial load — single authoritative fetch path
@@ -127,6 +139,9 @@ export function useMaterials(siteId?: string): UseMaterialsResult {
     loading,
     refreshing,
     error,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
     onRefresh,
   };
@@ -136,13 +151,21 @@ export interface UseMaterialDetailsResult {
   material: MaterialItem | null;
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (isSilent?: boolean) => Promise<void>;
 }
 
 export function useMaterialDetails(id: string | undefined): UseMaterialDetailsResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [material, setMaterial] = useState<MaterialItem | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(id));
   const [error, setError] = useState<string | null>(id ? null : 'Invalid material ID provided.');
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -157,13 +180,15 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
     setError(null);
 
     try {
-      const data = await getMaterialById(targetId);
+      const data = await getMaterialById(targetId, userId);
       if (isMountedRef.current) {
         if (!data) {
           setMaterial(null);
           setError('Material not found.');
         } else {
           setMaterial(data);
+          setIsCached(isOffline);
+          setLastUpdated(data.createdAt || data.lastUpdated || null);
         }
       }
     } catch (err) {
@@ -177,7 +202,7 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [userId, isOffline]);
 
   // Initial load — single authoritative fetch path
   useEffect(() => {
@@ -190,7 +215,6 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
 
   // Live synchronization for detail view
   useEffect(() => {
@@ -232,6 +256,9 @@ export function useMaterialDetails(id: string | undefined): UseMaterialDetailsRe
     material,
     loading,
     error,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
   };
 }

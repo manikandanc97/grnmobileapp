@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { SiteItem } from '@/types/dashboard';
 import { SiteRow } from '@/types/database';
-import { getSites, getSiteById, transformSiteRow } from '@/services/sites';
+import { getSitesWithCache, getSiteById, transformSiteRow } from '@/services/sites';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
+import { networkStatus } from '@/services/networkStatus';
 
 export interface UseSitesResult {
   sites: SiteItem[];
@@ -11,16 +14,24 @@ export interface UseSitesResult {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (silent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
 
 export function useSites(): UseSitesResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [sites, setSites] = useState<SiteItem[]>([]);
   const [rawSites, setRawSites] = useState<SiteRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -37,10 +48,12 @@ export function useSites(): UseSitesResult {
     setError(null);
 
     try {
-      const data = await getSites();
+      const res = await getSitesWithCache(userId);
       if (isMountedRef.current) {
-        setRawSites(data);
-        setSites(data.map(transformSiteRow));
+        setRawSites(res.data);
+        setSites(res.data.map(transformSiteRow));
+        setIsCached(res.isCached);
+        setLastUpdated(res.cachedAt);
         dataSync.markClean('sites');
       }
     } catch (err) {
@@ -55,7 +68,7 @@ export function useSites(): UseSitesResult {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [userId]);
 
   // Initial load — single authoritative fetch path
   useEffect(() => {
@@ -136,6 +149,9 @@ export function useSites(): UseSitesResult {
     loading,
     refreshing,
     error,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
     onRefresh,
   };
@@ -146,14 +162,22 @@ export interface UseSiteDetailsResult {
   rawSite: SiteRow | null;
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (isSilent?: boolean) => Promise<void>;
 }
 
 export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [site, setSite] = useState<SiteItem | null>(null);
   const [rawSite, setRawSite] = useState<SiteRow | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(id));
   const [error, setError] = useState<string | null>(id ? null : 'Invalid site ID provided.');
+  const [isCached, setIsCached] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -168,7 +192,7 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
     setError(null);
 
     try {
-      const data = await getSiteById(targetId);
+      const data = await getSiteById(targetId, userId);
       if (isMountedRef.current) {
         if (!data) {
           setSite(null);
@@ -177,6 +201,8 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
         } else {
           setRawSite(data);
           setSite(transformSiteRow(data));
+          setIsCached(!networkStatus.getNetworkState().isConnected);
+          setLastUpdated(data.updated_at || data.created_at || null);
         }
       }
     } catch (err) {
@@ -190,7 +216,7 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [userId]);
 
   // Initial load — single authoritative fetch path
   useEffect(() => {
@@ -203,7 +229,6 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
 
   // Live synchronization for detail view
   useEffect(() => {
@@ -248,6 +273,9 @@ export function useSiteDetails(id: string | undefined): UseSiteDetailsResult {
     rawSite,
     loading,
     error,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
   };
 }

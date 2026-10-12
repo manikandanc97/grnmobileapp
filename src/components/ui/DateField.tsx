@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, Modal, Keyboard } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
@@ -25,7 +26,9 @@ export function DateField({
   error,
   format = 'DD/MM/YYYY',
 }: DateFieldProps) {
+  const insets = useSafeAreaInsets();
   const [show, setShow] = useState(false);
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 36 : Spacing.lg);
 
   const parsedDate = useMemo(() => {
     if (!value) return undefined;
@@ -73,7 +76,7 @@ export function DateField({
         onRequestClose={() => setShow(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShow(false)}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.modalContent, { paddingBottom: bottomInset }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.modalHeader}>
               <View style={styles.spacer} />

@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, Alert, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useLocalSearchParams, router } from 'expo-router';
-import { ChevronLeft, ChevronRight, Save, X, Calendar as CalendarIcon } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users } from 'lucide-react-native';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Money } from '@/components/ui/Money';
+import { Button } from '@/components/ui/Button';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 import { useSiteLabor } from '@/hooks/useSiteLabor';
 import { useSites } from '@/hooks/useSites';
 import { WORKER_ROLES, calculateRecordLaborCost, calculateRecordLaborCount } from '@/services/siteLabor';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
 import { SelectField } from '@/components/ui/SelectField';
+import { toast } from '@/lib/toast';
 
 function formatDateHuman(dateStr: string) {
   const d = new Date(dateStr);
@@ -45,6 +50,9 @@ export default function LaborScreen() {
     labor, 
     loading: laborLoading, 
     error, 
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
     addLabor,
     editLabor,
@@ -120,6 +128,11 @@ export default function LaborScreen() {
         await addLabor(data);
       }
       setIsEditing(false);
+      if (isOffline) {
+        toast.info('Saved Offline', 'Labor attendance recorded locally, will sync when online');
+      } else {
+        toast.success('Labor Attendance Saved', `Recorded for ${formatDateHuman(selectedDate)}`);
+      }
     } catch (err: any) {
       console.error('Save Labor Error:', err);
       Alert.alert('Save Failed', err.message || 'Failed to save labor data.');
@@ -139,7 +152,7 @@ export default function LaborScreen() {
     );
   }
 
-  const activeSite = sites.find(s => s.id === selectedSiteId);
+
 
   const calculateTotalWorkers = () => {
     if (isEditing) {
@@ -214,10 +227,24 @@ export default function LaborScreen() {
 
         {laborLoading ? (
           <LoadingSkeleton type="card" height={200} />
-        ) : error ? (
-          <ErrorState title="Error" message={error.message} onRetry={refetch} />
+        ) : error && !labor ? (
+          (() => {
+            const parsed = parseAppError(error);
+            if (parsed.isNetworkError || isOffline) {
+              return <NoInternetScreen onRetry={refetch} />;
+            }
+            return <ErrorState title={parsed.title} message={parsed.message} onRetry={refetch} />;
+          })()
         ) : (
-          <View style={styles.mainCard}>
+          <>
+            {isCached && (
+              <OfflineIndicator
+                lastUpdated={lastUpdated}
+                onRetry={refetch}
+                style={{ marginBottom: Spacing.sm }}
+              />
+            )}
+            <View style={styles.mainCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>{isEditing ? 'EDIT LABOR' : 'DAILY LABOR SUMMARY'}</Text>
               {!isEditing && (
@@ -239,74 +266,83 @@ export default function LaborScreen() {
               </View>
             </View>
 
-            {WORKER_ROLES.map((role) => {
-              const countNum = isEditing
-                ? parseInt(counts[role.key] || '0', 10) || 0
-                : (labor as any)?.[role.countKey] ?? 0;
-              const rateNum = isEditing
-                ? parseFloat(rates[role.key] || '0') || role.defaultRate
-                : (labor as any)?.[role.rateKey] ?? role.defaultRate;
-
-              if (!isEditing && labor && countNum === 0 && calculateTotalWorkers() > 0) {
-                return null;
-              }
-
-              return (
-                <React.Fragment key={role.key}>
-                  <View style={styles.divider} />
-                  <View style={styles.categoryRow}>
-                    <View style={styles.catInfo}>
-                      <Text style={styles.catTitle}>{role.label}</Text>
-                      {!isEditing && labor && (
-                        <Text style={styles.catSub}>
-                          {countNum} workers × ₹{rateNum}/day
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.catTotal}>
-                      {!isEditing && labor && <Money amount={countNum * rateNum} />}
-                    </View>
-                  </View>
-                  {isEditing && (
-                    <View style={styles.editFieldsRow}>
-                      <View style={styles.inputWrap}>
-                        <Text style={styles.inputLabel}>Count</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={counts[role.key] || '0'}
-                          onChangeText={(text) =>
-                            setCounts((prev) => ({
-                              ...prev,
-                              [role.key]: text.replace(/[^0-9]/g, ''),
-                            }))
-                          }
-                          keyboardType="numeric"
-                        />
-                      </View>
-                      <View style={styles.inputWrap}>
-                        <Text style={styles.inputLabel}>Rate (₹)</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={rates[role.key] || String(role.defaultRate)}
-                          onChangeText={(text) =>
-                            setRates((prev) => ({
-                              ...prev,
-                              [role.key]: text.replace(/[^0-9.]/g, ''),
-                            }))
-                          }
-                          keyboardType="numeric"
-                        />
-                      </View>
-                    </View>
-                  )}
-                </React.Fragment>
-              );
-            })}
-
-            {!labor && !isEditing && (
+            {!isEditing && (!labor || calculateTotalWorkers() === 0) ? (
               <View style={styles.emptyWrap}>
-                <Text style={styles.emptyText}>No labor recorded for this date.</Text>
+                <Users size={38} color={Colors.light.textMuted} style={{ marginBottom: 10 }} />
+                <Text style={styles.emptyTitle}>No Labour Attendance Logged</Text>
+                <Text style={styles.emptyText}>
+                  No workers recorded for {formatDateHuman(selectedDate)}.
+                </Text>
+                <Button
+                  title="+ Record Attendance"
+                  onPress={() => setIsEditing(true)}
+                  style={{ marginTop: 14 }}
+                />
               </View>
+            ) : (
+              WORKER_ROLES.map((role) => {
+                const countNum = isEditing
+                  ? parseInt(counts[role.key] || '0', 10) || 0
+                  : (labor as any)?.[role.countKey] ?? 0;
+                const rateNum = isEditing
+                  ? parseFloat(rates[role.key] || '0') || role.defaultRate
+                  : (labor as any)?.[role.rateKey] ?? role.defaultRate;
+
+                if (!isEditing && countNum === 0) {
+                  return null;
+                }
+
+                return (
+                  <React.Fragment key={role.key}>
+                    <View style={styles.divider} />
+                    <View style={styles.categoryRow}>
+                      <View style={styles.catInfo}>
+                        <Text style={styles.catTitle}>{role.label}</Text>
+                        {!isEditing && labor && (
+                          <Text style={styles.catSub}>
+                            {countNum} workers × ₹{rateNum}/day
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.catTotal}>
+                        {!isEditing && labor && <Money amount={countNum * rateNum} />}
+                      </View>
+                    </View>
+                    {isEditing && (
+                      <View style={styles.editFieldsRow}>
+                        <View style={styles.inputWrap}>
+                          <Text style={styles.inputLabel}>Count</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={counts[role.key] || '0'}
+                            onChangeText={(text) =>
+                              setCounts((prev) => ({
+                                ...prev,
+                                [role.key]: text.replace(/[^0-9]/g, ''),
+                              }))
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+                        <View style={styles.inputWrap}>
+                          <Text style={styles.inputLabel}>Rate (₹)</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={rates[role.key] || String(role.defaultRate)}
+                            onChangeText={(text) =>
+                              setRates((prev) => ({
+                                ...prev,
+                                [role.key]: text.replace(/[^0-9.]/g, ''),
+                              }))
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
 
             {isEditing && (
@@ -321,7 +357,8 @@ export default function LaborScreen() {
             )}
 
           </View>
-        )}
+        </>
+      )}
       </KeyboardAwareScrollView>
     </ScreenWrapper>
   );
@@ -330,7 +367,7 @@ export default function LaborScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
   selectorCard: {
     backgroundColor: '#FFFFFF',
@@ -530,9 +567,18 @@ const styles = StyleSheet.create({
   emptyWrap: {
     paddingVertical: Spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   emptyText: {
-    ...Typography.body,
+    ...Typography.caption,
     color: Colors.light.textSecondary,
+    textAlign: 'center',
   },
 });

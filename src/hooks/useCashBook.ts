@@ -5,12 +5,14 @@ import {
   CashBookSummary,
   CashBookPeriodSummary,
   TransactionType,
-  getCashTransactions,
-  getCashBookSummary,
+  getCashTransactionsWithCache,
+  getCashBookSummaryWithCache,
   getCashBookPeriodSummary,
   computeRunningBalance,
 } from '@/services/cashBook';
 import { dataSync } from '@/lib/dataSync';
+import { useAuth } from '@/providers/AuthProvider';
+import { useNetworkStatus } from './useNetworkStatus';
 
 export type CashTransactionWithBalance = CashTransactionRow & { runningBalance: number };
 
@@ -21,6 +23,9 @@ export interface UseCashBookResult {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: (isSilent?: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }
@@ -40,12 +45,17 @@ export function useCashBook(
   siteId: string | undefined,
   filters?: CashBookFilters,
 ): UseCashBookResult {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [transactions, setTransactions] = useState<CashTransactionWithBalance[]>([]);
   const [summary, setSummary] = useState<CashBookSummary | null>(null);
   const [periodSummary, setPeriodSummary] = useState<CashBookPeriodSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -70,28 +80,33 @@ export function useCashBook(
         const fromDate = filters?.fromDate;
         const toDate = filters?.toDate;
 
-        const [rawTransactions, rawSummary] = await Promise.all([
-          getCashTransactions(siteId, {
-            fromDate,
-            toDate,
-            searchQuery: filters?.searchQuery,
-            transactionType: filters?.transactionType,
-          }),
-          getCashBookSummary(siteId),
+        const [txRes, summaryRes] = await Promise.all([
+          getCashTransactionsWithCache(
+            siteId,
+            {
+              fromDate,
+              toDate,
+              searchQuery: filters?.searchQuery,
+              transactionType: filters?.transactionType,
+            },
+            userId,
+          ),
+          getCashBookSummaryWithCache(siteId, userId),
         ]);
 
         let rawPeriod: CashBookPeriodSummary | null = null;
         if (fromDate && toDate) {
-          rawPeriod = await getCashBookPeriodSummary(siteId, fromDate, toDate);
+          rawPeriod = await getCashBookPeriodSummary(siteId, fromDate, toDate).catch(() => null);
         }
 
         if (isMountedRef.current) {
-          // Compute running balance using the opening balance for the period
           const openingBal = rawPeriod?.openingBalance ?? 0;
-          const withBalance = computeRunningBalance(rawTransactions, openingBal);
+          const withBalance = computeRunningBalance(txRes.data, openingBal);
           setTransactions(withBalance);
-          setSummary(rawSummary);
+          setSummary(summaryRes.data);
           setPeriodSummary(rawPeriod);
+          setIsCached(txRes.isCached || summaryRes.isCached);
+          setLastUpdated(txRes.cachedAt || summaryRes.cachedAt);
           dataSync.markClean('site_cash');
         }
       } catch (err) {
@@ -106,7 +121,7 @@ export function useCashBook(
         isFetchingRef.current = false;
       }
     },
-    [siteId, filters],
+    [siteId, filters, userId],
   );
 
   // Initial load
@@ -153,7 +168,7 @@ export function useCashBook(
     [loadData, transactions.length],
   );
 
-  return { transactions, summary, periodSummary, loading, refreshing, error, refetch, onRefresh };
+  return { transactions, summary, periodSummary, loading, refreshing, error, isOffline, isCached, lastUpdated, refetch, onRefresh };
 }
 
 /**
@@ -163,11 +178,19 @@ export function useCashBookSummary(siteId: string | undefined): {
   summary: CashBookSummary | null;
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   refetch: () => Promise<void>;
 } {
+  const { userId } = useAuth();
+  const { isOffline } = useNetworkStatus();
+
   const [summary, setSummary] = useState<CashBookSummary | null>(null);
   const [loading, setLoading] = useState(!!siteId);
   const [error, setError] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const fetchSummary = useCallback(async () => {
@@ -178,9 +201,11 @@ export function useCashBookSummary(siteId: string | undefined): {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCashBookSummary(siteId);
+      const res = await getCashBookSummaryWithCache(siteId, userId);
       if (isMountedRef.current) {
-        setSummary(data);
+        setSummary(res.data);
+        setIsCached(res.isCached);
+        setLastUpdated(res.cachedAt);
       }
     } catch (err) {
       if (isMountedRef.current) {
@@ -189,7 +214,7 @@ export function useCashBookSummary(siteId: string | undefined): {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [siteId]);
+  }, [siteId, userId]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -215,5 +240,5 @@ export function useCashBookSummary(siteId: string | undefined): {
     }, [fetchSummary]),
   );
 
-  return { summary, loading, error, refetch: fetchSummary };
+  return { summary, loading, error, isOffline, isCached, lastUpdated, refetch: fetchSummary };
 }

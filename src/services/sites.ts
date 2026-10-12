@@ -1,8 +1,12 @@
+import { parseAppError } from '@/lib/errorHandler';
 import { formatCurrency } from '@/lib/finance';
 import { supabase } from '@/lib/supabase';
 import { Database, SiteRow } from '@/types/database';
 import { SiteItem, SiteStatus, SiteType } from '@/types/dashboard';
 import { dataSync } from '@/lib/dataSync';
+import { offlineStorage } from './offlineStorage';
+import { offlineQueue, generateUUID } from './offlineQueue';
+import { networkStatus } from './networkStatus';
 
 export type SiteInsert = Database['public']['Tables']['sites']['Insert'];
 export type SiteUpdate = Database['public']['Tables']['sites']['Update'];
@@ -91,66 +95,136 @@ export function transformSiteRow(row: SiteRow): SiteItem {
  * Convert raw database errors into user-friendly message strings
  */
 export function formatDatabaseError(error: unknown, fallback: string): string {
-  if (!error) return fallback;
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const rawMsg = String((error as { message: unknown }).message || '');
-    const msg = rawMsg.toLowerCase();
-    if (msg.includes('row-level security') || msg.includes('permission denied')) {
-      return 'You do not have permission to perform this action. Please verify your authentication.';
-    }
-    if (msg.includes('jwt') || msg.includes('token') || msg.includes('not authenticated')) {
-      return 'Your session has expired. Please sign in again.';
-    }
-    if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('offline')) {
-      return 'Network connection issue. Please check your internet connection.';
-    }
-    if (rawMsg) {
-      return `${fallback} (${rawMsg})`;
-    }
+  return parseAppError(error, fallback).message;
+}
+
+async function resolveCurrentUserId(fallbackUserId?: string): Promise<string> {
+  if (fallbackUserId) return fallbackUserId;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || '';
+  } catch {
+    return '';
   }
-  return fallback;
+}
+
+export interface SitesFetchResult {
+  data: SiteRow[];
+  isCached: boolean;
+  cachedAt: string | null;
 }
 
 /**
- * Fetch all active (non-deleted) sites sorted newest first
+ * Fetch all active (non-deleted) sites with offline cache fallback
  */
-export async function getSites(): Promise<SiteRow[]> {
-  const { data, error } = await supabase
-    .from('sites')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+export async function getSitesWithCache(userId?: string): Promise<SitesFetchResult> {
+  const currentUserId = await resolveCurrentUserId(userId);
+  const isConnected = networkStatus.getNetworkState().isConnected;
 
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to fetch sites from database.'));
+  if (isConnected) {
+    try {
+      const { data, error } = await supabase
+        .from('sites')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const sitesData = data ?? [];
+      if (currentUserId) {
+        await offlineStorage.set(currentUserId, 'sites_list', sitesData);
+      }
+      return { data: sitesData, isCached: false, cachedAt: null };
+    } catch (err) {
+      if (__DEV__) {
+        console.warn('[sites] Remote fetch failed, checking cache:', err);
+      }
+      // If network fails, attempt cache fallback
+      if (currentUserId) {
+        const cached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+        if (cached && cached.data) {
+          return { data: cached.data, isCached: true, cachedAt: cached.cachedAt };
+        }
+      }
+      throw new Error(formatDatabaseError(err, 'Failed to fetch sites from database.'));
+    }
   }
 
-  return data ?? [];
+  // Currently offline
+  if (currentUserId) {
+    const cached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+    if (cached && cached.data) {
+      return { data: cached.data, isCached: true, cachedAt: cached.cachedAt };
+    }
+  }
+
+  throw new Error('Unable to connect. No cached sites available offline.');
 }
 
 /**
- * Fetch a single active site by UUID
+ * Fetch all active sites (backwards-compatible array return)
  */
-export async function getSiteById(id: string): Promise<SiteRow | null> {
-  const { data, error } = await supabase
-    .from('sites')
-    .select('*')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to fetch site details.'));
-  }
-
-  return data;
+export async function getSites(userId?: string): Promise<SiteRow[]> {
+  const res = await getSitesWithCache(userId);
+  return res.data;
 }
 
 /**
- * Insert a new site into the database
+ * Fetch a single active site by UUID with offline cache fallback
  */
-export async function createSite(params: CreateSiteParams): Promise<SiteRow> {
+export async function getSiteById(id: string, userId?: string): Promise<SiteRow | null> {
+  const currentUserId = await resolveCurrentUserId(userId);
+  const isConnected = networkStatus.getNetworkState().isConnected;
+
+  if (isConnected) {
+    try {
+      const { data, error } = await supabase
+        .from('sites')
+        .select('*')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data && currentUserId) {
+        await offlineStorage.set(currentUserId, `site_${id}`, data);
+      }
+      return data;
+    } catch (err) {
+      if (currentUserId) {
+        const cached = await offlineStorage.get<SiteRow>(currentUserId, `site_${id}`);
+        if (cached) return cached.data;
+      }
+      throw new Error(formatDatabaseError(err, 'Failed to fetch site details.'));
+    }
+  }
+
+  // Offline
+  if (currentUserId) {
+    const cached = await offlineStorage.get<SiteRow>(currentUserId, `site_${id}`);
+    if (cached) return cached.data;
+
+    // Check in cached sites list
+    const cachedList = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+    if (cachedList && cachedList.data) {
+      const match = cachedList.data.find((s) => s.id === id);
+      if (match) return match;
+    }
+  }
+
+  throw new Error('Unable to connect to fetch site details.');
+}
+
+/**
+ * Insert a new site into the database or durable offline queue
+ */
+export async function createSite(params: CreateSiteParams, userId?: string): Promise<SiteRow> {
+  const currentUserId = await resolveCurrentUserId(userId);
+  const siteId = generateUUID();
+
   const insertPayload: SiteInsert = {
+    id: siteId,
     name: params.name.trim(),
     location: params.location.trim(),
     type: params.type,
@@ -163,18 +237,94 @@ export async function createSite(params: CreateSiteParams): Promise<SiteRow> {
     budget: params.budget ? parseBudgetInput(params.budget) : null,
   };
 
-  const { data, error } = await supabase
-    .from('sites')
-    .insert(insertPayload)
-    .select()
-    .single();
+  const isConnected = networkStatus.getNetworkState().isConnected;
 
-  if (error) {
-    throw new Error(formatDatabaseError(error, 'Failed to create new site.'));
+  if (!isConnected) {
+    // Offline: queue mutation & update cache immediately
+    const optimisticRow: SiteRow = {
+      ...(insertPayload as any),
+      id: siteId,
+      owner_id: currentUserId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+    };
+
+    if (currentUserId) {
+      await offlineQueue.enqueue({
+        owner_id: currentUserId,
+        entity_type: 'sites',
+        entity_id: siteId,
+        operation_type: 'create',
+        payload: insertPayload,
+      });
+
+      // Update cached sites list
+      const cached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+      const currentList = cached?.data || [];
+      await offlineStorage.set(currentUserId, 'sites_list', [optimisticRow, ...currentList]);
+      await offlineStorage.set(currentUserId, `site_${siteId}`, optimisticRow);
+    }
+
+    dataSync.notify({ entity: 'sites', action: 'create', payload: optimisticRow });
+    return optimisticRow;
   }
 
-  dataSync.notify({ entity: 'sites', action: 'create', payload: data });
-  return data;
+  // Online: execute via Supabase upsert
+  try {
+    const { data, error } = await supabase
+      .from('sites')
+      .upsert(insertPayload, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (currentUserId) {
+      const cached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+      const currentList = cached?.data || [];
+      const updatedList = [data, ...currentList.filter((s) => s.id !== data.id)];
+      await offlineStorage.set(currentUserId, 'sites_list', updatedList);
+      await offlineStorage.set(currentUserId, `site_${data.id}`, data);
+    }
+
+    dataSync.notify({ entity: 'sites', action: 'create', payload: data });
+    return data;
+  } catch (err: any) {
+    const isNetwork =
+      err?.message?.includes('Network request failed') ||
+      err?.message?.includes('Failed to fetch') ||
+      err?.message?.includes('timeout');
+
+    if (isNetwork && currentUserId) {
+      // Graceful fallback to durable queue
+      const optimisticRow: SiteRow = {
+        ...(insertPayload as any),
+        id: siteId,
+        owner_id: currentUserId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+      };
+
+      await offlineQueue.enqueue({
+        owner_id: currentUserId,
+        entity_type: 'sites',
+        entity_id: siteId,
+        operation_type: 'create',
+        payload: insertPayload,
+      });
+
+      const cached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+      const currentList = cached?.data || [];
+      await offlineStorage.set(currentUserId, 'sites_list', [optimisticRow, ...currentList]);
+
+      dataSync.notify({ entity: 'sites', action: 'create', payload: optimisticRow });
+      return optimisticRow;
+    }
+
+    throw new Error(formatDatabaseError(err, 'Failed to create new site.'));
+  }
 }
 
 /**
@@ -183,7 +333,9 @@ export async function createSite(params: CreateSiteParams): Promise<SiteRow> {
 export async function updateSite(
   id: string,
   params: Partial<CreateSiteParams> & { progress?: number; status?: SiteStatus },
+  userId?: string,
 ): Promise<SiteRow> {
+  const currentUserId = await resolveCurrentUserId(userId);
   const updatePayload: SiteUpdate = {
     ...(params.name ? { name: params.name.trim() } : {}),
     ...(params.location ? { location: params.location.trim() } : {}),
@@ -198,6 +350,31 @@ export async function updateSite(
     updated_at: new Date().toISOString(),
   };
 
+  const isConnected = networkStatus.getNetworkState().isConnected;
+
+  if (!isConnected && currentUserId) {
+    await offlineQueue.enqueue({
+      owner_id: currentUserId,
+      entity_type: 'sites',
+      entity_id: id,
+      operation_type: 'update',
+      payload: updatePayload,
+    });
+
+    const cached = await offlineStorage.get<SiteRow>(currentUserId, `site_${id}`);
+    const updatedRow = { ...(cached?.data || {}), ...updatePayload, id } as SiteRow;
+    await offlineStorage.set(currentUserId, `site_${id}`, updatedRow);
+
+    const listCached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+    if (listCached) {
+      const updatedList = listCached.data.map((s) => (s.id === id ? updatedRow : s));
+      await offlineStorage.set(currentUserId, 'sites_list', updatedList);
+    }
+
+    dataSync.notify({ entity: 'sites', action: 'update', payload: updatedRow });
+    return updatedRow;
+  }
+
   const { data, error } = await supabase
     .from('sites')
     .update(updatePayload)
@@ -207,6 +384,15 @@ export async function updateSite(
 
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to update site.'));
+  }
+
+  if (currentUserId) {
+    await offlineStorage.set(currentUserId, `site_${id}`, data);
+    const listCached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+    if (listCached) {
+      const updatedList = listCached.data.map((s) => (s.id === id ? data : s));
+      await offlineStorage.set(currentUserId, 'sites_list', updatedList);
+    }
   }
 
   dataSync.notify({ entity: 'sites', action: 'update', payload: data });
@@ -224,6 +410,16 @@ export async function softDeleteSite(id: string): Promise<void> {
 
   if (error) {
     throw new Error(formatDatabaseError(error, 'Failed to delete site.'));
+  }
+
+  const currentUserId = await resolveCurrentUserId();
+  if (currentUserId) {
+    await offlineStorage.remove(currentUserId, `site_${id}`);
+    const listCached = await offlineStorage.get<SiteRow[]>(currentUserId, 'sites_list');
+    if (listCached) {
+      const updatedList = listCached.data.filter((s) => s.id !== id);
+      await offlineStorage.set(currentUserId, 'sites_list', updatedList);
+    }
   }
 
   dataSync.notify({ entity: 'sites', action: 'delete', payload: { id } });

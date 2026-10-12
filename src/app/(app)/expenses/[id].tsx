@@ -175,7 +175,7 @@ export default function ExpenseDetailScreen() {
             </View>
           </View>
 
-          {expense.reference && (
+          {Boolean(expense.reference?.trim()) && (
             <>
               <View style={styles.divider} />
               <View style={styles.detailRow}>
@@ -198,13 +198,13 @@ export default function ExpenseDetailScreen() {
             </View>
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValue}>{expense.payment_method}</Text>
+              <Text style={styles.detailValue}>{expense.payment_method || 'Cash'}</Text>
             </View>
           </View>
         </View>
 
         {/* Notes */}
-        {expense.notes && (
+        {Boolean(expense.notes?.trim()) && (
           <>
             <Text style={styles.sectionTitle}>Notes</Text>
             <View style={styles.notesCard}>

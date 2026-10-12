@@ -23,6 +23,9 @@ import { ErrorDialog } from '@/components/ui/ErrorDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
@@ -31,7 +34,7 @@ type FilterOption = 'All' | SiteType;
 export default function SitesListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterOption>('All');
-  const { sites, loading, refreshing, error, onRefresh, refetch } = useSites();
+  const { sites, loading, refreshing, error, isOffline, isCached, lastUpdated, onRefresh, refetch } = useSites();
 
   // Card action states
   const [siteToDelete, setSiteToDelete] = useState<SiteItem | null>(null);
@@ -123,28 +126,42 @@ export default function SitesListScreen() {
           <LoadingSkeleton type="card" height={180} />
           <LoadingSkeleton type="card" height={180} />
         </View>
-      ) : error ? (
-        <View style={styles.centerContainer}>
-          <ErrorState 
-            title="Unable to load sites" 
-            message={error} 
-            onRetry={refetch} 
-          />
-        </View>
+      ) : error && sites.length === 0 ? (
+        (() => {
+          const parsed = parseAppError(error);
+          if (parsed.isNetworkError || isOffline) {
+            return <NoInternetScreen onRetry={refetch} />;
+          }
+          return (
+            <View style={styles.centerContainer}>
+              <ErrorState 
+                title={parsed.title} 
+                message={parsed.message} 
+                onRetry={refetch} 
+              />
+            </View>
+          );
+        })()
       ) : (
-        /* Sites List */
-        <FlatList
-          data={filteredSites}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.cardContainer}>
+        <>
+          {isCached && (
+            <OfflineIndicator 
+              lastUpdated={lastUpdated} 
+              onRetry={onRefresh} 
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            />
+          )}
+          {/* Sites List */}
+          <FlatList
+            data={filteredSites}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
               <SiteCard
                 site={item}
                 onPress={handleSitePress}
-                onEdit={handleEditSite}
-                onDelete={handleDeleteSitePress}
-              />
-            </View>
+              onEdit={handleEditSite}
+              onDelete={handleDeleteSitePress}
+            />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -167,6 +184,7 @@ export default function SitesListScreen() {
             />
           )}
         />
+        </>
       )}
 
       {/* Confirm Delete Dialog */}
@@ -218,9 +236,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  cardContainer: {
-    marginBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
 });

@@ -11,7 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Plus, BookOpen, TrendingUp, TrendingDown, X } from 'lucide-react-native';
 
 import { useCashBook, CashTransactionWithBalance } from '@/hooks/useCashBook';
-import { deleteCashTransaction, getTodayLocalDate } from '@/services/cashBook';
+import { deleteCashTransaction } from '@/services/cashBook';
 import { useSiteDetails } from '@/hooks/useSites';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
@@ -22,6 +22,9 @@ import { DateField } from '@/components/ui/DateField';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 import { ConfirmDeleteDialog } from '@/components/actions/ConfirmDeleteDialog';
 import { SuccessDialog } from '@/components/ui/SuccessDialog';
 import { ErrorDialog } from '@/components/ui/ErrorDialog';
@@ -68,8 +71,19 @@ export default function CashBookScreen() {
     transactionType: filterType === 'ALL' ? undefined : filterType,
   }), [fromDate, toDate, searchQuery, filterType]);
 
-  const { transactions, summary, periodSummary, loading, refreshing, error, refetch, onRefresh } =
-    useCashBook(siteId, filters);
+  const {
+    transactions,
+    summary,
+    periodSummary,
+    loading,
+    refreshing,
+    error,
+    isOffline,
+    isCached,
+    lastUpdated,
+    refetch,
+    onRefresh,
+  } = useCashBook(siteId, filters);
 
   // Delete flow
   const [deleteTarget, setDeleteTarget] = useState<CashTransactionWithBalance | null>(null);
@@ -181,7 +195,7 @@ export default function CashBookScreen() {
         )}
       </View>
     );
-  }, [summary, periodSummary, hasDateFilter, fromDate, toDate, filterType, transactions.length, handleClearDates]);
+  }, [summary, periodSummary, hasDateFilter, fromDate, toDate, filterType, transactions.length, handleClearDates, handleFromDateChange, handleToDateChange]);
 
   if (loading && transactions.length === 0) {
     return (
@@ -198,11 +212,20 @@ export default function CashBookScreen() {
   }
 
   if (error && transactions.length === 0 && !summary) {
+    const parsed = parseAppError(error);
+    if (parsed.isNetworkError || isOffline) {
+      return (
+        <ScreenWrapper>
+          <ScreenHeader title="Cash Book" subtitle={displaySiteName} showBack />
+          <NoInternetScreen onRetry={refetch} />
+        </ScreenWrapper>
+      );
+    }
     return (
       <ScreenWrapper>
         <ScreenHeader title="Cash Book" subtitle={displaySiteName} showBack />
         <View style={styles.errorContainer}>
-          <ErrorState title="Failed to load" message={error} onRetry={refetch} retryLabel="Retry" />
+          <ErrorState title={parsed.title} message={parsed.message} onRetry={refetch} retryLabel="Retry" />
         </View>
       </ScreenWrapper>
     );
@@ -215,6 +238,14 @@ export default function CashBookScreen() {
         subtitle={displaySiteName}
         showBack
       />
+
+      {isCached && (
+        <OfflineIndicator
+          lastUpdated={lastUpdated}
+          onRetry={onRefresh}
+          style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }}
+        />
+      )}
 
       <View style={styles.searchRow}>
         <SearchBar

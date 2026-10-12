@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Spacing, TouchTargets, Radius } from '@/constants/theme';
@@ -11,6 +10,7 @@ interface ScreenHeaderProps {
   showBorder?: boolean;
   showBack?: boolean;
   onBack?: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function ScreenHeader({ 
@@ -20,11 +20,12 @@ export function ScreenHeader({
   showBorder = true, 
   showBack = false,
   onBack,
+  style,
 }: ScreenHeaderProps) {
   const router = useRouter();
 
   return (
-    <View style={[styles.header, showBorder && styles.headerBorder]}>
+    <View style={[styles.header, showBorder && styles.headerBorder, style]}>
       {showBack && (
         <Pressable
           style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}

@@ -1,5 +1,5 @@
 import { WorkerWithSite } from '@/services/workers';
-import { SiteRow, AttendanceRow } from '@/types/database';
+import { SiteRow, AttendanceRow, NotificationRow } from '@/types/database';
 import { MaterialItem } from '@/types/dashboard';
 import { ExpenseWithSite } from '@/services/expenses';
 
@@ -13,7 +13,8 @@ export type SyncEntity =
   | 'site_labor'
   | 'site_budget'
   | 'site_cash'
-  | 'dashboard';
+  | 'dashboard'
+  | 'notifications';
 
 export type SyncAction = 'create' | 'update' | 'delete' | 'invalidate';
 
@@ -28,6 +29,7 @@ export interface EntityPayloadMap {
   site_budget: undefined;
   site_cash: any;
   dashboard: undefined;
+  notifications: NotificationRow;
 }
 
 export type SyncEvent<E extends SyncEntity = SyncEntity> =
@@ -134,7 +136,7 @@ class DataSyncEngine {
    */
   public clearAll(): void {
     const allEntities: SyncEntity[] = [
-      'workers', 'sites', 'materials', 'expenses', 'attendance', 'payroll', 'site_labor', 'site_cash', 'dashboard'
+      'workers', 'sites', 'materials', 'expenses', 'attendance', 'payroll', 'site_labor', 'site_cash', 'dashboard', 'notifications'
     ];
     allEntities.forEach(e => {
       this.staleEntities.add(e);

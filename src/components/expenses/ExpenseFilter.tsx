@@ -1,6 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { ExpenseCategory, PaymentMethod } from '@/types/dashboard';
+import { StyleSheet, View } from 'react-native';
+import { ExpenseCategory } from '@/types/dashboard';
 import { SelectField } from '@/components/ui/SelectField';
 import { Spacing } from '@/constants/theme';
 
@@ -11,9 +11,6 @@ interface ExpenseFilterProps {
   periods: string[];
   selectedPeriod: string;
   onSelectPeriod: (period: string) => void;
-  paymentMethods: ('All' | PaymentMethod)[];
-  selectedPaymentMethod: 'All' | PaymentMethod;
-  onSelectPaymentMethod: (method: 'All' | PaymentMethod) => void;
 }
 
 export function ExpenseFilter({
@@ -23,9 +20,6 @@ export function ExpenseFilter({
   periods,
   selectedPeriod,
   onSelectPeriod,
-  paymentMethods,
-  selectedPaymentMethod,
-  onSelectPaymentMethod,
 }: ExpenseFilterProps) {
   return (
     <View style={styles.container}>
@@ -44,15 +38,6 @@ export function ExpenseFilter({
           options={categories.map(c => ({ label: c, value: c }))}
           onChange={(val) => onSelectCategory(val as any)}
           placeholder="Filter by Category"
-        />
-      </View>
-
-      <View style={styles.row}>
-        <SelectField
-          value={selectedPaymentMethod}
-          options={paymentMethods.map(m => ({ label: m, value: m }))}
-          onChange={(val) => onSelectPaymentMethod(val as any)}
-          placeholder="Filter by Payment Method"
         />
       </View>
     </View>

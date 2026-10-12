@@ -7,7 +7,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsRow';
-import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
+import { Colors, Spacing, Radius, Shadows, IconSizes } from '@/constants/theme';
 
 export default function MoreScreen() {
   const { session } = useAuth();
@@ -61,7 +61,7 @@ export default function MoreScreen() {
             </View>
           </View>
           <View style={styles.viewProfileContainer}>
-            <Text style={styles.viewProfileText}>View Profile</Text>
+            <Text style={styles.viewProfileText} numberOfLines={1}>View Profile</Text>
             <ChevronRight size={IconSizes.sm} color={Colors.light.textMuted} />
           </View>
         </Pressable>
@@ -197,11 +197,12 @@ const styles = StyleSheet.create({
   viewProfileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
+    gap: 2,
   },
   viewProfileText: {
     fontSize: 12,
     color: Colors.light.brand,
     fontWeight: '700',
-    marginRight: 2,
   },
 });

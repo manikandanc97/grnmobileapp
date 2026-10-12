@@ -26,8 +26,11 @@ import { Button } from '@/components/ui/Button';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { OfflineIndicator } from '@/components/ui/OfflineIndicator';
+import { NoInternetScreen } from '@/components/ui/NoInternetScreen';
+import { parseAppError } from '@/lib/errorHandler';
 
-import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/constants/expenses';
+import { EXPENSE_CATEGORIES } from '@/lib/constants/expenses';
 import {
   isDateInCurrentMonth,
   isDateInPreviousMonth,
@@ -38,7 +41,6 @@ import {
 import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
 const CATEGORIES: ('All' | ExpenseCategory)[] = ['All', ...EXPENSE_CATEGORIES];
-const PAY_METHODS: ('All' | PaymentMethod)[] = ['All', ...PAYMENT_METHODS];
 const PERIODS = ['All Time', 'This Month', 'Last Month', 'This Week', 'Today', 'Custom Range'];
 
 export default function ExpensesScreen() {
@@ -50,7 +52,6 @@ export default function ExpensesScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | ExpenseCategory>('All');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'All' | PaymentMethod>('All');
 
   const [prevPeriod, setPrevPeriod] = useState(period);
   const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
@@ -118,6 +119,9 @@ export default function ExpensesScreen() {
     loading,
     error,
     refreshing,
+    isOffline,
+    isCached,
+    lastUpdated,
     refetch,
     onRefresh,
   } = useExpenses(siteId);
@@ -144,7 +148,6 @@ export default function ExpensesScreen() {
   const filteredExpenses = useMemo(() => {
     return mappedExpenses.filter((e) => {
       const matchCategory = selectedCategory === 'All' || e.category === selectedCategory;
-      const matchPaymentMethod = selectedPaymentMethod === 'All' || e.paymentMethod === selectedPaymentMethod;
       const matchPaymentStatus = selectedPaymentStatus === 'All' || e.paymentStatus === selectedPaymentStatus;
       const matchSiteParam = !siteId || e.siteId === siteId;
 
@@ -171,9 +174,9 @@ export default function ExpensesScreen() {
         matchPeriod = isDateInCustomRange(e.expenseDate, customStartDate, customEndDate);
       }
 
-      return matchCategory && matchPaymentMethod && matchPaymentStatus && matchSiteParam && matchSearch && matchPeriod;
+      return matchCategory && matchPaymentStatus && matchSiteParam && matchSearch && matchPeriod;
     });
-  }, [mappedExpenses, selectedCategory, selectedPaymentMethod, selectedPaymentStatus, siteId, searchQuery, selectedPeriod, customStartDate, customEndDate]);
+  }, [mappedExpenses, selectedCategory, selectedPaymentStatus, siteId, searchQuery, selectedPeriod, customStartDate, customEndDate]);
 
   // Derived state (stats)
   const stats = useMemo(() => {
@@ -213,7 +216,6 @@ export default function ExpensesScreen() {
               setSelectedPeriod('All Time');
               setSelectedPaymentStatus('All');
               setSelectedCategory('All');
-              setSelectedPaymentMethod('All');
               setSearchQuery('');
             }}
           />
@@ -263,9 +265,6 @@ export default function ExpensesScreen() {
             periods={PERIODS}
             selectedPeriod={selectedPeriod}
             onSelectPeriod={setSelectedPeriod}
-            paymentMethods={PAY_METHODS}
-            selectedPaymentMethod={selectedPaymentMethod}
-            onSelectPaymentMethod={setSelectedPaymentMethod}
           />
         </View>
 
@@ -288,50 +287,66 @@ export default function ExpensesScreen() {
           <LoadingSkeleton type="card" height={160} />
           <LoadingSkeleton type="card" height={160} />
         </View>
-      ) : error ? (
-        <View style={styles.centerContainer}>
-          <ErrorState 
-             title="Unable to load expenses" 
-             message={error} 
-             onRetry={refetch} 
-           />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredExpenses}
-          keyExtractor={(item) => item.id}
-          renderItem={renderExpense}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderHeader}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={Colors.light.primary}
-              colors={[Colors.light.primary]}
-            />
+      ) : error && expenses.length === 0 ? (
+        (() => {
+          const parsed = parseAppError(error);
+          if (parsed.isNetworkError || isOffline) {
+            return <NoInternetScreen onRetry={refetch} />;
           }
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <EmptyState
-                icon={<Receipt size={48} color={Colors.light.textMuted} />}
-                title={expenses.length === 0 ? "No expenses found" : "No results matching criteria"}
-                description={expenses.length === 0 
-                  ? "Record your first project expense to start tracking."
-                  : "Try adjusting your search or filters to find what you're looking for."}
-                actionLabel={expenses.length === 0 ? "Add Expense" : "Reset Filters"}
-                onAction={expenses.length === 0 ? () => router.push('/(app)/expenses/add') : () => {
-                  setSearchQuery('');
-                  setSelectedPeriod('All Time');
-                  setSelectedCategory('All');
-                  setSelectedPaymentMethod('All');
-                  setSelectedPaymentStatus('All');
-                }}
+          return (
+            <View style={styles.centerContainer}>
+              <ErrorState 
+                title={parsed.title} 
+                message={parsed.message} 
+                onRetry={refetch} 
               />
             </View>
+          );
+        })()
+      ) : (
+        <>
+          {isCached && (
+            <OfflineIndicator 
+              lastUpdated={lastUpdated} 
+              onRetry={onRefresh} 
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            />
           )}
-        />
+          <FlatList
+            data={filteredExpenses}
+            keyExtractor={(item) => item.id}
+            renderItem={renderExpense}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={renderHeader}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={Colors.light.primary}
+                colors={[Colors.light.primary]}
+              />
+            }
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <EmptyState
+                  icon={<Receipt size={48} color={Colors.light.textMuted} />}
+                  title={expenses.length === 0 ? "No expenses found" : "No results matching criteria"}
+                  description={expenses.length === 0 
+                    ? "Record your first project expense to start tracking."
+                    : "Try adjusting your search or filters to find what you're looking for."}
+                  actionLabel={expenses.length === 0 ? "Add Expense" : "Reset Filters"}
+                  onAction={expenses.length === 0 ? () => router.push('/(app)/expenses/add') : () => {
+                    setSearchQuery('');
+                    setSelectedPeriod('All Time');
+                    setSelectedCategory('All');
+                    setSelectedPaymentStatus('All');
+                  }}
+                />
+              </View>
+            )}
+          />
+        </>
       )}
 
       {/* Confirm Delete Dialog */}
@@ -408,7 +423,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing['2xl'],
   },
   listContent: {
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.xl,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
   },
