@@ -53,7 +53,17 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
           <Money amount={expense.amount} style={styles.amount} />
         </View>
 
-        {(onEdit || onDelete) && <EntityActionMenu accessibilityLabel={`Actions for ${expense.title}`} onEdit={onEdit} onDelete={onDelete} />}
+        {(onEdit || onDelete) && (
+          <EntityActionMenu
+            title={expense.title}
+            subtitle={[expense.category, expense.siteName].filter(Boolean).join(' • ')}
+            accessibilityLabel={`Actions for ${expense.title}`}
+            editLabel="Edit Expense"
+            deleteLabel="Delete Expense"
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        )}
       </View>
     </Pressable>
   );

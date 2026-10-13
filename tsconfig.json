@@ -4,11 +4,11 @@
     "jsx": "react-jsx",
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@/*": [
+        "./src/*"
       ]
     }
   },

@@ -49,11 +49,13 @@ export function ConfirmDeleteDialog({
   testID = 'confirm-delete-dialog',
 }: ConfirmDeleteDialogProps) {
   const insets = useSafeAreaInsets();
-  const [backdropAnim] = useState(() => new Animated.Value(0));
-  const [cardScaleAnim] = useState(() => new Animated.Value(0.95));
-  const [cardFadeAnim] = useState(() => new Animated.Value(0));
+  const isWeb = Platform.OS === 'web';
+  const [backdropAnim] = useState(() => new Animated.Value(isWeb ? 1 : 0));
+  const [cardScaleAnim] = useState(() => new Animated.Value(1));
+  const [cardFadeAnim] = useState(() => new Animated.Value(isWeb ? 1 : 0));
 
   const startEnterAnimation = useCallback(() => {
+    if (isWeb) return;
     backdropAnim.setValue(0);
     cardScaleAnim.setValue(0.95);
     cardFadeAnim.setValue(0);
@@ -78,7 +80,7 @@ export function ConfirmDeleteDialog({
         useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
-  }, [backdropAnim, cardFadeAnim, cardScaleAnim]);
+  }, [isWeb, backdropAnim, cardFadeAnim, cardScaleAnim]);
 
   useEffect(() => {
     if (visible) {
@@ -88,30 +90,9 @@ export function ConfirmDeleteDialog({
   }, [visible, startEnterAnimation]);
 
   const handleDismiss = useCallback(() => {
-    if (loading) return; // Prevent dismiss while mutation is active
-    Animated.parallel([
-      Animated.timing(backdropAnim, {
-        toValue: 0,
-        duration: 120,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(cardFadeAnim, {
-        toValue: 0,
-        duration: 100,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(cardScaleAnim, {
-        toValue: 0.96,
-        duration: 120,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]).start(() => {
-      onCancel();
-    });
-  }, [backdropAnim, cardFadeAnim, cardScaleAnim, loading, onCancel]);
+    if (loading) return;
+    onCancel();
+  }, [loading, onCancel]);
 
   if (!visible) return null;
 

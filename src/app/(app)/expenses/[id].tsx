@@ -116,6 +116,8 @@ export default function ExpenseDetailScreen() {
         showBack={true}
         actionButton={
           <EntityActionMenu
+            title={expense.title}
+            subtitle={[expense.category, siteName].filter(Boolean).join(' • ')}
             onEdit={() => router.push({ pathname: '/(app)/expenses/edit', params: { id: expense.id } })}
             onDelete={() => setShowConfirmDelete(true)}
             editLabel="Edit Expense"

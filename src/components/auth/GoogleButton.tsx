@@ -49,7 +49,7 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
       ) : (
         <View style={styles.contentContainer}>
           <Image
-            source={require('@/assets/images/google-icon.png')}
+            source={require('../../../assets/images/google-icon.png')}
             style={styles.icon}
             contentFit="contain"
           />

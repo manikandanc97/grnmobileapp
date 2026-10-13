@@ -51,7 +51,19 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
         </View>
 
         <View style={styles.progressPercentWrap}>
-          {onEdit || onDelete ? <EntityActionMenu accessibilityLabel={`Actions for ${site.name}`} onEdit={onEdit ? () => onEdit(site) : undefined} onDelete={onDelete ? () => onDelete(site) : undefined} /> : <ChevronRight size={16} color={Colors.light.textMuted} />}
+          {onEdit || onDelete ? (
+            <EntityActionMenu
+              title={site.name}
+              subtitle={[site.type, site.location].filter(Boolean).join(' • ')}
+              accessibilityLabel={`Actions for ${site.name}`}
+              editLabel="Edit Site"
+              deleteLabel="Delete Site"
+              onEdit={onEdit ? () => onEdit(site) : undefined}
+              onDelete={onDelete ? () => onDelete(site) : undefined}
+            />
+          ) : (
+            <ChevronRight size={16} color={Colors.light.textMuted} />
+          )}
         </View>
       </View>
 

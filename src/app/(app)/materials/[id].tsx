@@ -121,6 +121,8 @@ export default function MaterialDetailsScreen() {
         showBack
         actionButton={
           <EntityActionMenu
+            title={material.name}
+            subtitle={`${material.quantity} ${material.unit}${material.siteName ? ` • ${material.siteName}` : ''}`}
             onEdit={() => router.push({ pathname: '/(app)/materials/edit', params: { id: material.id } })}
             onDelete={() => setShowConfirmDelete(true)}
             editLabel="Edit Material"

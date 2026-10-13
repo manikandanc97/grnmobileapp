@@ -4,7 +4,7 @@ import { createNotification } from './notifications';
 import { offlineStorage } from './offlineStorage';
 import { offlineQueue } from './offlineQueue';
 import { networkStatus } from './networkStatus';
-import { calculateRecordLaborCount, hasExtraLaborShifts } from '@/lib/laborShifts';
+import { calculateRecordLaborCount, hasExtraLaborShifts, WORKER_ROLES } from '@/lib/laborShifts';
 import { dataSync } from '@/lib/dataSync';
 
 export { WORKER_ROLES, calculateRecordLaborCost, calculateRecordLaborCount } from '@/lib/laborShifts';
@@ -427,3 +427,74 @@ export async function getMostRecentSiteLabor(siteId: string): Promise<SiteLaborD
     flooring_rate: data.flooring_rate ?? 0,
   };
 }
+
+/**
+ * Get site-specific default wage rates.
+ * Checks site-specific persistent storage first, then falls back to the most recent labor entry for this specific site,
+ * ensuring each site has its own completely independent rate setup.
+ */
+export async function getSiteWageRates(
+  siteId: string,
+  userId?: string
+): Promise<Record<string, number>> {
+  const currentUserId = await resolveUserId(userId);
+  const cacheKey = `site_wage_rates_${siteId}`;
+
+  // 1. Check site-isolated local durable cache
+  if (currentUserId) {
+    const cached = await offlineStorage.get<Record<string, number>>(currentUserId, cacheKey);
+    if (cached && cached.data) {
+      return cached.data;
+    }
+  }
+
+  // 2. Query recent labor entry for this specific site
+  try {
+    const recent = await getMostRecentSiteLabor(siteId);
+    if (recent) {
+      const rates: Record<string, number> = {};
+      WORKER_ROLES.forEach((role) => {
+        const val = Number((recent as any)[role.rateKey]);
+        rates[role.rateKey] = Number.isFinite(val) && val > 0 ? val : role.defaultRate;
+      });
+      if (currentUserId) {
+        await offlineStorage.set(currentUserId, cacheKey, rates);
+      }
+      return rates;
+    }
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[siteLabor] Error fetching recent rates for site:', siteId, err);
+    }
+  }
+
+  // 3. Fallback to default roles
+  const defaultRates: Record<string, number> = {};
+  WORKER_ROLES.forEach((role) => {
+    defaultRates[role.rateKey] = role.defaultRate;
+  });
+  return defaultRates;
+}
+
+/**
+ * Save site-specific wage rates so that ONLY this particular site's default rates are updated.
+ */
+export async function saveSiteWageRates(
+  siteId: string,
+  rates: Record<string, number>,
+  userId?: string
+): Promise<void> {
+  const currentUserId = await resolveUserId(userId);
+  const cacheKey = `site_wage_rates_${siteId}`;
+
+  if (currentUserId) {
+    await offlineStorage.set(currentUserId, cacheKey, rates);
+  }
+
+  dataSync.notify({
+    entity: 'site_labor',
+    action: 'update',
+    payload: { site_id: siteId, rates } as any,
+  });
+}
+

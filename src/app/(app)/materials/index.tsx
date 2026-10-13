@@ -139,7 +139,18 @@ function SiteMaterialsScreen({ siteId }: { siteId: string }) {
             </View>
           </View>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 4 }}><StatusBadge status={item.status} /><EntityActionMenu accessibilityLabel={`Actions for ${item.name}`} onEdit={() => handleEditMaterial(item)} onDelete={() => handleDeleteMaterialPress(item)} /></View>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <StatusBadge status={item.status} />
+          <EntityActionMenu
+            title={item.name}
+            subtitle={`${item.quantity} ${item.unit} • ${item.siteName}`}
+            accessibilityLabel={`Actions for ${item.name}`}
+            editLabel="Edit Material"
+            deleteLabel="Delete Material"
+            onEdit={() => handleEditMaterial(item)}
+            onDelete={() => handleDeleteMaterialPress(item)}
+          />
+        </View>
       </View>
 
       <View style={styles.financialRow}>

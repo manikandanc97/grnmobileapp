@@ -49,6 +49,7 @@ import {
   WORKER_ROLES,
   calculateRecordLaborCost,
   calculateRecordLaborCount,
+  saveSiteWageRates,
 } from '@/services/siteLabor';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useSiteBudget } from '@/hooks/useSiteBudget';
@@ -181,6 +182,9 @@ export default function SiteDetailsScreen() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
 
   const [showLabourModal, setShowLabourModal] = useState(false);
+  const [targetedRoleKey, setTargetedRoleKey] = useState<string | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<{ key: string; label: string } | null>(null);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -196,6 +200,8 @@ export default function SiteDetailsScreen() {
   const [expCategory, setExpCategory] = useState('Fuel');
   const [expPaymentStatus, setExpPaymentStatus] = useState<'Paid' | 'Pending'>('Paid');
   const [isSavingExpense, setIsSavingExpense] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseWithSite | null>(null);
+  const [isDeletingExpense, setIsDeletingExpense] = useState(false);
 
   // Material Search filter on Materials tab
   const [materialSearchQuery, setMaterialSearchQuery] = useState('');
@@ -213,15 +219,19 @@ export default function SiteDetailsScreen() {
   const [deletedSiteName, setDeletedSiteName] = useState('');
   const [isDeleted, setIsDeleted] = useState(false);
 
-  // Load recent rates for defaults
+  // Load site-specific wage rates for defaults (isolated per site)
   useEffect(() => {
+    let cancelled = false;
     if (id) {
       getRecentRates().then((res) => {
-        if (res) {
-          setCachedRecentRates(res);
+        if (!cancelled) {
+          setCachedRecentRates(res ?? null);
         }
       });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [id, getRecentRates]);
 
   // Sync inputs when labor entry or modal changes
@@ -264,7 +274,8 @@ export default function SiteDetailsScreen() {
   };
 
   // Open & Close Labour Attendance Modal helpers
-  const handleOpenLabourModal = () => {
+  const handleOpenLabourModal = (targetRoleKey?: string) => {
+    setTargetedRoleKey(targetRoleKey || null);
     const nextCounts: Record<string, string> = {};
     const nextRates: Record<string, string> = {};
 
@@ -292,8 +303,29 @@ export default function SiteDetailsScreen() {
   };
 
   const handleCloseLabourModal = () => {
+    setTargetedRoleKey(null);
     setEditingRates({});
     setShowLabourModal(false);
+  };
+
+  const handleConfirmDeleteRole = async () => {
+    if (!roleToDelete || !labor || isDeletingRole) return;
+    setIsDeletingRole(true);
+    try {
+      const draft = readLaborShiftDraft(labor);
+      const nextCounts = { ...draft.counts, [roleToDelete.key]: '0' };
+      const nextExtras = { ...draft.extras };
+      delete nextExtras[roleToDelete.key];
+      const payload = buildLaborPayload(nextCounts, workerRates, nextExtras);
+      await editLabor(labor.id, payload);
+      toast.success('Worker Removed', `Removed ${roleToDelete.label} from today's attendance`);
+      setRoleToDelete(null);
+      await Promise.all([refetchLabor(), refetchBudget()]);
+    } catch (err: any) {
+      toast.error('Failed to remove worker', err?.message || 'Failed to remove worker');
+    } finally {
+      setIsDeletingRole(false);
+    }
   };
 
   // Save Attendance
@@ -484,31 +516,6 @@ export default function SiteDetailsScreen() {
     }
   };
 
-  const handleDeleteMaterialFromModal = (matId: string) => {
-    const target = materials.find((m) => m.id === matId);
-    Alert.alert(
-      'Delete Material',
-      `Are you sure you want to delete "${target?.name || 'this material'}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await softDeleteMaterial(matId);
-              setShowMaterialModal(false);
-              resetMaterialForm();
-              toast.success('Material Deleted', 'Material removed successfully');
-              await Promise.all([refetchMaterials(), refetchBudget()]);
-            } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to delete material');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   // Expense Modal Handlers (Add & In-Place Edit)
   const resetExpenseForm = () => {
@@ -629,44 +636,54 @@ export default function SiteDetailsScreen() {
     }
   };
 
-  const handleDeleteExpense = (expId: string) => {
-    const target = siteExpenses.find((e) => e.id === expId);
-    Alert.alert(
-      'Delete Expense',
-      `Are you sure you want to delete "${target?.title || 'this expense'}" (₹${target?.amount ? target.amount.toLocaleString('en-IN') : ''})?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await softDeleteExpense(expId);
-              setShowExpenseModal(false);
-              resetExpenseForm();
-              toast.success('Expense Deleted', 'Expense removed successfully');
-              await Promise.all([refetchExpenses(), refetchBudget()]);
-            } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to delete expense');
-            }
-          },
-        },
-      ]
-    );
+
+  const handleConfirmDeleteExpense = async () => {
+    if (!expenseToDelete) return;
+    setIsDeletingExpense(true);
+    try {
+      await softDeleteExpense(expenseToDelete.id);
+      setExpenseToDelete(null);
+      setShowExpenseModal(false);
+      resetExpenseForm();
+      toast.success('Expense Deleted', 'Expense removed successfully');
+      await Promise.all([refetchExpenses(), refetchBudget()]);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to delete expense');
+    } finally {
+      setIsDeletingExpense(false);
+    }
   };
 
-  // Save Rates
+  // Open Rates Modal with this site's configured rates
+  const handleOpenRatesModal = () => {
+    const nextRates: Record<string, string> = {};
+    WORKER_ROLES.forEach((role) => {
+      const r =
+        (cachedRecentRates as any)?.[role.rateKey] ??
+        (labor as any)?.[role.rateKey] ??
+        role.defaultRate;
+      nextRates[role.key] = String(r);
+    });
+    setWorkerRates(nextRates);
+    setShowRatesModal(true);
+  };
+
+  // Save Rates - Updates rates exclusively for THIS site
   const handleSaveRates = async () => {
-    if (!id || isSavingRates) return;
+    if (!id || !site || isSavingRates) return;
     setIsSavingRates(true);
     try {
-      const payload: any = {};
+      const payload: Record<string, number> = {};
       WORKER_ROLES.forEach((role) => {
         const r = Number(workerRates[role.key] || '0');
         if (!Number.isFinite(r) || r < 0) throw new Error(`${role.label}: enter a valid rate per shift.`);
         payload[role.rateKey] = r;
       });
 
+      // 1. Persist site-specific rate master for THIS site only
+      await saveSiteWageRates(id, payload);
+
+      // 2. Also update currently active labor entry if present, or create placeholder
       if (labor) {
         await editLabor(labor.id, payload);
       } else {
@@ -683,6 +700,10 @@ export default function SiteDetailsScreen() {
       }));
 
       setShowRatesModal(false);
+      toast.success(
+        'Site Rates Updated',
+        `Labour wage rates updated for ${site.name}`
+      );
       await Promise.all([refetchLabor(), refetchBudget()]);
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to update rates');
@@ -698,6 +719,9 @@ export default function SiteDetailsScreen() {
     try {
       await softDeleteMaterial(materialToDelete.id);
       setMaterialToDelete(null);
+      setShowMaterialModal(false);
+      resetMaterialForm();
+      toast.success('Material Deleted', 'Material removed successfully');
       await Promise.all([refetchMaterials(), refetchBudget()]);
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to delete material');
@@ -942,6 +966,8 @@ export default function SiteDetailsScreen() {
         onBack={handleBack}
         actionButton={
           <EntityActionMenu
+            title={site.name}
+            subtitle={`${site.type} • ${site.location}`}
             onEdit={() => router.push({ pathname: '/(app)/sites/edit', params: { id: site.id } })}
             onDelete={() => setShowConfirmDelete(true)}
             editLabel="Edit Site"
@@ -1059,42 +1085,57 @@ export default function SiteDetailsScreen() {
                   id: 'attendance',
                   detail: todayWorkersCount > 0 ? `${todayWorkersCount} ${todayWorkersCount === 1 ? 'worker' : 'workers'} · ${calculateRecordLaborShifts(labor)} shifts` : 'Not recorded',
                   amount: todayLaborCost,
-                  actionLabel: 'Add',
-                  onAction: handleOpenLabourModal,
+                  actionLabel: todayWorkersCount > 0 ? 'Edit' : 'Add',
+                  onAction: () => handleOpenLabourModal(),
                   rows: WORKER_ROLES.flatMap(role => {
                     const count = Number((labor as any)?.[role.countKey]) || 0;
                     if (!count) return [];
                     const rate = Number((labor as any)?.[role.rateKey] ?? (cachedRecentRates as any)?.[role.rateKey] ?? role.defaultRate);
                     const shifts = getRecordRoleShifts(labor, role.key);
-                    return [{ id: role.key, title: role.label, detail: `${count} ${count === 1 ? 'worker' : 'workers'} · ${shifts} shifts × ₹${rate}/shift`, amount: shifts * rate }];
+                    return [{
+                      id: role.key,
+                      title: role.label,
+                      detail: `${count} ${count === 1 ? 'worker' : 'workers'} · ${shifts} shifts × ₹${rate}/shift`,
+                      amount: shifts * rate,
+                      editLabel: 'Edit Attendance',
+                      deleteLabel: `Remove ${role.label}`,
+                      onEdit: () => handleOpenLabourModal(role.key),
+                      onDelete: () => setRoleToDelete({ key: role.key, label: role.label }),
+                    }];
                   }),
                 },
                 {
                   id: 'materials',
                   detail: selectedDateMaterials.length ? `${selectedDateMaterials.length} ${selectedDateMaterials.length === 1 ? 'entry' : 'entries'}` : 'No materials yet',
                   amount: selectedDateMaterialTotal,
+                  actionLabel: 'Add',
                   onAction: handleOpenAddMaterialModal,
                   rows: selectedDateMaterials.map(mat => ({
                     id: mat.id,
                     title: mat.name,
                     detail: `${mat.quantity} ${mat.unit}${mat.unitPrice > 0 ? ` × ₹${mat.unitPrice}` : ''}`,
                     amount: mat.totalCost,
+                    editLabel: 'Edit Material',
+                    deleteLabel: 'Delete Material',
                     onEdit: () => handleOpenEditMaterialModal(mat),
-                    onDelete: () => handleDeleteMaterialFromModal(mat.id),
+                    onDelete: () => setMaterialToDelete(mat),
                   })),
                 },
                 {
                   id: 'expenses',
                   detail: selectedDateExpenses.length ? `${selectedDateExpenses.length} ${selectedDateExpenses.length === 1 ? 'entry' : 'entries'}` : 'No expenses yet',
                   amount: selectedDateExpenseTotal,
+                  actionLabel: 'Add',
                   onAction: handleOpenAddExpenseModal,
                   rows: selectedDateExpenses.map(exp => ({
                     id: exp.id,
                     title: exp.title || exp.notes || exp.category || 'Expense',
                     detail: [exp.category, exp.payment_status].filter(Boolean).join(' · '),
                     amount: exp.amount,
+                    editLabel: 'Edit Expense',
+                    deleteLabel: 'Delete Expense',
                     onEdit: () => handleOpenEditExpenseModal(exp),
-                    onDelete: () => handleDeleteExpense(exp.id),
+                    onDelete: () => setExpenseToDelete(exp),
                   })),
                 },
               ]}
@@ -1457,7 +1498,7 @@ export default function SiteDetailsScreen() {
                 </View>
                 <Button
                   title="Update Rates"
-                  onPress={() => setShowRatesModal(true)}
+                  onPress={handleOpenRatesModal}
                   icon={<Pencil size={15} color={Colors.light.surface} />}
                   style={{ height: 38, paddingHorizontal: 12 }}
                 />
@@ -1466,8 +1507,8 @@ export default function SiteDetailsScreen() {
               <View style={styles.rateGrid}>
                 {WORKER_ROLES.map((role) => {
                   const rate =
-                    (labor as any)?.[role.rateKey] ??
                     (cachedRecentRates as any)?.[role.rateKey] ??
+                    (labor as any)?.[role.rateKey] ??
                     role.defaultRate;
                   return (
                     <View key={role.key} style={styles.rateCard}>
@@ -1958,7 +1999,13 @@ export default function SiteDetailsScreen() {
                 const isEditingThisRate = !!editingRates[role.key];
 
                 return (
-                  <View key={role.key} style={styles.modalLaborCard}>
+                  <View
+                    key={role.key}
+                    style={[
+                      styles.modalLaborCard,
+                      targetedRoleKey === role.key && styles.modalLaborCardTargeted,
+                    ]}
+                  >
                     <View style={styles.modalLaborHeader}>
                       <Text style={styles.modalLaborRole}>{role.label}</Text>
                       <View style={styles.modalLaborRateWrap}>
@@ -2234,6 +2281,28 @@ export default function SiteDetailsScreen() {
         loading={isDeletingMaterial}
         onConfirm={handleConfirmDeleteMaterial}
         onCancel={() => setMaterialToDelete(null)}
+      />
+
+      {/* Confirmation Dialog: Delete Expense */}
+      <ConfirmDeleteDialog
+        visible={Boolean(expenseToDelete)}
+        title="Delete Expense?"
+        message={`Are you sure you want to delete "${expenseToDelete?.title || 'this expense'}"${expenseToDelete?.amount ? ` (₹${expenseToDelete.amount.toLocaleString('en-IN')})` : ''}?`}
+        confirmText="Delete Expense"
+        loading={isDeletingExpense}
+        onConfirm={handleConfirmDeleteExpense}
+        onCancel={() => setExpenseToDelete(null)}
+      />
+
+      {/* Confirmation Dialog: Remove Worker from Attendance */}
+      <ConfirmDeleteDialog
+        visible={Boolean(roleToDelete)}
+        title={`Remove ${roleToDelete?.label || 'Workers'}?`}
+        message={`Are you sure you want to remove ${roleToDelete?.label || 'these workers'} from today's attendance (${formatDateHuman(selectedDate)})?`}
+        confirmText="Remove Workers"
+        loading={isDeletingRole}
+        onConfirm={handleConfirmDeleteRole}
+        onCancel={() => setRoleToDelete(null)}
       />
 
       {/* Confirmation Dialog: Delete Site */}
@@ -3743,6 +3812,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.borderSubtle,
     marginBottom: Spacing.sm,
+  },
+  modalLaborCardTargeted: {
+    borderColor: Colors.light.brand,
+    borderWidth: 1.5,
+    backgroundColor: Colors.light.brandBg,
   },
   modalLaborHeader: {
     flexDirection: 'row',

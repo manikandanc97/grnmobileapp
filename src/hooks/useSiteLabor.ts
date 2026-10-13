@@ -3,7 +3,7 @@ import {
   getSiteLaborByDate, 
   createSiteLabor, 
   updateSiteLabor, 
-  getMostRecentSiteLabor,
+  getSiteWageRates,
   SiteLaborDailyRow, 
   SiteLaborDailyInsert, 
   SiteLaborDailyUpdate 
@@ -115,8 +115,8 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
 
   const getRecentRates = useCallback(async () => {
     if (!siteId) return null;
-    return await getMostRecentSiteLabor(siteId);
-  }, [siteId]);
+    return await getSiteWageRates(siteId, userId);
+  }, [siteId, userId]);
 
   return { 
     selectedDate, 

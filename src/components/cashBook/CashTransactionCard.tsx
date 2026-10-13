@@ -70,7 +70,17 @@ export function CashTransactionCard({
             )}
           </View>
 
-          {(onEdit || onDelete) && <EntityActionMenu accessibilityLabel="Transaction actions" onEdit={onEdit} onDelete={onDelete} />}
+          {(onEdit || onDelete) && (
+            <EntityActionMenu
+              title={transaction.particulars}
+              subtitle={[transaction.transaction_type, formatCurrency(transaction.amount)].filter(Boolean).join(' • ')}
+              accessibilityLabel="Transaction actions"
+              editLabel="Edit Transaction"
+              deleteLabel="Delete Transaction"
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          )}
         </View>
       </View>
     </Pressable>
