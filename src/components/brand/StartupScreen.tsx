@@ -1,17 +1,15 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { Colors, Shadows, Spacing } from '@/constants/theme';
-
-const logoSource = require('../../../assets/images/logo.jpg');
+import { GRN_LOGO_BASE64 } from '@/constants/logoDataUri';
 
 export function StartupScreen() {
   return (
     <View style={styles.screen}>
       <Image
-        source={logoSource}
+        source={{ uri: GRN_LOGO_BASE64 }}
         style={styles.logo}
-        contentFit="cover"
+        resizeMode="cover"
         accessibilityLabel="GRN Constructions"
       />
       <View style={styles.loading}>
@@ -34,6 +32,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 24,
+    overflow: 'hidden',
     ...Shadows.md,
   },
   loading: {

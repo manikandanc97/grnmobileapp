@@ -1,17 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Colors, Radius, Shadows } from '@/constants/theme';
-
-const logoSource = require('../../../assets/images/logo.jpg');
+import { GRN_LOGO_BASE64 } from '@/constants/logoDataUri';
 
 export function BrandMark({ size = 44, showName = true }: { size?: number; showName?: boolean }) {
   return (
     <View style={styles.row} accessibilityLabel="GRN Constructions">
       <Image
-        source={logoSource}
+        source={{ uri: GRN_LOGO_BASE64 }}
         style={[styles.logo, { width: size, height: size }]}
-        contentFit="cover"
+        resizeMode="cover"
         accessibilityLabel="GRN logo"
       />
       {showName && (
@@ -28,6 +26,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1 },
   logo: {
     borderRadius: Radius.md,
+    overflow: 'hidden',
     ...Shadows.sm,
   },
   words: { flexShrink: 1, gap: 2 },
