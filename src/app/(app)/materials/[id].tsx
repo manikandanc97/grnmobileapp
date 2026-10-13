@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React from 'react';
 import {
   View,
@@ -9,7 +10,6 @@ import { useLocalSearchParams, router } from 'expo-router';
 import {
   MapPin,
   Boxes,
-  Activity,
   ArrowDownToLine,
   ArrowUpFromLine,
   Tag,
@@ -66,7 +66,8 @@ export default function MaterialDetailsScreen() {
 
   const handleDeleteSuccessClose = () => {
     setShowDeleteSuccess(false);
-    router.replace('/(app)/materials');
+    if (material?.siteId) router.replace({ pathname: '/(app)/materials', params: { siteId: material.siteId } });
+    else router.replace('/(app)/sites');
   };
 
   if (isDeleted && showDeleteSuccess) {
@@ -101,10 +102,10 @@ export default function MaterialDetailsScreen() {
       <ScreenWrapper>
         <ScreenHeader title="Error" showBack />
         <View style={styles.errorContainer}>
-          <ErrorState 
-            title={!material ? "Material not found" : "Unable to load material"} 
-            message={error || "The requested material could not be found."} 
-            onRetry={refetch} 
+          <ErrorState
+            title={!material ? "Material not found" : "Unable to load material"}
+            message={error || "The requested material could not be found."}
+            onRetry={refetch}
           />
         </View>
       </ScreenWrapper>
@@ -129,7 +130,7 @@ export default function MaterialDetailsScreen() {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        
+
         {/* Identity Section */}
         <View style={styles.identitySection}>
           <View style={styles.identityHeader}>
@@ -152,9 +153,9 @@ export default function MaterialDetailsScreen() {
               <Text style={styles.stockMainValue}>{material.quantity.toLocaleString()}</Text>
               <Text style={styles.stockMainUnit}>{material.unit}</Text>
             </View>
-            
+
             <View style={styles.stockDivider} />
-            
+
             <View style={styles.stockSubGrid}>
               <View style={styles.stockSubItem}>
                 <View style={styles.stockSubHeader}>
@@ -223,9 +224,9 @@ export default function MaterialDetailsScreen() {
                 <Text style={styles.infoValue}>{material.siteName}</Text>
               </View>
             </View>
-            
+
             <View style={styles.infoDivider} />
-            
+
             <View style={styles.infoRow}>
               <CalendarClock size={IconSizes.sm} color={Colors.light.textSecondary} style={styles.infoIcon} />
               <View style={styles.infoTextContainer}>
@@ -236,56 +237,6 @@ export default function MaterialDetailsScreen() {
           </View>
         </View>
 
-        {/* Recent Activity Mock */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityContainer}>
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIconBox, { backgroundColor: Colors.light.successBg }]}>
-                <ArrowDownToLine size={IconSizes.sm} color={Colors.light.success} />
-              </View>
-              <View style={styles.activityDetails}>
-                <Text style={styles.activityTitle}>Material Received</Text>
-                <Text style={styles.activitySubtitle}>Supplier Delivery</Text>
-              </View>
-              <View style={styles.activityRight}>
-                <Text style={[styles.activityAmount, { color: Colors.light.success }]}>
-                  +{(material.quantity * 0.2).toFixed(1)} {material.unit}
-                </Text>
-                <Text style={styles.activityTime}>{material.lastUpdated}</Text>
-              </View>
-            </View>
-
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIconBox, { backgroundColor: Colors.light.errorBg }]}>
-                <ArrowUpFromLine size={IconSizes.sm} color={Colors.light.error} />
-              </View>
-              <View style={styles.activityDetails}>
-                <Text style={styles.activityTitle}>Material Used</Text>
-                <Text style={styles.activitySubtitle}>Construction site {material.siteName}</Text>
-              </View>
-              <View style={styles.activityRight}>
-                <Text style={[styles.activityAmount, { color: Colors.light.error }]}>
-                  -{(material.quantity * 0.1).toFixed(1)} {material.unit}
-                </Text>
-                <Text style={styles.activityTime}>Yesterday</Text>
-              </View>
-            </View>
-
-            <View style={[styles.activityItem, { borderBottomWidth: 0 }]}>
-              <View style={[styles.activityIconBox, { backgroundColor: Colors.light.infoBg }]}>
-                <Activity size={IconSizes.sm} color={Colors.light.info} />
-              </View>
-              <View style={styles.activityDetails}>
-                <Text style={styles.activityTitle}>Stock Checked</Text>
-                <Text style={styles.activitySubtitle}>By Site Supervisor</Text>
-              </View>
-              <View style={styles.activityRight}>
-                <Text style={styles.activityTime}>3 days ago</Text>
-              </View>
-            </View>
-          </View>
-        </View>
       </ScrollView>
 
       {/* Confirmation Dialog */}
@@ -356,15 +307,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   sectionTitle: {
+    ...UiStyles.sectionTitle,
     ...Typography.sectionTitle,
-    color: Colors.light.text,
     marginBottom: Spacing.md,
   },
   stockMainCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.lg,
     ...Shadows.sm,
   },
@@ -492,10 +440,7 @@ const styles = StyleSheet.create({
     color: Colors.light.brand,
   },
   infoCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     paddingHorizontal: Spacing.lg,
     ...Shadows.sm,
   },

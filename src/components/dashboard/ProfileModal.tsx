@@ -1,4 +1,5 @@
-import React from 'react';
+import { UiStyles } from '@/constants/uiStyles';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -15,7 +16,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
-import { supabase } from '@/lib/supabase';
+import { SignOutConfirmDialog } from '@/components/auth/SignOutConfirmDialog';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets } from '@/constants/theme';
 
 interface ProfileModalProps {
@@ -24,7 +25,9 @@ interface ProfileModalProps {
 }
 
 export function ProfileModal({ visible, onClose }: ProfileModalProps) {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const user = session?.user;
 
   const rawName = user?.user_metadata?.full_name || user?.user_metadata?.name;
@@ -39,111 +42,131 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
     .slice(0, 2)
     .toUpperCase() || 'GR';
 
-  const handleSignOut = async () => {
-    onClose();
-    await supabase.auth.signOut();
+  const handleRequestSignOut = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      setShowConfirm(false);
+      onClose();
+    } catch {
+      setIsSigningOut(false);
+    }
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.card}>
-              {/* Header with Close */}
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Account Profile</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Close profile modal"
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.closeButton,
-                    pressed && styles.closeButtonPressed,
-                  ]}
-                >
-                  <X size={IconSizes.sm} color={Colors.light.textSecondary} />
-                </Pressable>
-              </View>
-
-              {/* Avatar + Main info */}
-              <View style={styles.avatarSection}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{initials}</Text>
+    <>
+      <Modal
+        visible={visible && !showConfirm}
+        animationType="fade"
+        transparent
+        onRequestClose={onClose}
+      >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.overlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.card}>
+                {/* Header with Close */}
+                <View style={styles.header}>
+                  <Text style={styles.headerTitle}>Account Profile</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Close profile modal"
+                    onPress={onClose}
+                    style={({ pressed }) => [
+                      styles.closeButton,
+                      pressed && styles.closeButtonPressed,
+                    ]}
+                  >
+                    <X size={IconSizes.sm} color={Colors.light.textSecondary} />
+                  </Pressable>
                 </View>
-                <Text style={styles.userName}>{displayName}</Text>
-                <View style={styles.roleBadge}>
-                  <ShieldCheck size={13} color={Colors.light.success} />
-                  <Text style={styles.roleText}>Site Supervisor</Text>
-                </View>
-              </View>
 
-              {/* Details List */}
-              <View style={styles.detailsList}>
-                <View style={styles.detailRow}>
-                  <View style={styles.detailIconWrapper}>
-                    <Mail size={IconSizes.sm} color={Colors.light.textSecondary} />
+                {/* Avatar + Main info */}
+                <View style={styles.avatarSection}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initials}</Text>
                   </View>
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Email</Text>
-                    <Text style={styles.detailValue} numberOfLines={1}>
-                      {email}
-                    </Text>
+                  <Text style={styles.userName}>{displayName}</Text>
+                  <View style={styles.roleBadge}>
+                    <ShieldCheck size={13} color={Colors.light.success} />
+                    <Text style={styles.roleText}>Site Supervisor</Text>
                   </View>
                 </View>
 
-                {phone !== 'Not linked' && (
+                {/* Details List */}
+                <View style={styles.detailsList}>
                   <View style={styles.detailRow}>
                     <View style={styles.detailIconWrapper}>
-                      <Phone size={IconSizes.sm} color={Colors.light.textSecondary} />
+                      <Mail size={IconSizes.sm} color={Colors.light.textSecondary} />
                     </View>
                     <View style={styles.detailContent}>
-                      <Text style={styles.detailLabel}>Phone</Text>
-                      <Text style={styles.detailValue}>{phone}</Text>
+                      <Text style={styles.detailLabel}>Email</Text>
+                      <Text style={styles.detailValue} numberOfLines={1}>
+                        {email}
+                      </Text>
                     </View>
                   </View>
-                )}
-              </View>
 
-              {/* Sign Out Action */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Sign out of account"
-                style={({ pressed }) => [
-                  styles.signOutButton,
-                  pressed && styles.signOutButtonPressed,
-                ]}
-                onPress={handleSignOut}
-              >
-                <LogOut size={IconSizes.sm} color={Colors.light.error} />
-                <Text style={styles.signOutText}>Sign Out</Text>
-              </Pressable>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+                  {phone !== 'Not linked' && (
+                    <View style={styles.detailRow}>
+                      <View style={styles.detailIconWrapper}>
+                        <Phone size={IconSizes.sm} color={Colors.light.textSecondary} />
+                      </View>
+                      <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Phone</Text>
+                        <Text style={styles.detailValue}>{phone}</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Sign Out Action */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign out of account"
+                  style={({ pressed }) => [
+                    styles.signOutButton,
+                    pressed && styles.signOutButtonPressed,
+                  ]}
+                  onPress={handleRequestSignOut}
+                >
+                  <LogOut size={IconSizes.sm} color={Colors.light.error} />
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </Pressable>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <SignOutConfirmDialog
+        visible={showConfirm}
+        userName={displayName}
+        userEmail={user?.email}
+        loading={isSigningOut}
+        onConfirm={handleConfirmSignOut}
+        onCancel={() => setShowConfirm(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 53, 74, 0.45)',
+    backgroundColor: Colors.light.backdrop,
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.xl,
   },
   card: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.xl,
     padding: Spacing.xl,
     ...Shadows.lg,
   },
@@ -237,7 +260,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     fontWeight: '600',
     color: Colors.light.textMuted,
-    textTransform: 'uppercase',
+    textTransform: 'none',
   },
   detailValue: {
     ...Typography.body,
@@ -254,11 +277,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#FEE2E2', // Fallback if errorBg border is not defined specifically
+    borderColor: Colors.light.errorBg, // Fallback if errorBg border is not defined specifically
     minHeight: TouchTargets.min,
   },
   signOutButtonPressed: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: Colors.light.errorBg,
   },
   signOutText: {
     ...Typography.button,

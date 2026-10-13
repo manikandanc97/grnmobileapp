@@ -432,6 +432,7 @@ export type Database = {
           owner_id: string;
           site_id: string;
           work_date: string;
+          shift_counts?: Json;
           mason_count: number;
           mason_rate: number;
           men_helper_count: number;
@@ -460,6 +461,7 @@ export type Database = {
           owner_id?: string;
           site_id: string;
           work_date: string;
+          shift_counts?: Json;
           mason_count?: number;
           mason_rate?: number;
           men_helper_count?: number;
@@ -488,6 +490,7 @@ export type Database = {
           owner_id?: string;
           site_id?: string;
           work_date?: string;
+          shift_counts?: Json;
           mason_count?: number;
           mason_rate?: number;
           men_helper_count?: number;

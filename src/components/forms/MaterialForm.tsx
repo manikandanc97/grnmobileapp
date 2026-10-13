@@ -1,3 +1,6 @@
+import { Radius, Spacing, Colors } from '@/constants/theme';
+import { UiStyles } from '@/constants/uiStyles';
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
@@ -22,11 +25,12 @@ import {
 import { useMasterData } from '@/hooks/useMasterData';
 import { MaterialItem, MaterialCategory, MaterialUnit, MaterialStatus } from '@/types/dashboard';
 import { calculateMaterialCost } from '@/lib/finance';
-import { Spacing } from '@/constants/theme';
+
 import { Money } from '@/components/ui/Money';
 
 // Shared UI Architecture
 import { FormScreen } from '@/components/ui/FormScreen';
+import { OptionalDetails } from '@/components/ui/OptionalDetails';
 import { FormField } from '@/components/ui/FormField';
 import { TextField } from '@/components/ui/TextField';
 import { SelectField, SelectOption } from '@/components/ui/SelectField';
@@ -86,7 +90,7 @@ export function MaterialForm({
   const [unitPrice, setUnitPrice] = useState(
     initialData?.unit_price !== undefined ? String(initialData.unit_price) : ''
   );
-  
+
   const totalCost = useMemo(() => {
     return calculateMaterialCost(Number(quantity), Number(unitPrice));
   }, [quantity, unitPrice]);
@@ -117,8 +121,8 @@ export function MaterialForm({
     }
   }, [initialData?.site_id]);
 
-  // Derived effective site ID (default to first site if creating and none selected)
-  const effectiveSiteId = siteId || (!isEdit && sites.length > 0 ? sites[0].id : '');
+  // New entries stay assigned to the site they were opened from.
+  const effectiveSiteId = isEdit ? siteId : (initialData?.site_id || '');
 
   // Fetch initial material data if editing and not provided
   useEffect(() => {
@@ -163,15 +167,15 @@ export function MaterialForm({
     if (!category) newErrors.category = 'Category is required';
     if (!unit) newErrors.unit = 'Unit is required';
     if (!effectiveSiteId) newErrors.siteId = 'Site is required';
-    if (!quantity || isNaN(Number(quantity)) || Number(quantity) <= 0) {
+    if (!quantity || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
       newErrors.quantity = 'Enter a valid positive quantity';
     }
     if (isEdit) {
-      if (used && (isNaN(Number(used)) || Number(used) < 0)) {
+      if (used && (!Number.isFinite(Number(used)) || Number(used) < 0)) {
         newErrors.used = 'Used amount must be non-negative';
       }
     }
-    if (unitPrice && (isNaN(Number(unitPrice)) || Number(unitPrice) < 0)) {
+    if (unitPrice && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0)) {
       newErrors.unitPrice = 'Enter a valid non-negative price';
     }
     setErrors(newErrors);
@@ -308,7 +312,7 @@ export function MaterialForm({
         showBack
       >
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0B5364" />
+          <ActivityIndicator size="large" color={Colors.light.brand} />
           <Text style={styles.loadingText}>Loading material details...</Text>
         </View>
       </FormScreen>
@@ -320,8 +324,8 @@ export function MaterialForm({
       title={isEdit ? 'Edit Material' : 'Add Material'}
       subtitle={
         isEdit
-          ? 'Modify stock records, categories, and inventory status.'
-          : 'Track materials and inventory across your construction sites.'
+          ? 'Update the stock or purchase details.'
+          : 'Choose a site and enter the material quantity.'
       }
       showBack
       bottomBar={
@@ -335,7 +339,7 @@ export function MaterialForm({
           <Button
             title={isEdit ? 'Save Changes' : 'Save Material'}
             variant="primary"
-            icon={<Check size={18} color="#FFFFFF" />}
+            icon={<Check size={18} color={Colors.light.surface} />}
             onPress={handleSave}
             loading={isSaving}
             disabled={!isFormValid || isSaving}
@@ -400,7 +404,11 @@ export function MaterialForm({
       {/* PROJECT */}
       <View style={styles.section}>
         <FormField id="siteId" label="Site" required error={errors.siteId}>
-          <SelectField
+          {!isEdit ? <TextField
+            value={siteOptions.find(option => option.value === effectiveSiteId)?.label || (sitesLoading ? 'Loading site...' : 'Selected site')}
+            editable={false}
+            leftIcon={<Building2 size={18} color={Colors.light.textMuted} />}
+          /> : <SelectField
             value={effectiveSiteId}
             options={siteOptions}
             onChange={(v) => {
@@ -408,9 +416,9 @@ export function MaterialForm({
               if (errors.siteId) setErrors((e) => ({ ...e, siteId: '' }));
             }}
             placeholder={sitesLoading ? 'Loading sites...' : 'Select Site'}
-            leftIcon={<Building2 size={18} color="#71808A" />}
+            leftIcon={<Building2 size={18} color={Colors.light.textMuted} />}
             error={errors.siteId}
-          />
+          />}
         </FormField>
       </View>
 
@@ -461,7 +469,7 @@ export function MaterialForm({
               if (errors.quantity) setErrors((e) => ({ ...e, quantity: '' }));
             }}
             returnKeyType={isEdit ? 'next' : 'next'}
-            nextFieldRef={isEdit ? usedInputRef : supplierInputRef}
+            nextFieldRef={isEdit ? usedInputRef : undefined}
             error={errors.quantity}
             editable={!isSaving}
           />
@@ -483,7 +491,7 @@ export function MaterialForm({
             editable={!isSaving}
           />
         </FormField>
-        
+
         <View style={styles.totalCostContainer}>
           <Text style={styles.totalCostLabel}>Total Cost</Text>
           <Money amount={totalCost} style={styles.totalCostValue} />
@@ -502,7 +510,6 @@ export function MaterialForm({
                 if (errors.used) setErrors((e) => ({ ...e, used: '' }));
               }}
               returnKeyType="next"
-              nextFieldRef={supplierInputRef}
               error={errors.used}
               editable={!isSaving}
             />
@@ -516,6 +523,10 @@ export function MaterialForm({
           />
         </FormField>
 
+
+      </View>
+
+      <OptionalDetails initiallyOpen={isEdit || Boolean(supplier || notes)}>
         <FormField id="supplier" label="Supplier">
           <TextField
             ref={supplierInputRef}
@@ -528,8 +539,6 @@ export function MaterialForm({
             editable={!isSaving}
           />
         </FormField>
-      </View>
-
       {/* ADDITIONAL INFO */}
       <View style={styles.section}>
         <FormField id="notes" label="Notes">
@@ -545,6 +554,9 @@ export function MaterialForm({
           />
         </FormField>
       </View>
+
+
+      </OptionalDetails>
 
       {/* Success Dialog */}
       <SuccessDialog
@@ -581,9 +593,10 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   section: {
+    ...UiStyles.card,
     marginBottom: Spacing.md,
   },
   row: {
@@ -602,22 +615,22 @@ const styles = StyleSheet.create({
   statusChip: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.surfaceMuted,
   },
   statusChipActive: {
-    backgroundColor: '#0F354A',
-    borderColor: '#0F354A',
+    backgroundColor: Colors.light.text,
+    borderColor: Colors.light.text,
   },
   statusChipText: {
     fontSize: 13,
-    color: '#4B5563',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   statusChipTextActive: {
-    color: '#FFFFFF',
+    color: Colors.light.onPrimary,
     fontWeight: '700',
   },
   saveBtn: {
@@ -627,19 +640,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#EEF2F6',
+    backgroundColor: Colors.light.surfaceMuted,
     padding: 16,
     borderRadius: 8,
     marginBottom: Spacing.md,
   },
   totalCostLabel: {
     fontSize: 14,
-    color: '#4B5563',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   totalCostValue: {
     fontSize: 18,
-    color: '#0F354A',
+    color: Colors.light.text,
     fontWeight: '700',
   },
 });

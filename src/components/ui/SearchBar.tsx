@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius , Colors } from '@/constants/theme';
 
 export interface SearchBarProps {
   value: string;
@@ -22,24 +22,27 @@ export function SearchBar({
 
   return (
     <View style={[styles.container, style]}>
-      <Search size={18} color="#64748B" style={styles.icon} />
+      <Search size={18} color={Colors.light.textSecondary} style={styles.icon} />
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={Colors.light.textMuted}
+        accessibilityLabel={placeholder}
+        autoCapitalize="none"
+        autoCorrect={false}
         returnKeyType="search"
       />
       {showClear && (
-        <Pressable 
-          onPress={onClear} 
+        <Pressable
+          onPress={onClear}
           style={styles.clearBtn}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Clear search"
         >
-          <X size={14} color="#64748B" />
+          <X size={14} color={Colors.light.textSecondary} />
         </Pressable>
       )}
     </View>
@@ -50,9 +53,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderColor: Colors.light.border,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     height: 46,
@@ -65,14 +68,14 @@ const styles = StyleSheet.create({
     height: '100%',
     ...Typography.body,
     fontSize: 14,
-    color: '#0F172A',
+    color: Colors.light.text,
     paddingVertical: 0,
   },
   clearBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E2E8F0',
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: Spacing.xs,

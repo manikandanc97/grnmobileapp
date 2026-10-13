@@ -164,12 +164,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   offlineCard: {
-    backgroundColor: '#FFFBEB', // Light amber background
-    borderColor: '#FDE68A',
+    backgroundColor: Colors.light.warningBg, // Light amber background
+    borderColor: Colors.light.warningBg,
   },
   onlineCard: {
-    backgroundColor: '#ECFDF5', // Light green background
-    borderColor: '#A7F3D0',
+    backgroundColor: Colors.light.successBg, // Light green background
+    borderColor: Colors.light.successBg,
   },
   iconWrapper: {
     marginRight: 10,
@@ -183,20 +183,20 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
     lineHeight: 18,
   },
   subtitle: {
     ...Typography.caption,
     fontSize: 11,
-    color: '#475569',
+    color: Colors.light.textSecondary,
     lineHeight: 15,
   },
   syncTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(7, 86, 106, 0.1)',
+    backgroundColor: Colors.light.brandBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: Radius.full,

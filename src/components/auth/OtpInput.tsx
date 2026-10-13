@@ -1,8 +1,10 @@
+import { Radius, Spacing } from '@/constants/theme';
+
 import React, { useRef, useState } from 'react';
 import { StyleSheet, TextInput, View, TouchableWithoutFeedback } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+
 
 interface OtpInputProps {
   value: string;
@@ -13,7 +15,7 @@ interface OtpInputProps {
 export function OtpInput({ value, onChangeText, length = 6 }: OtpInputProps) {
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
-  
+
   const theme = useTheme();
   const backgroundColor = theme.backgroundElement;
   const borderColor = theme.border;
@@ -70,6 +72,8 @@ export function OtpInput({ value, onChangeText, length = 6 }: OtpInputProps) {
           maxLength={length}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          accessibilityLabel="Six-digit verification code"
+          autoComplete="sms-otp"
           caretHidden
         />
       </View>
@@ -89,9 +93,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   box: {
-    width: 48,
+    flex: 1,
+    minWidth: 0,
     height: 56,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',

@@ -35,7 +35,7 @@ export function ExpenseFilter({
       <View style={styles.row}>
         <SelectField
           value={selectedCategory}
-          options={categories.map(c => ({ label: c, value: c }))}
+          options={categories.map(c => ({ label: c === 'All' ? 'All categories' : c, value: c }))}
           onChange={(val) => onSelectCategory(val as any)}
           placeholder="Filter by Category"
         />
@@ -46,10 +46,13 @@ export function ExpenseFilter({
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
   },
   row: {
-    paddingHorizontal: Spacing.lg,
+    flex: 1,
     marginBottom: Spacing.sm,
   },
 });

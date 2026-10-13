@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
@@ -69,28 +70,28 @@ export function ToastBanner() {
         return {
           icon: <CheckCircle2 size={19} color={Colors.light.success} strokeWidth={2.4} />,
           iconBg: Colors.light.successBg,
-          borderColor: '#A7F3D0',
+          borderColor: Colors.light.successBg,
           accentColor: Colors.light.success,
         };
       case 'error':
         return {
           icon: <AlertCircle size={19} color={Colors.light.error} strokeWidth={2.4} />,
           iconBg: Colors.light.errorBg,
-          borderColor: '#FECACA',
+          borderColor: Colors.light.errorBg,
           accentColor: Colors.light.error,
         };
       case 'warning':
         return {
           icon: <AlertTriangle size={19} color={Colors.light.warning} strokeWidth={2.4} />,
           iconBg: Colors.light.warningBg,
-          borderColor: '#FDE68A',
+          borderColor: Colors.light.warningBg,
           accentColor: Colors.light.warning,
         };
       default:
         return {
           icon: <Info size={19} color={Colors.light.brand} strokeWidth={2.4} />,
           iconBg: Colors.light.brandBg,
-          borderColor: '#CCDFE4',
+          borderColor: Colors.light.borderStrong,
           accentColor: Colors.light.brand,
         };
     }
@@ -172,15 +173,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toastCard: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 440,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderWidth: 1,
     ...Shadows.lg,
   },
   iconWrapper: {

@@ -7,12 +7,12 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Plus } from 'lucide-react-native';
-import { router } from 'expo-router';
-import { SiteItem, SiteType } from '@/types/dashboard';
+import { router, useLocalSearchParams } from 'expo-router';
+import { SiteItem } from '@/types/dashboard';
 
 
 import { SiteCard } from '@/components/dashboard/SiteCard';
-import { SearchFilters } from '@/components/sites/SearchFilters';
+import { SearchFilters, FilterOption } from '@/components/sites/SearchFilters';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useSites } from '@/hooks/useSites';
@@ -29,11 +29,24 @@ import { parseAppError } from '@/lib/errorHandler';
 import { Button } from '@/components/ui/Button';
 import { Colors, Spacing, IconSizes } from '@/constants/theme';
 
-type FilterOption = 'All' | SiteType;
-
 export default function SitesListScreen() {
+  const { filter } = useLocalSearchParams<{ filter?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterOption>('All');
+  const [userSelectedFilter, setUserSelectedFilter] = useState<FilterOption | null>(null);
+  const [previousFilter, setPreviousFilter] = useState(filter);
+  if (filter !== previousFilter) {
+    setPreviousFilter(filter);
+    setUserSelectedFilter(null);
+  }
+
+  const activeFilter: FilterOption = useMemo(() => {
+    if (userSelectedFilter) return userSelectedFilter;
+    if (filter && ['All', 'Active', 'On Hold', 'Completed', 'Residential', 'Commercial', 'Renovation'].includes(filter)) {
+      return filter as FilterOption;
+    }
+    return 'All';
+  }, [userSelectedFilter, filter]);
+
   const { sites, loading, refreshing, error, isOffline, isCached, lastUpdated, onRefresh, refetch } = useSites();
 
   // Card action states
@@ -42,7 +55,6 @@ export default function SitesListScreen() {
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
   const [deletedSiteName, setDeletedSiteName] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
 
   // Filter the real Supabase sites based on search query (name, location, type) and filter chip
   const filteredSites = useMemo(() => {
@@ -53,9 +65,17 @@ export default function SitesListScreen() {
         site.name.toLowerCase().includes(query) ||
         site.location.toLowerCase().includes(query) ||
         site.type.toLowerCase().includes(query);
-      
-      const matchesFilter =
-        activeFilter === 'All' || site.type === activeFilter;
+
+      let matchesFilter = true;
+      if (activeFilter === 'Active') {
+        matchesFilter = site.status !== 'Completed' && site.status !== 'On Hold';
+      } else if (activeFilter === 'On Hold') {
+        matchesFilter = site.status === 'On Hold';
+      } else if (activeFilter === 'Completed') {
+        matchesFilter = site.status === 'Completed';
+      } else if (activeFilter !== 'All') {
+        matchesFilter = site.type === activeFilter;
+      }
 
       return matchesSearch && matchesFilter;
     });
@@ -94,11 +114,20 @@ export default function SitesListScreen() {
     router.push('/(app)/sites/add');
   };
 
+  const activeCount = useMemo(
+    () => sites.filter((s) => s.status !== 'Completed' && s.status !== 'On Hold').length,
+    [sites]
+  );
+
   return (
     <ScreenWrapper>
       <ScreenHeader
         title="Sites"
-        subtitle={sites.length > 0 ? `${sites.length} Active Projects` : "Manage your construction projects"}
+        subtitle={
+          activeCount > 0
+            ? `${activeCount} Active Project${activeCount === 1 ? '' : 's'}`
+            : "Manage your construction projects"
+        }
         actionButton={
           <View style={{ width: 120 }}>
             <Button
@@ -116,7 +145,7 @@ export default function SitesListScreen() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
+        onFilterChange={setUserSelectedFilter}
       />
 
       {/* Loading state on initial fetch */}
@@ -134,10 +163,10 @@ export default function SitesListScreen() {
           }
           return (
             <View style={styles.centerContainer}>
-              <ErrorState 
-                title={parsed.title} 
-                message={parsed.message} 
-                onRetry={refetch} 
+              <ErrorState
+                title={parsed.title}
+                message={parsed.message}
+                onRetry={refetch}
               />
             </View>
           );
@@ -145,10 +174,10 @@ export default function SitesListScreen() {
       ) : (
         <>
           {isCached && (
-            <OfflineIndicator 
-              lastUpdated={lastUpdated} 
-              onRetry={onRefresh} 
-              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            <OfflineIndicator
+              lastUpdated={lastUpdated}
+              onRetry={onRefresh}
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }}
             />
           )}
           {/* Sites List */}
@@ -179,8 +208,8 @@ export default function SitesListScreen() {
               description={sites.length === 0
                 ? 'Tap "Add Site" above to register your first project.'
                 : 'Try adjusting your search or filters.'}
-              actionLabel={sites.length === 0 ? "Add Site" : undefined}
-              onAction={sites.length === 0 ? handleAddSitePress : undefined}
+              actionLabel={sites.length === 0 ? "Add Site" : "Clear filters"}
+              onAction={sites.length === 0 ? handleAddSitePress : () => { setSearchQuery(''); setUserSelectedFilter('All'); }}
             />
           )}
         />

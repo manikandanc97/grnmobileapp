@@ -1,3 +1,4 @@
+import { Colors } from '@/constants/theme';
 import React from 'react';
 import { ViewStyle, StyleProp, StyleSheet } from 'react-native';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
@@ -18,6 +19,7 @@ export function FormScreen({
   title,
   subtitle,
   showBack = true,
+  onBack,
   headerRight,
   children,
   bottomBar,
@@ -31,6 +33,7 @@ export function FormScreen({
         title={title}
         subtitle={subtitle}
         showBack={showBack}
+        onBack={onBack}
         actionButton={headerRight}
       />
       <KeyboardAwareForm
@@ -47,6 +50,6 @@ export function FormScreen({
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
   },
 });

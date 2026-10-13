@@ -1,8 +1,11 @@
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
+import { UiStyles } from '@/constants/uiStyles';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Building2, ChevronRight, MapPin, Pencil, Trash2 } from 'lucide-react-native';
+import { Building2, ChevronRight, MapPin } from 'lucide-react-native';
 import { SiteItem } from '@/types/dashboard';
-import { Colors, Radius, Shadows } from '@/constants/theme';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Colors, Radius } from '@/constants/theme';
 
 interface SiteCardProps {
   site: SiteItem;
@@ -16,7 +19,8 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
 
   return (
     <Pressable
-      accessibilityLabel={`Site ${site.name}, ${site.type}, ${site.progress}% complete`}
+      accessibilityRole="button"
+      accessibilityLabel={`Site ${site.name}, ${site.type}`}
       style={({ pressed }) => [
         styles.card,
         pressed && styles.cardPressed,
@@ -36,9 +40,10 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
             <View style={styles.typeBadge}>
               <Text style={styles.typeBadgeText}>{site.type}</Text>
             </View>
+            <StatusBadge status={site.status} />
             {site.location ? (
               <View style={styles.locationWrapper}>
-                <MapPin size={11} color="#64748B" />
+                <MapPin size={11} color={Colors.light.textSecondary} />
                 <Text style={styles.locationText} numberOfLines={1}>{site.location}</Text>
               </View>
             ) : null}
@@ -46,60 +51,25 @@ export function SiteCard({ site, onPress, onEdit, onDelete }: SiteCardProps) {
         </View>
 
         <View style={styles.progressPercentWrap}>
-          <ChevronRight size={16} color="#94A3B8" />
+          {onEdit || onDelete ? <EntityActionMenu accessibilityLabel={`Actions for ${site.name}`} onEdit={onEdit ? () => onEdit(site) : undefined} onDelete={onDelete ? () => onDelete(site) : undefined} /> : <ChevronRight size={16} color={Colors.light.textMuted} />}
         </View>
       </View>
 
 
 
-      {/* Optional action buttons if provided */}
-      {(onEdit || onDelete) && (
-        <View style={styles.actionRow}>
-          {onEdit && (
-            <Pressable
-              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-              onPress={(e) => {
-                e.stopPropagation();
-                onEdit(site);
-              }}
-              hitSlop={8}
-            >
-              <Pencil size={13} color={Colors.light.brand} />
-              <Text style={styles.actionButtonText}>Edit</Text>
-            </Pressable>
-          )}
-          {onDelete && (
-            <Pressable
-              style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
-              onPress={(e) => {
-                e.stopPropagation();
-                onDelete(site);
-              }}
-              hitSlop={8}
-            >
-              <Trash2 size={13} color={Colors.light.error} />
-              <Text style={[styles.actionButtonText, { color: Colors.light.error }]}>Delete</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    ...UiStyles.card,
     padding: 16,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
     marginBottom: 12,
-    ...Shadows.sm,
   },
   cardPressed: {
     transform: [{ scale: 0.98 }],
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     opacity: 0.9,
   },
   cardTop: {
@@ -111,7 +81,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: Radius.md,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: Colors.light.brandBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -125,17 +95,18 @@ const styles = StyleSheet.create({
   },
   siteName: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     letterSpacing: -0.3,
   },
   metaRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   typeBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: Radius.xs,
@@ -143,8 +114,26 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
+    color: Colors.light.textSecondary,
+    textTransform: 'none',
+    letterSpacing: 0.4,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.light.successBg,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: Radius.xs,
+    borderWidth: 1,
+    borderColor: Colors.light.successBg,
+  },
+  completedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.light.success,
+    textTransform: 'none',
     letterSpacing: 0.4,
   },
   locationWrapper: {
@@ -156,7 +145,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
   progressPercentWrap: {
     flexDirection: 'row',
@@ -168,22 +157,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(15, 23, 42, 0.04)',
+    marginTop: 10,
+    paddingTop: 8,
   },
   actionButton: {
+    minHeight: 44,
+    minWidth: 72,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: Radius.sm,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   deleteButton: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
   },
   actionButtonPressed: {
     opacity: 0.7,

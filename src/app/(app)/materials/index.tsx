@@ -1,26 +1,21 @@
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
   FlatList,
   RefreshControl,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import {
   Plus,
   Boxes,
-  AlertTriangle,
-  Truck,
-  CalendarClock,
-  Pencil,
-  Trash2,
   MapPin,
 } from 'lucide-react-native';
 
-import { isDateInCurrentMonth } from '@/lib/dateUtils';
 import { MaterialItem } from '@/types/dashboard';
 import { useMaterials } from '@/hooks/useMaterials';
 import { useMasterData } from '@/hooks/useMasterData';
@@ -48,12 +43,17 @@ import { Colors, Spacing, Typography, Radius, Shadows, IconSizes, TouchTargets }
 
 export default function MaterialsScreen() {
   const { siteId } = useLocalSearchParams<{ siteId?: string }>();
+  if (!siteId) return <Redirect href="/(app)/sites" />;
+  return <SiteMaterialsScreen key={siteId} siteId={siteId} />;
+}
+
+function SiteMaterialsScreen({ siteId }: { siteId: string }) {
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const { categories } = useMasterData();
   const allCategories = useMemo(() => ['All', ...categories], [categories]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
-  
+
   const { materials, loading, refreshing, error, isOffline, isCached, lastUpdated, onRefresh, refetch } = useMaterials(siteId);
 
   // Card action states
@@ -105,47 +105,19 @@ export default function MaterialsScreen() {
     const total = materials.length;
     const lowStock = materials.filter((m) => m.status === 'Low Stock').length;
     const pending = materials.filter((m) => m.status === 'Pending').length;
-    const thisMonth = materials.filter((m) => isDateInCurrentMonth(m.lastUpdated)).length;
-    return { total, lowStock, pending, thisMonth };
+    return { total, lowStock, pending };
   }, [materials]);
 
   const renderSummaryCards = () => {
     if (siteId || loading || error || materials.length === 0) return null;
     return (
       <View style={styles.summaryContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.summaryScroll}>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.infoBg }]}>
-              <Boxes size={IconSizes.sm} color={Colors.light.info} />
-            </View>
-            <Text style={styles.summaryValue}>{summary.total}</Text>
-            <Text style={styles.summaryLabel}>Total Materials</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.errorBg }]}>
-              <AlertTriangle size={IconSizes.sm} color={Colors.light.error} />
-            </View>
-            <Text style={styles.summaryValue}>{summary.lowStock}</Text>
-            <Text style={styles.summaryLabel}>Low Stock</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.warningBg }]}>
-              <Truck size={IconSizes.sm} color={Colors.light.warning} />
-            </View>
-            <Text style={styles.summaryValue}>{summary.pending}</Text>
-            <Text style={styles.summaryLabel}>Pending Delivery</Text>
-          </View>
-
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: Colors.light.successBg }]}>
-              <CalendarClock size={IconSizes.sm} color={Colors.light.success} />
-            </View>
-            <Text style={styles.summaryValue}>{summary.thisMonth}</Text>
-            <Text style={styles.summaryLabel}>This Month</Text>
-          </View>
-        </ScrollView>
+        <View style={styles.compactSummary}>
+          <Boxes size={18} color={Colors.light.brand} />
+          <Text style={styles.compactSummaryText}>{summary.total} materials</Text>
+          {summary.lowStock > 0 && <Text style={styles.stockAlert}>{summary.lowStock} low stock</Text>}
+          {summary.pending > 0 && <Text style={styles.stockAlert}>{summary.pending} pending</Text>}
+        </View>
       </View>
     );
   };
@@ -167,9 +139,9 @@ export default function MaterialsScreen() {
             </View>
           </View>
         </View>
-        <StatusBadge status={item.status} />
+        <View style={{ alignItems: 'flex-end', gap: 4 }}><StatusBadge status={item.status} /><EntityActionMenu accessibilityLabel={`Actions for ${item.name}`} onEdit={() => handleEditMaterial(item)} onDelete={() => handleDeleteMaterialPress(item)} /></View>
       </View>
-      
+
       <View style={styles.financialRow}>
         <View style={styles.financialCol}>
           <Text style={styles.financialLabel}>Stock</Text>
@@ -193,45 +165,6 @@ export default function MaterialsScreen() {
         </View>
       </View>
 
-      <View style={styles.materialFooter}>
-        <View style={styles.cardActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Edit ${item.name}`}
-            style={({ pressed }) => [
-              styles.actionPill,
-              styles.editPill,
-              pressed && styles.actionPillPressed,
-            ]}
-            hitSlop={6}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleEditMaterial(item);
-            }}
-          >
-            <Pencil size={12} color={Colors.light.primary} strokeWidth={2.4} />
-            <Text style={styles.editPillText}>Edit</Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${item.name}`}
-            style={({ pressed }) => [
-              styles.actionPill,
-              styles.deletePill,
-              pressed && styles.actionPillPressed,
-            ]}
-            hitSlop={6}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleDeleteMaterialPress(item);
-            }}
-          >
-            <Trash2 size={12} color={Colors.light.error} strokeWidth={2.4} />
-            <Text style={styles.deletePillText}>Delete</Text>
-          </Pressable>
-        </View>
-      </View>
     </Pressable>
   );
 
@@ -241,22 +174,20 @@ export default function MaterialsScreen() {
       <ScreenHeader
         title="Materials"
         subtitle={siteId ? 'Materials for selected site' : 'Track materials across your sites'}
-        showBack={Boolean(siteId)}
-        actionButton={
+        showBack
+        actionButton={siteId ?
           <View style={{ width: 150 }}>
             <Button
               title="Add Material"
               onPress={() =>
                 router.push(
-                  siteId
-                    ? ({ pathname: '/(app)/materials/add', params: { siteId } } as any)
-                    : ('/(app)/materials/add' as any)
+                  { pathname: '/(app)/materials/add', params: { siteId } }
                 )
               }
               icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
               style={{ height: 40 }}
             />
-          </View>
+          </View> : undefined
         }
       />
 
@@ -270,7 +201,7 @@ export default function MaterialsScreen() {
         />
         <SelectField
           value={activeCategory}
-          options={allCategories.map(c => ({ label: c, value: c }))}
+          options={allCategories.map(c => ({ label: c === 'All' ? 'All categories' : c, value: c }))}
           onChange={setActiveCategory}
           placeholder="Filter by Category"
         />
@@ -291,10 +222,10 @@ export default function MaterialsScreen() {
           }
           return (
             <View style={styles.centerContainer}>
-              <ErrorState 
-                title={parsed.title} 
-                message={parsed.message} 
-                onRetry={refetch} 
+              <ErrorState
+                title={parsed.title}
+                message={parsed.message}
+                onRetry={refetch}
               />
             </View>
           );
@@ -302,10 +233,10 @@ export default function MaterialsScreen() {
       ) : (
         <>
           {isCached && (
-            <OfflineIndicator 
-              lastUpdated={lastUpdated} 
-              onRetry={onRefresh} 
-              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            <OfflineIndicator
+              lastUpdated={lastUpdated}
+              onRetry={onRefresh}
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }}
             />
           )}
           <FlatList
@@ -328,11 +259,11 @@ export default function MaterialsScreen() {
                 <EmptyState
                   icon={<Boxes size={48} color={Colors.light.textMuted} />}
                   title={materials.length === 0 ? "No materials yet" : "No materials found"}
-                  description={materials.length === 0 
-                    ? "Add materials to start tracking construction inventory."
+                  description={materials.length === 0
+                    ? (siteId ? "Add materials for this site." : "Open a site to add materials.")
                     : "Try adjusting your search or category filters."}
-                  actionLabel={materials.length === 0 ? "Add Material" : "Clear Filters"}
-                  onAction={materials.length === 0 ? () => router.push('/(app)/materials/add') : () => { setSearchQuery(''); setActiveCategory('All'); }}
+                  actionLabel={materials.length === 0 ? (siteId ? "Add Material" : "Open Sites") : "Clear Filters"}
+                  onAction={materials.length === 0 ? () => siteId ? router.push({ pathname: '/(app)/materials/add', params: { siteId } }) : router.push('/(app)/sites') : () => { setSearchQuery(''); setActiveCategory('All'); }}
                 />
               </View>
             )}
@@ -378,6 +309,9 @@ export default function MaterialsScreen() {
 }
 
 const styles = StyleSheet.create({
+  compactSummary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+  compactSummaryText: { fontSize: 14, color: Colors.light.text, fontWeight: '600' },
+  stockAlert: { fontSize: 13, color: Colors.light.warning },
   loadingContainer: {
     padding: Spacing.lg,
     gap: Spacing.md,
@@ -412,12 +346,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   summaryCard: {
+    ...UiStyles.card,
     width: 140,
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
     padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
     ...Shadows.sm,
   },
   summaryIconBox: {
@@ -430,14 +361,14 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 22,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     marginBottom: 2,
     letterSpacing: -0.4,
   },
   summaryLabel: {
     ...Typography.caption,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '600',
   },
   listContent: {
@@ -447,11 +378,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   materialCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    ...UiStyles.card,
     padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
     ...Shadows.sm,
   },
   materialCardPressed: {
@@ -503,13 +431,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderColor: Colors.light.border,
   },
   financialCol: {
     flex: 1,
@@ -521,7 +449,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: Colors.light.textMuted,
-    textTransform: 'uppercase',
+    textTransform: 'none',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
@@ -532,7 +460,7 @@ const styles = StyleSheet.create({
   },
   quantityValue: {
     ...Typography.body,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
     letterSpacing: -0.5,
   },
@@ -553,7 +481,7 @@ const styles = StyleSheet.create({
   },
   totalCostValue: {
     ...Typography.body,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.brand,
   },
   materialFooter: {

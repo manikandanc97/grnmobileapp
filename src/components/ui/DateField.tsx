@@ -122,10 +122,10 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: Colors.light.borderStrong,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    minHeight: 48,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: Colors.light.backdrop,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },

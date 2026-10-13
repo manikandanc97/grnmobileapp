@@ -10,7 +10,7 @@ import { SiteType } from '@/types/dashboard';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { Colors, Spacing, Radius } from '@/constants/theme';
 
-type FilterOption = 'All' | SiteType;
+export type FilterOption = 'All' | 'Active' | 'Completed' | 'On Hold' | SiteType;
 
 interface SearchFiltersProps {
   searchQuery: string;
@@ -19,7 +19,7 @@ interface SearchFiltersProps {
   onFilterChange: (filter: FilterOption) => void;
 }
 
-const FILTERS: FilterOption[] = ['All', 'Residential', 'Commercial', 'Renovation'];
+const FILTERS: FilterOption[] = ['All', 'Active', 'On Hold', 'Completed'];
 
 export function SearchFilters({
   searchQuery,
@@ -32,7 +32,7 @@ export function SearchFilters({
       <SearchBar
         value={searchQuery}
         onChangeText={onSearchChange}
-        placeholder="Search sites by name or location..."
+        placeholder="Search sites"
         onClear={() => onSearchChange('')}
         style={styles.searchBar}
       />
@@ -47,6 +47,8 @@ export function SearchFilters({
           return (
             <Pressable
               key={filter}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
               style={({ pressed }) => [
                 styles.chip,
                 isActive && styles.activeChip,
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
   },
   searchBar: {
     marginBottom: Spacing.sm,
@@ -82,19 +84,21 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.lg,
   },
   chip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: Radius.full,
-    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.light.surface,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderColor: Colors.light.border,
   },
   activeChip: {
     backgroundColor: Colors.light.brand,
     borderColor: Colors.light.brand,
-    elevation: 2,
+    elevation: 0,
     shadowColor: Colors.light.brand,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
@@ -104,10 +108,10 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
   activeChipText: {
-    color: '#FFFFFF',
+    color: Colors.light.onPrimary,
     fontWeight: '700',
   },
 });

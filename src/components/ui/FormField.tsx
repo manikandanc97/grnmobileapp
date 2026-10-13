@@ -57,10 +57,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   label: {
-    ...Typography.body,
+    ...Typography.label,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.light.text,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   required: {
     color: Colors.light.primary,

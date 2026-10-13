@@ -83,8 +83,8 @@ export default function EditCashTransactionScreen() {
     if (!particulars.trim()) {
       newErrors.particulars = 'Particulars are required.';
     }
-    const amt = parseFloat(amountStr.replace(/[₹,\s]/g, ''));
-    if (isNaN(amt) || amt <= 0) {
+    const amt = Number(amountStr.replace(/[₹,\s]/g, ''));
+    if (!Number.isFinite(amt) || amt <= 0) {
       newErrors.amount = 'Enter a valid amount greater than zero.';
     }
     setErrors(newErrors);
@@ -92,8 +92,8 @@ export default function EditCashTransactionScreen() {
   };
 
   const handleSave = async () => {
-    if (!validate() || !id) return;
-    const amt = parseFloat(amountStr.replace(/[₹,\s]/g, ''));
+    if (saving || !validate() || !id) return;
+    const amt = Number(amountStr.replace(/[₹,\s]/g, ''));
     setSaving(true);
     setSaveError(null);
     try {
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...Typography.label,
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'none',
     letterSpacing: 0.5,
   },
   typeRow: {

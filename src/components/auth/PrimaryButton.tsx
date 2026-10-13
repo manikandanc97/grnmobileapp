@@ -2,7 +2,7 @@ import React from 'react';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, Text } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, Radius, Shadows } from '@/constants/theme';
+import { Spacing, Radius , Colors } from '@/constants/theme';
 
 interface PrimaryButtonProps extends TouchableOpacityProps {
   title: string;
@@ -13,26 +13,29 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 
 export function PrimaryButton({ title, loading = false, disabled, style, ...props }: PrimaryButtonProps) {
   const theme = useTheme();
-  const primaryColor = theme.primary;
+  const primaryColor = theme.brand;
 
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
-  const handlePressIn = (e: any) => { 
+  const handlePressIn = (e: any) => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 }); 
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
     if (props.onPressIn) props.onPressIn(e);
   };
-  const handlePressOut = (e: any) => { 
+  const handlePressOut = (e: any) => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
     if (props.onPressOut) props.onPressOut(e);
   };
 
   return (
-    <AnimatedTouchableOpacity 
-      onPressIn={handlePressIn} 
+    <AnimatedTouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: loading }}
+      onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
         styles.button,
@@ -46,7 +49,7 @@ export function PrimaryButton({ title, loading = false, disabled, style, ...prop
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={Colors.light.surface} />
       ) : (
         <Text style={styles.text}>
           {title}
@@ -58,13 +61,13 @@ export function PrimaryButton({ title, loading = false, disabled, style, ...prop
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 14,
     borderRadius: Radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     marginBottom: Spacing.md,
-    ...Shadows.glow,
   },
   disabled: {
     opacity: 0.5,
@@ -73,8 +76,8 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: Colors.light.onPrimary,
     letterSpacing: 0.3,
   },
 });

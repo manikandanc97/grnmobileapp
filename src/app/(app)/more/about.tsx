@@ -1,11 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Building2, Mail, Shield, FileText, ExternalLink } from 'lucide-react-native';
+import { BrandMark } from '@/components/brand/BrandMark';
 
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { SettingsGroup, SettingsRow } from '@/components/ui/SettingsRow';
-import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
+import { Colors, Spacing, Typography, Radius, Shadows } from '@/constants/theme';
 
 export default function AboutScreen() {
   return (
@@ -20,56 +19,18 @@ export default function AboutScreen() {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
-            <Building2 size={40} color={Colors.light.primary} />
+            <BrandMark size={80} showName={false} />
           </View>
           <Text style={styles.brandName}>GRN</Text>
           <Text style={styles.tagline}>Construction management made simple.</Text>
           <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>Version 1.0.0 (Build 57)</Text>
+            <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
         </View>
 
-        <SettingsGroup>
-          <SettingsRow
-            icon={<Mail size={IconSizes.sm} color={Colors.light.info} />}
-            iconBgColor={Colors.light.infoBg}
-            title="Contact Support"
-            subtitle="support@grnconstructions.com"
-            value={<ExternalLink size={IconSizes.sm} color={Colors.light.textMuted} />}
-            showChevron={false}
-            onPress={() => {}}
-          />
-          <SettingsRow
-            icon={<Building2 size={IconSizes.sm} color={Colors.light.textSecondary} />}
-            iconBgColor={Colors.light.surfaceMuted}
-            title="Company Website"
-            subtitle="www.grnconstructions.com"
-            value={<ExternalLink size={IconSizes.sm} color={Colors.light.textMuted} />}
-            showChevron={false}
-            onPress={() => {}}
-            hideDivider
-          />
-        </SettingsGroup>
-
-        <SettingsGroup>
-          <SettingsRow
-            icon={<Shield size={IconSizes.sm} color={Colors.light.success} />}
-            iconBgColor={Colors.light.successBg}
-            title="Privacy Policy"
-            value={<ExternalLink size={IconSizes.sm} color={Colors.light.textMuted} />}
-            showChevron={false}
-            onPress={() => {}}
-          />
-          <SettingsRow
-            icon={<FileText size={IconSizes.sm} color={Colors.light.primary} />}
-            iconBgColor={Colors.light.primaryBg}
-            title="Terms of Service"
-            value={<ExternalLink size={IconSizes.sm} color={Colors.light.textMuted} />}
-            showChevron={false}
-            onPress={() => {}}
-            hideDivider
-          />
-        </SettingsGroup>
+        <Text style={styles.tagline}>
+          Record site materials, daily attendance, expenses and cash transactions. Open a site to view its daily summary and budget.
+        </Text>
 
         <Text style={styles.copyright}>
           © {new Date().getFullYear()} GRN Constructions Pvt. Ltd.{'\n'}

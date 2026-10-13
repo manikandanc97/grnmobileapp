@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { Spacing, Radius } from '@/constants/theme';
+import { Spacing, Radius , Colors } from '@/constants/theme';
 
 export interface DonutChartSlice {
   label: string;
@@ -29,7 +29,7 @@ export function DonutChart({
   centerLabel,
   size = 140,
   strokeWidth = 18,
-  emptyColor = '#F1F5F9',
+  emptyColor = Colors.light.surfaceMuted,
   showLegend = true,
 }: DonutChartProps) {
   const radius = (size - strokeWidth) / 2;
@@ -191,15 +191,15 @@ const styles = StyleSheet.create({
   },
   centerValue: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   centerLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     textAlign: 'center',
     marginTop: 2,
   },
@@ -225,11 +225,11 @@ const styles = StyleSheet.create({
   legendLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: Colors.light.textSecondary,
   },
   legendSublabel: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: Colors.light.textMuted,
   },
   legendValueWrap: {
     alignItems: 'flex-end',
@@ -238,11 +238,11 @@ const styles = StyleSheet.create({
   legendValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
   },
   legendPercent: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
 });

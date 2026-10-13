@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SiteItem } from '@/types/dashboard';
@@ -9,12 +10,14 @@ interface ActiveSitesSectionProps {
   sites?: SiteItem[];
   onSitePress?: (site: SiteItem) => void;
   onViewAllPress?: () => void;
+  onOpenSitesPress?: () => void;
 }
 
 export function ActiveSitesSection({
   sites = [],
   onSitePress,
   onViewAllPress,
+  onOpenSitesPress,
 }: ActiveSitesSectionProps) {
   return (
     <View style={styles.container}>
@@ -39,7 +42,9 @@ export function ActiveSitesSection({
           <View style={styles.emptyStateContainer}>
             <EmptyState
               title="No active sites yet"
-              description="Create your first construction site to get started."
+              description="Open Sites to choose a project or create a new one."
+              actionLabel="Open Sites"
+              onAction={onOpenSitesPress}
             />
           </View>
         ) : (
@@ -64,9 +69,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.light.text,
+    ...UiStyles.sectionTitle,
   },
   viewAllButton: {
     paddingVertical: Spacing.xs,
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     ...Typography.caption,
     fontWeight: '700',
-    color: Colors.light.primary,
+    color: Colors.light.brand,
   },
   list: {
     gap: 2,

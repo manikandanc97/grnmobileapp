@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -371,13 +372,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   notificationCard: {
+    ...UiStyles.card,
     flexDirection: 'row',
-    backgroundColor: Colors.light.surface,
     padding: Spacing.md,
-    borderRadius: Radius.lg,
     marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
     position: 'relative',
     overflow: 'hidden',
@@ -385,7 +383,7 @@ const styles = StyleSheet.create({
   },
   notificationCardUnread: {
     backgroundColor: Colors.light.infoBg,
-    borderColor: 'rgba(37, 99, 235, 0.25)',
+    borderColor: Colors.light.brandBg,
   },
   notificationCardPressed: {
     opacity: 0.9,

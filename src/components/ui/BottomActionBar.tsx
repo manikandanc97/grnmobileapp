@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Spacing, Colors, Shadows } from '@/constants/theme';
+import { Spacing, Colors } from '@/constants/theme';
 
 export interface BottomActionBarProps {
   children: React.ReactNode;
@@ -12,9 +12,9 @@ export function BottomActionBar({ children, style }: BottomActionBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View 
+    <View
       style={[
-        styles.container, 
+        styles.container,
         { paddingBottom: Math.max(insets.bottom, Spacing.md) },
         style
       ]}
@@ -27,12 +27,11 @@ export function BottomActionBar({ children, style }: BottomActionBarProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     backgroundColor: Colors.light.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.light.borderSubtle,
     gap: Spacing.md,
-    ...Shadows.md,
   },
 });

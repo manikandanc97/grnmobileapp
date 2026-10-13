@@ -30,7 +30,7 @@ export function SettingsRow({
     <>
       <View style={styles.left}>
         <View style={[
-          styles.iconContainer, 
+          styles.iconContainer,
           { backgroundColor: iconBgColor || Colors.light.surfaceMuted },
           isDestructive && { backgroundColor: Colors.light.errorBg }
         ]}>
@@ -43,7 +43,7 @@ export function SettingsRow({
       </View>
       <View style={styles.right}>
         {value && (
-          typeof value === 'string' 
+          typeof value === 'string'
             ? <Text style={styles.valueText}>{value}</Text>
             : value
         )}
@@ -89,34 +89,34 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   groupTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-    textTransform: 'uppercase',
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+    textTransform: 'none',
     letterSpacing: 0.6,
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.xs,
   },
   groupContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderColor: Colors.light.border,
     overflow: 'hidden',
     ...Shadows.sm,
   },
   wrapper: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.surface,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: Spacing.md,
     minHeight: TouchTargets.min,
   },
   pressed: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
   },
   left: {
     flexDirection: 'row',
@@ -139,22 +139,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     marginTop: 2,
     fontWeight: '500',
   },
   right: {
+    flexShrink: 1,
+    maxWidth: '58%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
   },
   valueText: {
+    flexShrink: 1,
+    textAlign: 'right',
     ...Typography.body,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   chevron: {
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.04)',
+    backgroundColor: Colors.light.border,
     marginLeft: 14 + 38 + 14, // padding + icon + margin
   },
 });

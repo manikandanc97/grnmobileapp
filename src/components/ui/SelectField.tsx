@@ -22,10 +22,10 @@ interface SelectFieldProps {
   manageLabel?: string;
 }
 
-export function SelectField({ 
-  value, 
-  options, 
-  onChange, 
+export function SelectField({
+  value,
+  options,
+  onChange,
   placeholder = 'Select...',
   leftIcon,
   error,
@@ -35,7 +35,7 @@ export function SelectField({
 }: SelectFieldProps) {
   const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
-  
+
   const selectedOption = options.find(o => o.value === value);
 
   const handleOpen = () => {
@@ -49,6 +49,9 @@ export function SelectField({
   return (
     <>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${placeholder}: ${selectedOption?.label ?? 'Not selected'}`}
+        accessibilityState={{ expanded: modalVisible }}
         style={[
           styles.input,
           hasError && styles.inputError,
@@ -75,7 +78,7 @@ export function SelectField({
             <View style={styles.bottomSheetHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{placeholder}</Text>
-              <Pressable onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close selection" onPress={() => setModalVisible(false)} style={styles.closeBtn}>
                 <X size={IconSizes.lg} color={Colors.light.text} />
               </Pressable>
             </View>
@@ -85,6 +88,9 @@ export function SelectField({
               keyExtractor={(item) => item.value}
               renderItem={({ item }) => (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: value === item.value }}
                   style={[
                     styles.optionRow,
                     value === item.value && styles.selectedOptionRow,
@@ -109,12 +115,13 @@ export function SelectField({
                   )}
                 </Pressable>
               )}
+              ListEmptyComponent={<Text style={styles.emptyText}>No options available yet.</Text>}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               contentContainerStyle={styles.listContent}
             />
 
             {onAddOption && (
-              <Pressable 
+              <Pressable
                 style={styles.addOptionBtn}
                 onPress={() => {
                   setModalVisible(false);
@@ -136,10 +143,10 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: Colors.light.surface,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: Colors.light.borderStrong,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    minHeight: 48,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -156,7 +163,9 @@ const styles = StyleSheet.create({
   leftIconContainer: {
     marginRight: Spacing.sm,
   },
+  emptyText: { padding: Spacing.lg, color: Colors.light.textSecondary, textAlign: 'center' },
   text: {
+    flexShrink: 1,
     ...Typography.body,
     color: Colors.light.text,
   },
@@ -165,7 +174,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.light.backdrop,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -230,7 +239,7 @@ const styles = StyleSheet.create({
   },
   selectedOptionText: {
     fontWeight: '700',
-    color: Colors.light.primary,
+    color: Colors.light.brand,
   },
   optionSub: {
     ...Typography.caption,

@@ -1,4 +1,9 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { UiStyles } from '@/constants/uiStyles';
+import { DailyEntriesCard } from '@/components/sites/DailyEntriesCard';
+import { SiteSpendingChart } from '@/components/sites/SiteSpendingChart';
+import { LaborShiftInput } from '@/components/labor/LaborShiftInput';
+import { LaborShiftDraft, readLaborShiftDraft, createLaborDraft, buildLaborPayload, calculateRecordLaborShifts, getRecordRoleShifts, getLaborShiftSummary } from '@/lib/laborShifts';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +15,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import {
@@ -19,7 +25,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Minus,
   Package,
   Boxes,
   Users,
@@ -28,6 +33,8 @@ import {
   IndianRupee,
   Pencil,
   Check,
+  CheckCircle2,
+  RotateCcw,
   Trash2,
   X,
   ArrowRight,
@@ -46,7 +53,7 @@ import {
 import { useExpenses } from '@/hooks/useExpenses';
 import { useSiteBudget } from '@/hooks/useSiteBudget';
 import { useCashBook } from '@/hooks/useCashBook';
-import { softDeleteSite } from '@/services/sites';
+import { softDeleteSite, updateSite } from '@/services/sites';
 import { softDeleteMaterial, createMaterial, updateMaterial } from '@/services/materials';
 import { createExpense, updateExpense, softDeleteExpense, ExpenseWithSite } from '@/services/expenses';
 import { MaterialItem } from '@/types/dashboard';
@@ -56,7 +63,6 @@ import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import { datePickerStyles } from '@/constants/datePickerTheme';
 
-import { DonutChart } from '@/components/ui/DonutChart';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
@@ -107,12 +113,12 @@ function formatDateDisplay(dateStr: string) {
 }
 
 export default function SiteDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
 
   // Core Data Hooks
   const { site, loading, error, isOffline, isCached, lastUpdated, refetch: refetchSite } = useSiteDetails(id);
   const { materials, loading: materialsLoading, refetch: refetchMaterials } = useMaterials(id);
-  const { budgetSummary, refetch: refetchBudget } = useSiteBudget(id);
+  const { budgetSummary, loading: budgetLoading, refetch: refetchBudget } = useSiteBudget(id);
   const { expenses: siteExpenses, refetch: refetchExpenses } = useExpenses(id);
   const { transactions: cashTransactions, summary: cashSummary } = useCashBook(id);
 
@@ -146,6 +152,7 @@ export default function SiteDetailsScreen() {
     return init;
   });
 
+  const [workerShiftCounts, setWorkerShiftCounts] = useState<LaborShiftDraft>({});
   const [editingRates, setEditingRates] = useState<Record<string, boolean>>({});
   const rateInputRefs = useRef<Record<string, TextInput | null>>({});
 
@@ -174,6 +181,7 @@ export default function SiteDetailsScreen() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
 
   const [showLabourModal, setShowLabourModal] = useState(false);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -181,14 +189,12 @@ export default function SiteDetailsScreen() {
     title: string;
     amount: string;
     category: string;
-    paymentMethod: string;
     paymentStatus: 'Paid' | 'Pending';
   } | null>(null);
   const [expTitle, setExpTitle] = useState('');
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Fuel');
   const [expPaymentStatus, setExpPaymentStatus] = useState<'Paid' | 'Pending'>('Paid');
-  const [expPaymentMethod, setExpPaymentMethod] = useState('Cash');
   const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   // Material Search filter on Materials tab
@@ -196,8 +202,10 @@ export default function SiteDetailsScreen() {
   const [materialToDelete, setMaterialToDelete] = useState<MaterialItem | null>(null);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
 
-  // Site Delete states
+  // Site Delete & Status states
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
@@ -224,7 +232,7 @@ export default function SiteDetailsScreen() {
 
     WORKER_ROLES.forEach((role) => {
       if (labor) {
-        nextCounts[role.key] = String((labor as any)[role.countKey] ?? 0);
+        nextCounts[role.key] = readLaborShiftDraft(labor).counts[role.key];
         nextRates[role.key] = String(
           (labor as any)[role.rateKey] ??
           (cachedRecentRates as any)?.[role.rateKey] ??
@@ -240,6 +248,7 @@ export default function SiteDetailsScreen() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkerCounts(nextCounts);
+    setWorkerShiftCounts(readLaborShiftDraft(labor).extras);
     setWorkerRates(nextRates);
   }, [labor, cachedRecentRates, selectedDate, showLabourModal, isEditingAttendance]);
 
@@ -261,7 +270,7 @@ export default function SiteDetailsScreen() {
 
     WORKER_ROLES.forEach((role) => {
       if (labor) {
-        nextCounts[role.key] = String((labor as any)[role.countKey] ?? 0);
+        nextCounts[role.key] = readLaborShiftDraft(labor).counts[role.key];
         nextRates[role.key] = String(
           (labor as any)[role.rateKey] ??
           (cachedRecentRates as any)?.[role.rateKey] ??
@@ -276,6 +285,7 @@ export default function SiteDetailsScreen() {
     });
 
     setWorkerCounts(nextCounts);
+    setWorkerShiftCounts(readLaborShiftDraft(labor).extras);
     setWorkerRates(nextRates);
     setEditingRates({});
     setShowLabourModal(true);
@@ -288,19 +298,10 @@ export default function SiteDetailsScreen() {
 
   // Save Attendance
   const handleSaveAttendance = async () => {
-    if (!id) return;
+    if (!id || isSavingAttendance) return;
     setIsSavingAttendance(true);
     try {
-      const payload: any = {};
-      WORKER_ROLES.forEach((role) => {
-        const count = parseInt(workerCounts[role.key] || '0', 10) || 0;
-        const rate =
-          parseFloat(workerRates[role.key] || '0') ||
-          (cachedRecentRates as any)?.[role.rateKey] ||
-          role.defaultRate;
-        payload[role.countKey] = count;
-        payload[role.rateKey] = rate;
-      });
+      const payload = buildLaborPayload(workerCounts, workerRates, workerShiftCounts);
 
       if (labor) {
         await editLabor(labor.id, payload);
@@ -316,28 +317,22 @@ export default function SiteDetailsScreen() {
       setEditingRates({});
       setIsEditingAttendance(false);
       setShowLabourModal(false);
-      const totalSavedWorkers = WORKER_ROLES.reduce(
-        (sum, r) => sum + (parseInt(workerCounts[r.key] || '0', 10) || 0),
-        0
-      );
+      const totalSavedWorkers = calculateRecordLaborCount(payload);
       toast.success(
         'Labor Attendance Saved',
         `${totalSavedWorkers} worker${totalSavedWorkers === 1 ? '' : 's'} recorded for ${dayjs(selectedDate).format('DD MMM')}`
       );
       await Promise.all([refetchLabor(), refetchBudget()]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save daily labor');
+      const message = String(err?.message || 'Failed to save daily labor');
+      setAttendanceError(
+        message.includes('Update the attendance database')
+          ? 'Half-day and extra-shift attendance is not enabled yet. Please update the attendance setup and try again.'
+          : message
+      );
     } finally {
       setIsSavingAttendance(false);
     }
-  };
-
-  const adjustWorkerCount = (roleKey: string, delta: number) => {
-    setWorkerCounts((prev) => {
-      const cur = parseInt(prev[roleKey] || '0', 10) || 0;
-      const next = Math.max(0, cur + delta);
-      return { ...prev, [roleKey]: String(next) };
-    });
   };
 
   const toggleEditRate = (roleKey: string) => {
@@ -350,19 +345,9 @@ export default function SiteDetailsScreen() {
     });
   };
 
-  const modalTotalWorkers = useMemo(() => {
-    return WORKER_ROLES.reduce((sum, role) => {
-      return sum + (parseInt(workerCounts[role.key] || '0', 10) || 0);
-    }, 0);
-  }, [workerCounts]);
-
-  const modalTotalWages = useMemo(() => {
-    return WORKER_ROLES.reduce((sum, role) => {
-      const count = parseInt(workerCounts[role.key] || '0', 10) || 0;
-      const rate = parseFloat(workerRates[role.key] || '0') || role.defaultRate;
-      return sum + count * rate;
-    }, 0);
-  }, [workerCounts, workerRates]);
+  const attendanceDraft = useMemo(() => createLaborDraft(workerCounts, workerRates, workerShiftCounts), [workerCounts, workerRates, workerShiftCounts]);
+  const modalTotalWorkers = calculateRecordLaborCount(attendanceDraft);
+  const modalTotalWages = calculateRecordLaborCost(attendanceDraft);
 
   // Material Modal Handlers (Add & In-Place Edit)
   const resetMaterialForm = () => {
@@ -533,7 +518,6 @@ export default function SiteDetailsScreen() {
     setExpAmount('');
     setExpCategory('Fuel');
     setExpPaymentStatus('Paid');
-    setExpPaymentMethod('Cash');
   };
 
   const handleOpenAddExpenseModal = () => {
@@ -546,20 +530,17 @@ export default function SiteDetailsScreen() {
     const rawAmount = exp.amount ? String(exp.amount) : '';
     const rawCategory = exp.category || 'Fuel';
     const rawStatus = (exp.payment_status as any) === 'Pending' ? 'Pending' : 'Paid';
-    const rawMethod = exp.payment_method || 'Cash';
 
     setEditingExpenseId(exp.id);
     setExpTitle(rawTitle);
     setExpAmount(rawAmount);
     setExpCategory(rawCategory);
     setExpPaymentStatus(rawStatus);
-    setExpPaymentMethod(rawMethod);
     setInitialExpenseValues({
       title: rawTitle,
       amount: rawAmount,
       category: rawCategory,
       paymentStatus: rawStatus,
-      paymentMethod: rawMethod,
     });
     setShowExpenseModal(true);
   };
@@ -569,7 +550,6 @@ export default function SiteDetailsScreen() {
     const titleDiff = expTitle.trim() !== initialExpenseValues.title;
     const catDiff = expCategory !== initialExpenseValues.category;
     const statusDiff = expPaymentStatus !== initialExpenseValues.paymentStatus;
-    const methodDiff = expPaymentMethod !== initialExpenseValues.paymentMethod;
 
     const currentAmount = parseFloat(expAmount);
     const initialAmount = parseFloat(initialExpenseValues.amount);
@@ -578,8 +558,8 @@ export default function SiteDetailsScreen() {
         ? expAmount.trim() !== initialExpenseValues.amount
         : currentAmount !== initialAmount || expAmount.trim() !== initialExpenseValues.amount;
 
-    return titleDiff || catDiff || statusDiff || methodDiff || amountDiff;
-  }, [editingExpenseId, initialExpenseValues, expTitle, expAmount, expCategory, expPaymentStatus, expPaymentMethod]);
+    return titleDiff || catDiff || statusDiff || amountDiff;
+  }, [editingExpenseId, initialExpenseValues, expTitle, expAmount, expCategory, expPaymentStatus]);
 
   const isExpenseValid = useMemo(() => {
     const trimmed = expTitle.trim();
@@ -615,7 +595,6 @@ export default function SiteDetailsScreen() {
           title: titleTrimmed,
           amount: amt,
           category: expCategory,
-          payment_method: expPaymentMethod || 'Cash',
           payment_status: expPaymentStatus,
         });
         setShowExpenseModal(false);
@@ -631,7 +610,7 @@ export default function SiteDetailsScreen() {
           amount: amt,
           category: expCategory,
           expense_date: selectedDate,
-          payment_method: expPaymentMethod || 'Cash',
+          payment_method: 'Cash',
           payment_status: expPaymentStatus,
           notes: '',
         });
@@ -678,12 +657,13 @@ export default function SiteDetailsScreen() {
 
   // Save Rates
   const handleSaveRates = async () => {
-    if (!id) return;
+    if (!id || isSavingRates) return;
     setIsSavingRates(true);
     try {
       const payload: any = {};
       WORKER_ROLES.forEach((role) => {
-        const r = parseFloat(workerRates[role.key] || '0') || role.defaultRate;
+        const r = Number(workerRates[role.key] || '0');
+        if (!Number.isFinite(r) || r < 0) throw new Error(`${role.label}: enter a valid rate per shift.`);
         payload[role.rateKey] = r;
       });
 
@@ -748,7 +728,37 @@ export default function SiteDetailsScreen() {
 
   const handleDeleteSuccessClose = () => {
     setShowDeleteSuccess(false);
-    router.replace('/(app)/sites');
+    if (from === 'home') {
+      router.replace('/(app)');
+    } else {
+      router.replace('/(app)/sites');
+    }
+  };
+
+  // Toggle Site Status (Mark Completed / Reopen)
+  const handleToggleSiteStatus = async (newStatus: 'Completed' | 'In Progress') => {
+    if (!site || !id) return;
+    setIsUpdatingStatus(true);
+    try {
+      await updateSite(id, { status: newStatus });
+      setShowCompleteConfirm(false);
+      if (newStatus === 'Completed') {
+        toast.success(
+          'Site Completed',
+          `"${site.name}" has been marked as completed.`
+        );
+      } else {
+        toast.success(
+          'Site Reopened',
+          `"${site.name}" is now marked as active.`
+        );
+      }
+      await refetchSite();
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to update site status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   // Computed Values
@@ -821,6 +831,46 @@ export default function SiteDetailsScreen() {
     return todayLaborCost + selectedDateMaterialTotal + selectedDateExpenseTotal;
   }, [todayLaborCost, selectedDateMaterialTotal, selectedDateExpenseTotal]);
 
+  const materialEntryTotal = (parseFloat(matQuantity) || 0) * (parseFloat(matUnitPrice) || 0);
+  const editingMaterialTotal = editingMaterialId
+    ? selectedDateMaterials.find((item) => item.id === editingMaterialId)?.totalCost || 0
+    : 0;
+  const projectedMaterialDailyTotal = Math.max(0, dailyTotalSpend - editingMaterialTotal + materialEntryTotal);
+
+  const expenseEntryTotal = parseFloat(expAmount) || 0;
+  const editingExpenseTotal = editingExpenseId
+    ? selectedDateExpenses.find((item) => item.id === editingExpenseId)?.amount || 0
+    : 0;
+  const projectedExpenseDailyTotal = Math.max(0, dailyTotalSpend - editingExpenseTotal + expenseEntryTotal);
+  const projectedLabourDailyTotal = Math.max(0, dailyTotalSpend - todayLaborCost + modalTotalWages);
+
+  const handleBack = useCallback(() => {
+    if (activeTab !== 'overview') {
+      setActiveTab('overview');
+    } else if (from === 'home') {
+      router.replace('/(app)');
+    } else {
+      router.back();
+    }
+  }, [activeTab, from]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (activeTab !== 'overview') {
+        setActiveTab('overview');
+        return true;
+      }
+      if (from === 'home') {
+        router.replace('/(app)');
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [activeTab, from]);
+
   if (isDeleted && showDeleteSuccess) {
     return (
       <ScreenWrapper>
@@ -838,7 +888,7 @@ export default function SiteDetailsScreen() {
   if (loading) {
     return (
       <ScreenWrapper>
-        <ScreenHeader title="Loading..." showBack />
+        <ScreenHeader title="Loading..." showBack onBack={handleBack} />
         <View style={styles.loadingContainer}>
           <LoadingSkeleton type="card" height={100} />
           <LoadingSkeleton type="card" height={160} />
@@ -855,7 +905,7 @@ export default function SiteDetailsScreen() {
     if (!site && (isOffline || (error && parseAppError(error).isNetworkError))) {
       return (
         <ScreenWrapper>
-          <ScreenHeader title="Offline" showBack />
+          <ScreenHeader title="Offline" showBack onBack={handleBack} />
           <NoInternetScreen onRetry={refetchSite} />
         </ScreenWrapper>
       );
@@ -863,7 +913,7 @@ export default function SiteDetailsScreen() {
     const parsed = error ? parseAppError(error) : { title: 'Site not found', message: 'The requested site could not be found.' };
     return (
       <ScreenWrapper>
-        <ScreenHeader title={parsed.title} showBack />
+        <ScreenHeader title={parsed.title} showBack onBack={handleBack} />
         <View style={styles.errorContainer}>
           <ErrorState
             title={parsed.title}
@@ -881,21 +931,36 @@ export default function SiteDetailsScreen() {
       {/* Top Header */}
       <ScreenHeader
         title={site.name}
-        subtitle={activeTab === 'overview' ? `${site.type} • ${site.location}` : '← Tap back to return to Overview'}
+        subtitle={
+          site.status === 'Completed'
+            ? `Completed • ${site.type} • ${site.location}`
+            : activeTab === 'overview'
+            ? `${site.type} • ${site.location}`
+            : '← Tap back to return to Overview'
+        }
         showBack
-        onBack={() => {
-          if (activeTab !== 'overview') {
-            setActiveTab('overview');
-          } else {
-            router.back();
-          }
-        }}
+        onBack={handleBack}
         actionButton={
           <EntityActionMenu
             onEdit={() => router.push({ pathname: '/(app)/sites/edit', params: { id: site.id } })}
             onDelete={() => setShowConfirmDelete(true)}
             editLabel="Edit Site"
             deleteLabel="Delete Site"
+            customActions={[
+              site.status === 'Completed'
+                ? {
+                    key: 'reopen',
+                    label: 'Reopen Site (Active)',
+                    icon: <RotateCcw size={16} color={Colors.light.brand} />,
+                    onPress: () => handleToggleSiteStatus('In Progress'),
+                  }
+                : {
+                    key: 'complete',
+                    label: 'Mark as Completed',
+                    icon: <CheckCircle2 size={16} color={Colors.light.success} />,
+                    onPress: () => setShowCompleteConfirm(true),
+                  },
+            ]}
           />
         }
       />
@@ -918,40 +983,38 @@ export default function SiteDetailsScreen() {
 
         {activeTab === 'overview' && (
           <>
-            {/* Quick Action Hub Bar */}
-            <View style={styles.quickActionsContainer}>
-              <Text style={styles.quickActionsTitle}>Site Operations</Text>
-              <View style={styles.quickActionsRow}>
-                <Pressable
-                  style={styles.quickActionBtn}
-                  onPress={handleOpenAddMaterialModal}
-                >
-                  <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
-                    <Package size={18} color="#0284C7" />
+            {/* Completion Banner & Action */}
+            {site.status === 'Completed' ? (
+              <View style={styles.completedBannerCard}>
+                <View style={styles.completedBannerLeft}>
+                  <View style={styles.completedBannerIconWrap}>
+                    <CheckCircle2 size={20} color={Colors.light.success} />
                   </View>
-                  <Text style={styles.quickActionLabel}>+ Material</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.quickActionBtn}
-                  onPress={handleOpenLabourModal}
-                >
-                  <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                    <Users size={18} color="#D97706" />
+                  <View style={styles.completedBannerTextWrap}>
+                    <Text style={styles.completedBannerTitle}>Project Completed</Text>
+                    <Text style={styles.completedBannerSub}>
+                      This site is finished and closed from active operations.
+                    </Text>
                   </View>
-                  <Text style={styles.quickActionLabel}>+ Labour</Text>
-                </Pressable>
-
+                </View>
                 <Pressable
-                  style={styles.quickActionBtn}
-                  onPress={handleOpenAddExpenseModal}
+                  style={styles.reopenButton}
+                  onPress={() => handleToggleSiteStatus('In Progress')}
+                  disabled={isUpdatingStatus}
                 >
-                  <View style={[styles.quickActionIcon, { backgroundColor: '#FEE2E2' }]}>
-                    <IndianRupee size={18} color="#DC2626" />
-                  </View>
-                  <Text style={styles.quickActionLabel}>+ Expense</Text>
+                  <RotateCcw size={13} color={Colors.light.success} />
+                  <Text style={styles.reopenButtonText}>Reopen</Text>
                 </Pressable>
               </View>
+
+            ) : null
+            }
+
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Site summary</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="View wage rates" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => setActiveTab('rates')}>
+                <Text style={[styles.seeAllText, { color: Colors.light.brand }]}>Wage rates</Text>
+              </Pressable>
             </View>
 
             {/* Enterprise Date Navigation Hub */}
@@ -973,11 +1036,6 @@ export default function SiteDetailsScreen() {
                   <Text style={styles.dateCenterText}>
                     {formatDateDisplay(selectedDate)}
                   </Text>
-                  {selectedDate === getTodayStr() && (
-                    <View style={styles.todayBadge}>
-                      <Text style={styles.todayBadgeText}>TODAY</Text>
-                    </View>
-                  )}
                 </Pressable>
 
                 <Pressable
@@ -989,508 +1047,72 @@ export default function SiteDetailsScreen() {
                 </Pressable>
               </View>
 
-              {/* Quick Date Switcher Chips */}
-              <View style={styles.quickDateChipsRow}>
-                <Pressable
-                  style={[
-                    styles.quickDateChip,
-                    selectedDate === getTodayStr() && styles.quickDateChipActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedDate(getTodayStr());
-                    setIsEditingAttendance(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.quickDateChipText,
-                      selectedDate === getTodayStr() && styles.quickDateChipTextActive,
-                    ]}
-                  >
-                    Today
-                  </Text>
-                </Pressable>
 
-                <Pressable
-                  style={[
-                    styles.quickDateChip,
-                    selectedDate === getYesterdayStr() && styles.quickDateChipActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedDate(getYesterdayStr());
-                    setIsEditingAttendance(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.quickDateChipText,
-                      selectedDate === getYesterdayStr() && styles.quickDateChipTextActive,
-                    ]}
-                  >
-                    Yesterday
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.quickDateChip}
-                  onPress={() => setShowDatePickerModal(true)}
-                >
-                  <Calendar size={12} color={Colors.light.textSecondary} />
-                  <Text style={styles.quickDateChipText}>Pick Date</Text>
-                </Pressable>
-              </View>
             </View>
 
-            {/* ========================================================================= */}
-            {/* ========================================================================= */}
-            {/* DAILY EXPENSE TABLE */}
-            {/* ========================================================================= */}
-            <View style={styles.dailyTableCard}>
-              {/* Table Top Header Bar */}
-              <View style={styles.dailyTableHeaderBar}>
-                <View style={styles.dailyTableTitleWrap}>
-                  <IndianRupee size={18} color={Colors.light.brand} />
-                  <View>
-                    <Text style={styles.dailyTableTitle}>Daily Expense Sheet</Text>
-                    <Text style={styles.dailyTableSubtitle}>
-                      {formatDateDisplay(selectedDate)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.dailyTableTotalBadge}>
-                  <Text style={styles.dailyTableTotalBadgeLabel}>Total Spent</Text>
-                  <Money amount={dailyTotalSpend} style={styles.dailyTableTotalBadgeVal} />
-                </View>
-              </View>
-
-              {/* Table Column Headers */}
-              <View style={styles.tableColHeaderRow}>
-                <View style={styles.colParticulars}>
-                  <Text style={styles.tableColHeaderText}>Particulars</Text>
-                </View>
-                <View style={styles.colQtyRate}>
-                  <Text style={[styles.tableColHeaderText, { textAlign: 'center' }]}>Qty / Rate</Text>
-                </View>
-                <View style={styles.colAmount}>
-                  <Text style={[styles.tableColHeaderText, { textAlign: 'right' }]}>Amount (₹)</Text>
-                </View>
-              </View>
-
-              {/* ---------------- SECTION 1: LABOUR ATTENDANCE & WAGES ---------------- */}
-              <View style={styles.tableSectionHeaderRow}>
-                <View style={styles.tableSectionTitleWrap}>
-                  <Users size={14} color="#D97706" />
-                  <Text style={styles.tableSectionTitle}>Labour Wages</Text>
-                  <View style={styles.workerCountPill}>
-                    <Text style={styles.workerCountPillText}>{todayWorkersCount} Workers</Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={styles.tableHeaderActionBtn}
-                  onPress={handleOpenLabourModal}
-                >
-                  <Text style={styles.tableHeaderActionText}>
-                    {labor && todayWorkersCount > 0 ? 'Edit' : '+ Mark'}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {isEditingAttendance ? (
-                /* Inline Attendance Editor directly within the table */
-                <View style={styles.tableInlineEditBox}>
-                  <Text style={styles.tableInlineEditHint}>
-                    Update worker counts for {formatDateHuman(selectedDate)}:
-                  </Text>
-
-                  {WORKER_ROLES.map((role) => {
-                    const countVal = workerCounts[role.key] || '0';
-                    const rateVal = workerRates[role.key] || String(role.defaultRate);
-                    return (
-                      <View key={role.key} style={styles.tableEditRow}>
-                        <View style={styles.tableEditRowLeft}>
-                          <Text style={styles.tableEditRole}>{role.label}</Text>
-                          <Text style={styles.tableEditRate}>₹{rateVal}/day</Text>
-                        </View>
-                        <TextInput
-                          style={styles.tableEditInput}
-                          keyboardType="number-pad"
-                          value={countVal}
-                          onChangeText={(val) =>
-                            setWorkerCounts((prev) => ({
-                              ...prev,
-                              [role.key]: val.replace(/[^0-9]/g, ''),
-                            }))
-                          }
-                          placeholder="0"
-                        />
-                      </View>
-                    );
-                  })}
-
-                  {/* Action buttons */}
-                  <View style={styles.tableEditBtnRow}>
-                    <Button
-                      title="Cancel"
-                      variant="secondary"
-                      onPress={() => setIsEditingAttendance(false)}
-                      style={{ flex: 1, marginRight: 8, height: 40 }}
-                      disabled={isSavingAttendance}
-                    />
-                    <Button
-                      title={isSavingAttendance ? 'Saving...' : 'Save Attendance'}
-                      onPress={handleSaveAttendance}
-                      style={{ flex: 1, height: 40 }}
-                      disabled={isSavingAttendance}
-                    />
-                  </View>
-                </View>
-              ) : todayWorkersCount === 0 ? (
-                <View style={styles.tableEmptyExpenseRow}>
-                  <Text style={styles.tableEmptyExpenseText}>
-                    No labour attendance recorded for {formatDateHuman(selectedDate)}.
-                  </Text>
-                </View>
-              ) : (
-                /* Normal Labour Table Rows */
-                <>
-                  {WORKER_ROLES.map((role) => {
+            {/* Daily entries for the selected site and date */}
+            <DailyEntriesCard
+              date={formatDateDisplay(selectedDate)}
+              total={dailyTotalSpend}
+              sections={[
+                {
+                  id: 'attendance',
+                  detail: todayWorkersCount > 0 ? `${todayWorkersCount} ${todayWorkersCount === 1 ? 'worker' : 'workers'} · ${calculateRecordLaborShifts(labor)} shifts` : 'Not recorded',
+                  amount: todayLaborCost,
+                  actionLabel: 'Add',
+                  onAction: handleOpenLabourModal,
+                  rows: WORKER_ROLES.flatMap(role => {
                     const count = Number((labor as any)?.[role.countKey]) || 0;
-                    if (count === 0) return null;
-                    const rate =
-                      Number((labor as any)?.[role.rateKey]) ||
-                      (cachedRecentRates as any)?.[role.rateKey] ||
-                      role.defaultRate;
+                    if (!count) return [];
+                    const rate = Number((labor as any)?.[role.rateKey] ?? (cachedRecentRates as any)?.[role.rateKey] ?? role.defaultRate);
+                    const shifts = getRecordRoleShifts(labor, role.key);
+                    return [{ id: role.key, title: role.label, detail: `${count} ${count === 1 ? 'worker' : 'workers'} · ${shifts} shifts × ₹${rate}/shift`, amount: shifts * rate }];
+                  }),
+                },
+                {
+                  id: 'materials',
+                  detail: selectedDateMaterials.length ? `${selectedDateMaterials.length} ${selectedDateMaterials.length === 1 ? 'entry' : 'entries'}` : 'No materials yet',
+                  amount: selectedDateMaterialTotal,
+                  onAction: handleOpenAddMaterialModal,
+                  rows: selectedDateMaterials.map(mat => ({
+                    id: mat.id,
+                    title: mat.name,
+                    detail: `${mat.quantity} ${mat.unit}${mat.unitPrice > 0 ? ` × ₹${mat.unitPrice}` : ''}`,
+                    amount: mat.totalCost,
+                    onEdit: () => handleOpenEditMaterialModal(mat),
+                    onDelete: () => handleDeleteMaterialFromModal(mat.id),
+                  })),
+                },
+                {
+                  id: 'expenses',
+                  detail: selectedDateExpenses.length ? `${selectedDateExpenses.length} ${selectedDateExpenses.length === 1 ? 'entry' : 'entries'}` : 'No expenses yet',
+                  amount: selectedDateExpenseTotal,
+                  onAction: handleOpenAddExpenseModal,
+                  rows: selectedDateExpenses.map(exp => ({
+                    id: exp.id,
+                    title: exp.title || exp.notes || exp.category || 'Expense',
+                    detail: [exp.category, exp.payment_status].filter(Boolean).join(' · '),
+                    amount: exp.amount,
+                    onEdit: () => handleOpenEditExpenseModal(exp),
+                    onDelete: () => handleDeleteExpense(exp.id),
+                  })),
+                },
+              ]}
+            />
 
-                    return (
-                      <View key={role.key} style={styles.tableDataRow}>
-                        <View style={styles.colParticulars}>
-                          <Text style={styles.tableRowTitle}>{role.label}</Text>
-                        </View>
-                        <View style={styles.colQtyRate}>
-                          <Text style={styles.tableQtyText}>
-                            {count} × ₹{rate}
-                          </Text>
-                        </View>
-                        <View style={styles.colAmount}>
-                          <Money
-                            amount={count * rate}
-                            style={styles.tableAmountText}
-                          />
-                        </View>
-                      </View>
-                    );
-                  })}
-
-                  {/* Labour Subtotal */}
-                  {todayWorkersCount > 0 && (
-                    <View style={styles.tableSubtotalRow}>
-                      <View style={styles.colParticulars}>
-                        <Text style={styles.tableSubtotalLabel}>Labour Subtotal</Text>
-                      </View>
-                      <View style={styles.colQtyRate}>
-                        <Text style={styles.tableSubtotalQty}>{todayWorkersCount} Workers</Text>
-                      </View>
-                      <View style={styles.colAmount}>
-                        <Money amount={todayLaborCost} style={styles.tableSubtotalAmount} />
-                      </View>
-                    </View>
-                  )}
-                </>
-              )}
-
-              {/* ---------------- SECTION 2: MATERIAL PURCHASES ---------------- */}
-              <View style={styles.tableSectionHeaderRow}>
-                <View style={styles.tableSectionTitleWrap}>
-                  <Package size={14} color="#2563EB" />
-                  <Text style={styles.tableSectionTitle}>Material Purchases</Text>
-                  <View style={styles.materialCountPill}>
-                    <Text style={styles.materialCountPillText}>{selectedDateMaterials.length} Items</Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={styles.tableHeaderActionBtn}
-                  onPress={handleOpenAddMaterialModal}
-                >
-                  <Text style={styles.tableHeaderActionText}>+ Add Material</Text>
-                </Pressable>
-              </View>
-
-              {selectedDateMaterials.length === 0 ? (
-                <View style={styles.tableEmptyExpenseRow}>
-                  <Text style={styles.tableEmptyExpenseText}>
-                    No material purchases recorded for {formatDateHuman(selectedDate)}.
-                  </Text>
-                </View>
-              ) : (
-                selectedDateMaterials.map((mat) => (
-                  <Pressable
-                    key={mat.id}
-                    style={({ pressed }) => [
-                      styles.tableDataRow,
-                      styles.tableInteractiveRow,
-                      pressed && styles.tableRowPressed,
-                    ]}
-                    onPress={() => handleOpenEditMaterialModal(mat)}
-                  >
-                    <View style={styles.colParticulars}>
-                      <Text style={styles.tableRowTitle} numberOfLines={1}>
-                        {mat.name}
-                      </Text>
-                      <View style={styles.tableExpenseBadgeRow}>
-                        <Text style={styles.tableMaterialCategoryBadge}>{mat.category || 'Material'}</Text>
-                        {Boolean(mat.status) && (
-                          <Text style={styles.tableMaterialStatusText}>
-                            • {mat.status}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-
-                    <View style={styles.colQtyRate}>
-                      <Text style={styles.tableQtyText} numberOfLines={1}>
-                        {mat.quantity} {mat.unit} {mat.unitPrice > 0 ? `× ₹${mat.unitPrice}` : ''}
-                      </Text>
-                    </View>
-
-                    <View style={styles.colAmount}>
-                      <Money amount={mat.totalCost} style={styles.tableAmountText} />
-                      <View style={styles.tableRowActionGroup}>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.tableRowActionBtn,
-                            pressed && styles.tableRowActionBtnPressed,
-                          ]}
-                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditMaterialModal(mat);
-                          }}
-                        >
-                          <Pencil size={11} color="#2563EB" />
-                        </Pressable>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.tableRowActionBtn,
-                            styles.tableRowDeleteActionBtn,
-                            pressed && styles.tableRowActionBtnPressed,
-                          ]}
-                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteMaterialFromModal(mat.id);
-                          }}
-                        >
-                          <Trash2 size={11} color="#DC2626" />
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Pressable>
-                ))
-              )}
-
-              {/* Materials Subtotal */}
-              {selectedDateMaterials.length > 0 && (
-                <View style={styles.tableSubtotalRow}>
-                  <View style={styles.colParticulars}>
-                    <Text style={styles.tableSubtotalLabel}>Materials Subtotal</Text>
-                  </View>
-                  <View style={styles.colQtyRate}>
-                    <Text style={styles.tableSubtotalQty}>{selectedDateMaterials.length} Items</Text>
-                  </View>
-                  <View style={styles.colAmount}>
-                    <Money amount={selectedDateMaterialTotal} style={styles.tableSubtotalAmount} />
-                  </View>
-                </View>
-              )}
-
-              {/* ---------------- SECTION 3: DIRECT SITE EXPENSES ---------------- */}
-              <View style={styles.tableSectionHeaderRow}>
-                <View style={styles.tableSectionTitleWrap}>
-                  <IndianRupee size={14} color="#DC2626" />
-                  <Text style={styles.tableSectionTitle}>Site Expenses</Text>
-                  <View style={styles.expenseCountPill}>
-                    <Text style={styles.expenseCountPillText}>{selectedDateExpenses.length} Items</Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={styles.tableHeaderActionBtn}
-                  onPress={handleOpenAddExpenseModal}
-                >
-                  <Text style={styles.tableHeaderActionText}>+ Add Expense</Text>
-                </Pressable>
-              </View>
-
-              {selectedDateExpenses.length === 0 ? (
-                <View style={styles.tableEmptyExpenseRow}>
-                  <Text style={styles.tableEmptyExpenseText}>
-                    No direct site expenses recorded for {formatDateHuman(selectedDate)}.
-                  </Text>
-                </View>
-              ) : (
-                selectedDateExpenses.map((exp) => (
-                  <Pressable
-                    key={exp.id}
-                    style={({ pressed }) => [
-                      styles.tableDataRow,
-                      styles.tableInteractiveRow,
-                      pressed && styles.tableRowPressed,
-                    ]}
-                    onPress={() => handleOpenEditExpenseModal(exp)}
-                  >
-                    <View style={styles.colParticulars}>
-                      <Text style={styles.tableRowTitle} numberOfLines={1}>
-                        {exp.title || exp.notes || exp.category || 'Expense'}
-                      </Text>
-                      <View style={styles.tableExpenseBadgeRow}>
-                        <Text style={styles.tableExpenseCategoryBadge}>{exp.category || 'General'}</Text>
-                        {Boolean(exp.payment_status) && (
-                          <Text
-                            style={[
-                              styles.tableExpenseStatusText,
-                              exp.payment_status === 'Paid' ? styles.statusPaidText : styles.statusPendingText,
-                            ]}
-                          >
-                            • {exp.payment_status}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-
-                    <View style={styles.colQtyRate}>
-                      <Text style={styles.tableQtyText} numberOfLines={1}>
-                        {exp.payment_method || 'Cash'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.colAmount}>
-                      <Money amount={exp.amount} style={styles.tableAmountText} />
-                      <View style={styles.tableRowActionGroup}>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.tableRowActionBtn,
-                            pressed && styles.tableRowActionBtnPressed,
-                          ]}
-                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditExpenseModal(exp);
-                          }}
-                        >
-                          <Pencil size={11} color="#2563EB" />
-                        </Pressable>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.tableRowActionBtn,
-                            styles.tableRowDeleteActionBtn,
-                            pressed && styles.tableRowActionBtnPressed,
-                          ]}
-                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteExpense(exp.id);
-                          }}
-                        >
-                          <Trash2 size={11} color="#DC2626" />
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Pressable>
-                ))
-              )}
-
-              {/* Expenses Subtotal */}
-              {selectedDateExpenses.length > 0 && (
-                <View style={styles.tableSubtotalRow}>
-                  <View style={styles.colParticulars}>
-                    <Text style={styles.tableSubtotalLabel}>Expenses Subtotal</Text>
-                  </View>
-                  <View style={styles.colQtyRate}>
-                    <Text style={styles.tableSubtotalQty}>{selectedDateExpenses.length} Items</Text>
-                  </View>
-                  <View style={styles.colAmount}>
-                    <Money amount={selectedDateExpenseTotal} style={styles.tableSubtotalAmount} />
-                  </View>
-                </View>
-              )}
-
-              {/* ---------------- GRAND TOTAL ROW ---------------- */}
-              <View style={styles.tableGrandTotalRow}>
-                <View style={styles.tableGrandTotalLeft}>
-                  <Text style={styles.tableGrandTotalTitle}>TOTAL DAILY SPEND</Text>
-                  <Text style={styles.tableGrandTotalSubtitle}>Daily Total Expenditure</Text>
-                </View>
-                <View style={styles.tableGrandTotalRight}>
-                  <Money amount={dailyTotalSpend} style={styles.tableGrandTotalValue} />
-                  <Text style={styles.tableGrandTotalBreakdown}>
-                    Labour: ₹{todayLaborCost.toLocaleString('en-IN')} | Mat: ₹{selectedDateMaterialTotal.toLocaleString('en-IN')} | Exp: ₹{selectedDateExpenseTotal.toLocaleString('en-IN')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Project Overall Header */}
-            <View style={styles.projectLifetimeHeader}>
-              <Text style={styles.projectLifetimeTitle}>Project Lifetime Overview</Text>
-              <Text style={styles.projectLifetimeSubtitle}>Overall site budget & statistics</Text>
-            </View>
-
-            {/* Core Pillars KPI Layout */}
-            <View style={styles.kpiContainer}>
-              {/* Primary Cost & Budget Card */}
-              <Pressable style={styles.kpiHeroCard} onPress={() => setActiveTab('cost')}>
-                <View style={styles.kpiHeroHeader}>
-                  <View style={styles.kpiHeroLabelWrap}>
-                    <View style={styles.kpiHeroIconBox}>
-                      <IndianRupee size={16} color={Colors.light.brand} />
-                    </View>
-                    <Text style={styles.kpiHeroLabel}>Total Project Cost</Text>
-                  </View>
-                  <View style={styles.kpiHeroBadge}>
-                    <Text style={styles.kpiHeroBadgeText}>
-                      {budgetSummary?.usagePercent ? `${budgetSummary.usagePercent.toFixed(0)}% Budget` : 'On Track'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.kpiHeroValuesRow}>
-                  <Money amount={budgetSummary?.totalSpent ?? 0} style={styles.kpiHeroValue} />
-                  <Text style={styles.kpiHeroSub}>
-                    Budget: ₹{budgetSummary?.totalBudget?.toLocaleString('en-IN') ?? '0'}
-                  </Text>
-                </View>
-              </Pressable>
-
-              {/* Secondary 2-Card Row: Labour & Materials */}
-              <View style={styles.kpiRow}>
-                <Pressable style={styles.kpiHalfCard} onPress={() => setActiveTab('materials')}>
-                  <View style={styles.kpiHeader}>
-                    <Text style={styles.kpiLabel}>Tracked Materials</Text>
-                    <Boxes size={15} color="#0284C7" />
-                  </View>
-                  <Text style={styles.kpiValueText}>{materials.length} Items</Text>
-                  <Text style={styles.kpiSub}>
-                    {lowStockCount > 0 ? `${lowStockCount} Low Stock` : 'All Stock OK'}
-                  </Text>
-                </Pressable>
-
-                <Pressable style={styles.kpiHalfCard} onPress={() => setActiveTab('rates')}>
-                  <View style={styles.kpiHeader}>
-                    <Text style={styles.kpiLabel}>Labour Rates</Text>
-                    <Tag size={15} color="#D97706" />
-                  </View>
-                  <Text style={styles.kpiValueText}>₹{workerRates['mason'] || '0'}/day</Text>
-                  <Text style={styles.kpiSub}>Mason Master Rate</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Status & Type Details */}
+            {/* Type Detail & Status Badges */}
             <View style={styles.identityHeader}>
-              <StatusBadge status={site.status} />
               <Text style={styles.identityType}>{site.type}</Text>
+              {site.status === 'Completed' ? (
+                <View style={styles.statusCompletedBadge}>
+                  <CheckCircle2 size={12} color={Colors.light.success} />
+                  <Text style={styles.statusCompletedBadgeText}>Completed</Text>
+                </View>
+              ) : (
+                <View style={styles.statusActiveBadge}>
+                  <Text style={styles.statusActiveBadgeText}>Active</Text>
+                </View>
+              )}
             </View>
 
             {/* Overview Metadata Grid */}
@@ -1520,7 +1142,7 @@ export default function SiteDetailsScreen() {
             {budgetSummary && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Budget & Cost Distribution</Text>
+                  <Text style={styles.sectionTitle}>Project budget</Text>
                   <Pressable onPress={() => setActiveTab('cost')}>
                     <Text style={styles.seeAllText}>Details &gt;</Text>
                   </Pressable>
@@ -1536,36 +1158,12 @@ export default function SiteDetailsScreen() {
                       <Money amount={budgetSummary.remainingBudget} style={styles.financeMainValueHighlight} />
                     </View>
                   </View>
-
-                  <View style={styles.financeChartDivider} />
-
-                  <DonutChart
-                    data={[
-                      {
-                        label: 'Materials',
-                        value: budgetSummary.materialCost,
-                        color: '#0284C7',
-                        formattedValue: `₹${budgetSummary.materialCost.toLocaleString('en-IN')}`,
-                      },
-                      {
-                        label: 'Labour',
-                        value: budgetSummary.laborCost,
-                        color: '#D97706',
-                        formattedValue: `₹${budgetSummary.laborCost.toLocaleString('en-IN')}`,
-                      },
-                      {
-                        label: 'Expenses',
-                        value: budgetSummary.expenseCost,
-                        color: '#8B5CF6',
-                        formattedValue: `₹${budgetSummary.expenseCost.toLocaleString('en-IN')}`,
-                      },
-                    ]}
-                    totalValue={budgetSummary.totalSpent}
-                    centerValue={`₹${budgetSummary.totalSpent.toLocaleString('en-IN')}`}
-                    centerLabel="Total Spent"
-                    size={130}
-                    strokeWidth={16}
-                  />
+                  {budgetLoading ? <LoadingSkeleton type="card" height={148} /> : <SiteSpendingChart
+                    materialCost={budgetSummary.materialCost}
+                    laborCost={budgetSummary.laborCost}
+                    expenseCost={budgetSummary.expenseCost}
+                    onSelect={setActiveTab}
+                  />}
                 </View>
               </View>
             )}
@@ -1590,7 +1188,7 @@ export default function SiteDetailsScreen() {
                 <Button
                   title="+ Add Material"
                   onPress={() => setShowMaterialModal(true)}
-                  icon={<Plus size={16} color="#FFFFFF" />}
+                  icon={<Plus size={16} color={Colors.light.surface} />}
                   style={{ height: 38, paddingHorizontal: 12 }}
                 />
               </View>
@@ -1699,7 +1297,7 @@ export default function SiteDetailsScreen() {
               style={styles.fullScreenLink}
               onPress={() => router.push({ pathname: '/(app)/materials', params: { siteId: site.id } })}
             >
-              <Text style={styles.fullScreenLinkText}>Open Full Materials Screen</Text>
+              <Text style={styles.fullScreenLinkText}>View all materials</Text>
               <ArrowRight size={16} color={Colors.light.brand} />
             </Pressable>
           </View>
@@ -1740,7 +1338,7 @@ export default function SiteDetailsScreen() {
                   <Button
                     title={labor ? 'Edit Attendance' : '+ Log Attendance'}
                     onPress={() => setIsEditingAttendance(true)}
-                    icon={<Users size={16} color="#FFFFFF" />}
+                    icon={<Users size={16} color={Colors.light.surface} />}
                     style={{ height: 38, paddingHorizontal: 12 }}
                   />
                 )}
@@ -1764,27 +1362,17 @@ export default function SiteDetailsScreen() {
             ) : isEditingAttendance ? (
               <View style={styles.editCard}>
                 <Text style={styles.editCardTitle}>Update Worker Counts for {formatDateHuman(selectedDate)}</Text>
-                
+
                 {WORKER_ROLES.map((role) => {
                   const countVal = workerCounts[role.key] || '0';
-                  const rateVal = workerRates[role.key] || String(role.defaultRate);
+                  const rateVal = workerRates[role.key] ?? String(role.defaultRate);
                   return (
-                    <View key={role.key} style={styles.editRow}>
+                    <View key={role.key} style={[styles.editRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
                       <View style={styles.editInfo}>
                         <Text style={styles.editCatName}>{role.label}</Text>
-                        <Text style={styles.editRateHint}>Rate: ₹{rateVal}/day</Text>
+                        <Text style={styles.editRateHint}>Rate: ₹{rateVal}/shift</Text>
                       </View>
-                      <TextInput
-                        style={styles.editInput}
-                        keyboardType="number-pad"
-                        value={countVal}
-                        onChangeText={(val) =>
-                          setWorkerCounts((prev) => ({
-                            ...prev,
-                            [role.key]: val.replace(/[^0-9]/g, ''),
-                          }))
-                        }
-                      />
+                      <LaborShiftInput roleLabel={role.label} count={countVal} extras={workerShiftCounts[role.key]} rate={Number(rateVal || '0')} onCountChange={count => setWorkerCounts(prev => ({ ...prev, [role.key]: count }))} onExtrasChange={extras => setWorkerShiftCounts(prev => ({ ...prev, [role.key]: extras }))} disabled={isSavingAttendance} />
                     </View>
                   );
                 })}
@@ -1835,10 +1423,10 @@ export default function SiteDetailsScreen() {
                       <View>
                         <Text style={styles.catTitle}>{role.label}</Text>
                         <Text style={styles.catSub}>
-                          {count} workers × ₹{rate}/day
+                          {getLaborShiftSummary(labor, role.key)} · ₹{rate}/shift
                         </Text>
                       </View>
-                      <Money amount={count * rate} style={styles.catTotal} />
+                      <Money amount={getRecordRoleShifts(labor, role.key) * rate} style={styles.catTotal} />
                     </View>
                   );
                 })}
@@ -1849,7 +1437,7 @@ export default function SiteDetailsScreen() {
               style={styles.fullScreenLink}
               onPress={() => router.push({ pathname: '/(app)/labor', params: { siteId: site.id } })}
             >
-              <Text style={styles.fullScreenLinkText}>Open Full Labour Screen & History</Text>
+              <Text style={styles.fullScreenLinkText}>View attendance history</Text>
               <ArrowRight size={16} color={Colors.light.brand} />
             </Pressable>
           </View>
@@ -1870,7 +1458,7 @@ export default function SiteDetailsScreen() {
                 <Button
                   title="Update Rates"
                   onPress={() => setShowRatesModal(true)}
-                  icon={<Pencil size={15} color="#FFFFFF" />}
+                  icon={<Pencil size={15} color={Colors.light.surface} />}
                   style={{ height: 38, paddingHorizontal: 12 }}
                 />
               </View>
@@ -1885,7 +1473,7 @@ export default function SiteDetailsScreen() {
                     <View key={role.key} style={styles.rateCard}>
                       <Text style={styles.rateRole}>{role.label}</Text>
                       <Text style={styles.rateAmount}>₹{rate}</Text>
-                      <Text style={styles.rateUnit}>per day</Text>
+                      <Text style={styles.rateUnit}>per shift</Text>
                     </View>
                   );
                 })}
@@ -1971,7 +1559,7 @@ export default function SiteDetailsScreen() {
             <View style={styles.moduleSection}>
               <View style={styles.sectionHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Coins size={18} color="#16A34A" style={{ marginRight: 6 }} />
+                  <Coins size={18} color={Colors.light.success} style={{ marginRight: 6 }} />
                   <Text style={styles.sectionTitle}>Site Petty Cash Book</Text>
                 </View>
                 <Pressable
@@ -2000,7 +1588,7 @@ export default function SiteDetailsScreen() {
                         params: { siteId: site.id, siteName: site.name },
                       })
                     }
-                    icon={<Plus size={15} color="#FFFFFF" />}
+                    icon={<Plus size={15} color={Colors.light.surface} />}
                     style={{ height: 38, paddingHorizontal: 12 }}
                   />
                 </View>
@@ -2047,7 +1635,7 @@ export default function SiteDetailsScreen() {
             <View style={styles.moduleSection}>
               <View style={styles.sectionHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <IndianRupee size={18} color="#DC2626" style={{ marginRight: 6 }} />
+                  <IndianRupee size={18} color={Colors.light.error} style={{ marginRight: 6 }} />
                   <Text style={styles.sectionTitle}>Project Expenses & Bills</Text>
                 </View>
                 <Pressable
@@ -2074,7 +1662,7 @@ export default function SiteDetailsScreen() {
                   <Button
                     title="+ Add Expense"
                     onPress={handleOpenAddExpenseModal}
-                    icon={<Plus size={15} color="#FFFFFF" />}
+                    icon={<Plus size={15} color={Colors.light.surface} />}
                     style={{ height: 38, paddingHorizontal: 12 }}
                   />
                 </View>
@@ -2135,7 +1723,7 @@ export default function SiteDetailsScreen() {
             >
               {WORKER_ROLES.map((role) => (
                 <View key={role.key} style={styles.modalField}>
-                  <Text style={styles.modalFieldLabel}>{role.label} Daily Rate (₹)</Text>
+                  <Text style={styles.modalFieldLabel}>{role.label} Rate per shift (₹)</Text>
                   <TextInput
                     style={styles.modalInput}
                     keyboardType="number-pad"
@@ -2182,8 +1770,8 @@ export default function SiteDetailsScreen() {
           <View style={styles.modalCardWide}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleWrap}>
-                <View style={[styles.modalHeaderIconBox, { backgroundColor: '#E0F2FE' }]}>
-                  <Package size={18} color="#0284C7" />
+                <View style={[styles.modalHeaderIconBox, { backgroundColor: Colors.light.brandBg }]}>
+                  <Package size={18} color={Colors.light.brand} />
                 </View>
                 <View>
                   <Text style={styles.modalTitle}>
@@ -2288,11 +1876,15 @@ export default function SiteDetailsScreen() {
               {/* Summary Calculation Box */}
               <View style={styles.modalSummaryBox}>
                 <View style={styles.modalSummaryRow}>
-                  <Text style={styles.modalSummaryLabel}>Estimated Total Amount</Text>
+                  <Text style={styles.modalSummaryLabel}>This material total</Text>
                   <Money
-                    amount={(parseFloat(matQuantity) || 0) * (parseFloat(matUnitPrice) || 0)}
+                    amount={materialEntryTotal}
                     style={styles.modalSummaryValue}
                   />
+                </View>
+                <View style={[styles.modalSummaryRow, styles.projectedTotalRow]}>
+                  <Text style={styles.projectedTotalLabel}>Daily total after save</Text>
+                  <Money amount={projectedMaterialDailyTotal} style={styles.projectedTotalValue} />
                 </View>
               </View>
             </ScrollView>
@@ -2336,8 +1928,8 @@ export default function SiteDetailsScreen() {
           <View style={styles.modalCardWide}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleWrap}>
-                <View style={[styles.modalHeaderIconBox, { backgroundColor: '#FEF3C7' }]}>
-                  <Users size={18} color="#D97706" />
+                <View style={[styles.modalHeaderIconBox, { backgroundColor: Colors.light.warningBg }]}>
+                  <Users size={18} color={Colors.light.warning} />
                 </View>
                 <View>
                   <Text style={styles.modalTitle}>Labour Attendance</Text>
@@ -2362,9 +1954,8 @@ export default function SiteDetailsScreen() {
             >
               {WORKER_ROLES.map((role) => {
                 const countVal = workerCounts[role.key] || '0';
-                const rateVal = workerRates[role.key] || String(role.defaultRate);
+                const rateVal = workerRates[role.key] ?? String(role.defaultRate);
                 const isEditingThisRate = !!editingRates[role.key];
-                const subtotal = (parseInt(countVal, 10) || 0) * (parseFloat(rateVal) || 0);
 
                 return (
                   <View key={role.key} style={styles.modalLaborCard}>
@@ -2381,7 +1972,7 @@ export default function SiteDetailsScreen() {
                           onPress={() => toggleEditRate(role.key)}
                         >
                           {isEditingThisRate ? (
-                            <Check size={12} color="#16A34A" />
+                            <Check size={12} color={Colors.light.success} />
                           ) : (
                             <Pencil size={12} color={Colors.light.brand} />
                           )}
@@ -2432,63 +2023,11 @@ export default function SiteDetailsScreen() {
                           ) : (
                             <Text style={styles.modalLaborRateText}>{rateVal || '0'}</Text>
                           )}
-                          <Text style={styles.modalLaborRateUnit}>/day</Text>
+                          <Text style={styles.modalLaborRateUnit}>/shift</Text>
                         </View>
                       </View>
                     </View>
-                    <View style={styles.modalStepperRow}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.modalStepperBtn,
-                          pressed && styles.modalStepperBtnPressed,
-                        ]}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        onPress={() => adjustWorkerCount(role.key, -1)}
-                      >
-                        <Minus
-                          size={16}
-                          color={
-                            (parseInt(countVal, 10) || 0) > 0
-                              ? Colors.light.text
-                              : Colors.light.textMuted
-                          }
-                        />
-                      </Pressable>
-                      <TextInput
-                        style={styles.modalStepperInput}
-                        keyboardType="number-pad"
-                        value={countVal}
-                        onChangeText={(text) => {
-                          const clean = text.replace(/[^0-9]/g, '');
-                          setWorkerCounts((prev) => ({ ...prev, [role.key]: clean }));
-                        }}
-                        onBlur={() => {
-                          if (!countVal.trim()) {
-                            setWorkerCounts((prev) => ({ ...prev, [role.key]: '0' }));
-                          } else {
-                            setWorkerCounts((prev) => ({
-                              ...prev,
-                              [role.key]: String(parseInt(countVal, 10) || 0),
-                            }));
-                          }
-                        }}
-                        selectTextOnFocus
-                        placeholder="0"
-                      />
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.modalStepperBtn,
-                          pressed && styles.modalStepperBtnPressed,
-                        ]}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        onPress={() => adjustWorkerCount(role.key, 1)}
-                      >
-                        <Plus size={16} color={Colors.light.text} />
-                      </Pressable>
-                      <View style={styles.modalLaborAmountWrap}>
-                        <Money amount={subtotal} style={styles.modalLaborAmount} />
-                      </View>
-                    </View>
+                    <LaborShiftInput roleLabel={role.label} count={countVal} extras={workerShiftCounts[role.key]} rate={Number(rateVal || '0')} onCountChange={count => setWorkerCounts(prev => ({ ...prev, [role.key]: count }))} onExtrasChange={extras => setWorkerShiftCounts(prev => ({ ...prev, [role.key]: extras }))} disabled={isSavingAttendance} />
                   </View>
                 );
               })}
@@ -2502,6 +2041,10 @@ export default function SiteDetailsScreen() {
                 <View style={styles.modalSummaryRow}>
                   <Text style={styles.modalSummaryLabel}>Total Daily Wages</Text>
                   <Money amount={modalTotalWages} style={[styles.modalSummaryValue, { color: Colors.light.brand }]} />
+                </View>
+                <View style={[styles.modalSummaryRow, styles.projectedTotalRow]}>
+                  <Text style={styles.projectedTotalLabel}>Daily total after save</Text>
+                  <Money amount={projectedLabourDailyTotal} style={styles.projectedTotalValue} />
                 </View>
               </View>
             </ScrollView>
@@ -2536,8 +2079,8 @@ export default function SiteDetailsScreen() {
           <View style={styles.modalCardWide}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleWrap}>
-                <View style={[styles.modalHeaderIconBox, { backgroundColor: '#FEE2E2' }]}>
-                  <IndianRupee size={18} color="#DC2626" />
+                <View style={[styles.modalHeaderIconBox, { backgroundColor: Colors.light.errorBg }]}>
+                  <IndianRupee size={18} color={Colors.light.error} />
                 </View>
                 <View>
                   <Text style={styles.modalTitle}>
@@ -2616,24 +2159,6 @@ export default function SiteDetailsScreen() {
                 </View>
               </View>
 
-              {/* Payment Method selector */}
-              <View style={styles.modalField}>
-                <Text style={styles.modalFieldLabel}>Payment Method</Text>
-                <View style={styles.modalChipRow}>
-                  {['Cash', 'Online / UPI', 'Bank Transfer', 'Cheque'].map((method) => (
-                    <Pressable
-                      key={method}
-                      style={[styles.modalChip, expPaymentMethod === method && styles.modalChipActive]}
-                      onPress={() => setExpPaymentMethod(method)}
-                    >
-                      <Text style={[styles.modalChipText, expPaymentMethod === method && styles.modalChipTextActive]}>
-                        {method}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
               {/* Payment Status */}
               <View style={styles.modalField}>
                 <Text style={styles.modalFieldLabel}>Payment Status</Text>
@@ -2657,6 +2182,17 @@ export default function SiteDetailsScreen() {
                       </Text>
                     </Pressable>
                   ))}
+                </View>
+              </View>
+
+              <View style={styles.modalSummaryBox}>
+                <View style={styles.modalSummaryRow}>
+                  <Text style={styles.modalSummaryLabel}>This expense total</Text>
+                  <Money amount={expenseEntryTotal} style={styles.modalSummaryValue} />
+                </View>
+                <View style={[styles.modalSummaryRow, styles.projectedTotalRow]}>
+                  <Text style={styles.projectedTotalLabel}>Daily total after save</Text>
+                  <Money amount={projectedExpenseDailyTotal} style={styles.projectedTotalValue} />
                 </View>
               </View>
             </ScrollView>
@@ -2722,11 +2258,63 @@ export default function SiteDetailsScreen() {
 
       {/* Error Dialog */}
       <ErrorDialog
+        visible={Boolean(attendanceError)}
+        title="Attendance not saved"
+        message={attendanceError || 'Unable to save attendance.'}
+        closeText="Back to attendance"
+        onClose={() => setAttendanceError(null)}
+      />
+
+      <ErrorDialog
         visible={Boolean(deleteError)}
         message={deleteError || 'Failed to delete site.'}
         onClose={() => setDeleteError(null)}
         onRetry={handleDeleteConfirm}
       />
+
+      {/* Mark Completed Confirmation Modal */}
+      <Modal
+        visible={showCompleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCompleteConfirm(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowCompleteConfirm(false)}
+        >
+          <Pressable style={styles.completeConfirmCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.completeConfirmIconWrap}>
+              <CheckCircle2 size={32} color={Colors.light.success} />
+            </View>
+            <Text style={styles.completeConfirmTitle}>Mark Site as Completed?</Text>
+            <Text style={styles.completeConfirmMessage}>
+              {`Are you sure you want to mark "${site.name}" as completed?\n\nThis site will be archived from Active Sites on your dashboard. You can view all records under the Completed filter or reopen it at any time.`}
+            </Text>
+
+            <View style={styles.completeConfirmBtnRow}>
+              <Pressable
+                style={styles.completeConfirmCancelBtn}
+                onPress={() => setShowCompleteConfirm(false)}
+                disabled={isUpdatingStatus}
+              >
+                <Text style={styles.completeConfirmCancelText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.completeConfirmActionBtn}
+                onPress={() => handleToggleSiteStatus('Completed')}
+                disabled={isUpdatingStatus}
+              >
+                <Text style={styles.completeConfirmActionText}>
+                  {isUpdatingStatus ? 'Updating...' : 'Mark as Completed'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Enterprise Date Picker Modal */}
       <Modal
         visible={showDatePickerModal}
@@ -2868,53 +2456,12 @@ const styles = StyleSheet.create({
   },
 
   // Quick Action Buttons Bar
-  quickActionsContainer: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    ...Shadows.sm,
-  },
-  quickActionsTitle: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.light.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: Spacing.sm,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickActionBtn: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.text,
-  },
 
   // Enterprise Date Hub
   dateHubCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.md,
     marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   dateNavRow: {
@@ -2953,8 +2500,8 @@ const styles = StyleSheet.create({
   },
   todayBadgeText: {
     fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: Colors.light.onPrimary,
     letterSpacing: 0.5,
   },
   quickDateChipsRow: {
@@ -2989,357 +2536,26 @@ const styles = StyleSheet.create({
   },
 
   // Daily Expense Table Card
-  dailyTableCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    marginBottom: Spacing.md,
-    overflow: 'hidden',
-    ...Shadows.sm,
-  },
-  dailyTableHeaderBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    backgroundColor: Colors.light.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  dailyTableTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  dailyTableTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.light.text,
-  },
-  dailyTableSubtitle: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    marginTop: 1,
-  },
-  dailyTableTotalBadge: {
-    alignItems: 'flex-end',
-    backgroundColor: `${Colors.light.brand}10`,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: `${Colors.light.brand}20`,
-  },
-  dailyTableTotalBadgeLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.light.brand,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  dailyTableTotalBadgeVal: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.light.brand,
-  },
 
   // Table Column Headers
-  tableColHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.surfaceMuted,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  tableColHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  colParticulars: {
-    flex: 1.6,
-  },
-  colQtyRate: {
-    flex: 1.1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colAmount: {
-    flex: 1.3,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
 
   // Table Section Headers (Labour / Expenses)
-  tableSectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderSubtle,
-  },
-  tableSectionTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  tableSectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.light.brand,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  workerCountPill: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: Radius.xs,
-  },
-  workerCountPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  expenseCountPill: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: Radius.xs,
-  },
-  expenseCountPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  materialCountPill: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: Radius.xs,
-  },
-  materialCountPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2563EB',
-  },
-  tableHeaderActionBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1,
-    borderColor: `${Colors.light.brand}30`,
-  },
-  tableHeaderActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.brand,
-  },
 
   // Table Data Row
-  tableDataRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderSubtle,
-  },
-  tableRowTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
-  tableRowSub: {
-    fontSize: 10,
-    color: Colors.light.textMuted,
-    marginTop: 1,
-  },
-  tableQtyText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-  },
-  tableAmountText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.light.text,
-    textAlign: 'right',
-  },
 
   // Subtotal Row
-  tableSubtotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  tableSubtotalLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.light.textSecondary,
-  },
-  tableSubtotalQty: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.light.textMuted,
-    textAlign: 'center',
-  },
-  tableSubtotalAmount: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.light.text,
-  },
 
   // Expense specific row extras
-  tableExpenseBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 1,
-  },
-  tableExpenseCategoryBadge: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
-  },
-  tableExpenseStatusText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
   statusPaidText: {
-    color: '#16A34A',
+    color: Colors.light.success,
   },
   statusPendingText: {
-    color: '#D97706',
-  },
-  tableMaterialCategoryBadge: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
-  },
-  tableMaterialStatusText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#2563EB',
-  },
-  tableEmptyExpenseRow: {
-    paddingVertical: 12,
-    paddingHorizontal: Spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.borderSubtle,
-  },
-  tableEmptyExpenseText: {
-    fontSize: 12,
-    color: Colors.light.textMuted,
-    fontStyle: 'italic',
+    color: Colors.light.warning,
   },
 
   // Grand Total Row
-  tableGrandTotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: `${Colors.light.brand}0C`,
-    borderTopWidth: 1.5,
-    borderTopColor: Colors.light.brand,
-  },
-  tableGrandTotalLeft: {
-    flex: 1,
-  },
-  tableGrandTotalTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.light.brand,
-    letterSpacing: 0.5,
-  },
-  tableGrandTotalSubtitle: {
-    fontSize: 10,
-    color: Colors.light.textSecondary,
-    marginTop: 1,
-  },
-  tableGrandTotalRight: {
-    alignItems: 'flex-end',
-  },
-  tableGrandTotalValue: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: Colors.light.brand,
-  },
-  tableGrandTotalBreakdown: {
-    fontSize: 10,
-    color: Colors.light.textMuted,
-    marginTop: 1,
-  },
 
   // Inline Attendance Editor (Inside table)
-  tableInlineEditBox: {
-    padding: Spacing.md,
-    backgroundColor: '#FFFBEB',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FDE68A',
-  },
-  tableInlineEditHint: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400E',
-    marginBottom: 8,
-  },
-  tableEditRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEF3C7',
-  },
-  tableEditRowLeft: {
-    flex: 1,
-  },
-  tableEditRole: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
-  tableEditRate: {
-    fontSize: 11,
-    color: Colors.light.textMuted,
-  },
-  tableEditInput: {
-    width: 64,
-    height: 36,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    borderRadius: Radius.md,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.light.text,
-    backgroundColor: '#FFFFFF',
-  },
-  tableEditBtnRow: {
-    flexDirection: 'row',
-    marginTop: 10,
-  },
 
   // Project Lifetime Overview
   projectLifetimeHeader: {
@@ -3348,9 +2564,9 @@ const styles = StyleSheet.create({
   },
   projectLifetimeTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
-    textTransform: 'uppercase',
+    textTransform: 'none',
     letterSpacing: 0.5,
   },
   projectLifetimeSubtitle: {
@@ -3365,11 +2581,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   kpiHeroCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   kpiHeroHeader: {
@@ -3415,7 +2628,7 @@ const styles = StyleSheet.create({
   kpiHeroValue: {
     ...Typography.sectionTitle,
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
   },
   kpiHeroSub: {
@@ -3428,12 +2641,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   kpiHalfCard: {
+    ...UiStyles.card,
     flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
     padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   kpiHeader: {
@@ -3449,7 +2659,7 @@ const styles = StyleSheet.create({
   },
   kpiValueText: {
     ...Typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
   },
   kpiSub: {
@@ -3477,6 +2687,194 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
+  statusCompletedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.light.successBg,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.light.successBg,
+  },
+  statusCompletedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.light.success,
+  },
+  statusActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.brandBg,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.light.brandBg,
+  },
+  statusActiveBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.light.brand,
+  },
+  completedBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.light.successBg,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.light.successBg,
+    gap: Spacing.sm,
+  },
+  completedBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  completedBannerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.light.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedBannerTextWrap: {
+    flex: 1,
+  },
+  completedBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.light.success,
+  },
+  completedBannerSub: {
+    fontSize: 11,
+    color: Colors.light.success,
+    marginTop: 2,
+  },
+  reopenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.success,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+  },
+  reopenButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.success,
+  },
+  markCompleteBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+    ...Shadows.sm,
+  },
+  markCompleteBannerLeft: {
+    flex: 1,
+  },
+  markCompleteBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  markCompleteBannerSub: {
+    fontSize: 11,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
+  markCompleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.light.success,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+  },
+  markCompleteBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.onPrimary,
+  },
+  completeConfirmCard: {
+    ...UiStyles.card,
+    width: '90%',
+    maxWidth: 400,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    ...Shadows.lg,
+  },
+  completeConfirmIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.light.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  completeConfirmTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.light.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  completeConfirmMessage: {
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: Spacing.lg,
+  },
+  completeConfirmBtnRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    width: '100%',
+  },
+  completeConfirmCancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  completeConfirmCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+  },
+  completeConfirmActionBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeConfirmActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.onPrimary,
+  },
 
   // Overview Grid
   overviewGrid: {
@@ -3491,8 +2889,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
     padding: Spacing.sm,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   overviewIconContainer: {
@@ -3528,9 +2924,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.light.brand,
+    ...UiStyles.sectionTitle,
   },
   seeAllText: {
     ...Typography.caption,
@@ -3540,10 +2934,7 @@ const styles = StyleSheet.create({
 
   // Financial Card
   financeCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -3563,12 +2954,12 @@ const styles = StyleSheet.create({
   },
   financeMainValue: {
     ...Typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
   },
   financeMainValueHighlight: {
     ...Typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.success,
   },
   financeProgressContainer: {
@@ -3618,10 +3009,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   subHeaderCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -3632,7 +3020,7 @@ const styles = StyleSheet.create({
   },
   subHeaderTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
   },
   subHeaderSubtitle: {
@@ -3675,10 +3063,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   itemCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -3724,7 +3109,7 @@ const styles = StyleSheet.create({
   },
   itemMetricValueHighlight: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.brand,
     marginTop: 2,
   },
@@ -3766,13 +3151,10 @@ const styles = StyleSheet.create({
 
   // Empty Card
   emptyCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   emptyTitle: {
     ...Typography.body,
@@ -3790,14 +3172,11 @@ const styles = StyleSheet.create({
 
   // Labour tab specific
   dateSelectorCard: {
+    ...UiStyles.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.light.surface,
     padding: Spacing.sm,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   dateNavBtn: {
@@ -3832,21 +3211,18 @@ const styles = StyleSheet.create({
   },
   laborSummaryVal: {
     ...Typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
     marginTop: 2,
   },
   laborSummaryCost: {
     ...Typography.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.primary,
     marginTop: 2,
   },
   breakdownCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     gap: Spacing.sm,
     ...Shadows.sm,
@@ -3855,7 +3231,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     fontWeight: '700',
     color: Colors.light.textMuted,
-    textTransform: 'uppercase',
+    textTransform: 'none',
   },
   categoryDetailRow: {
     flexDirection: 'row',
@@ -3883,10 +3259,7 @@ const styles = StyleSheet.create({
 
   // Attendance Editor Card
   editCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.brand,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -3953,7 +3326,7 @@ const styles = StyleSheet.create({
   },
   rateAmount: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.brand,
     marginVertical: 4,
   },
@@ -3968,8 +3341,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surface,
     padding: Spacing.md,
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     marginBottom: 8,
     ...Shadows.sm,
   },
@@ -3991,7 +3362,7 @@ const styles = StyleSheet.create({
   },
   rateListPrice: {
     ...Typography.body,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.brand,
   },
   rateListPerUnit: {
@@ -4002,7 +3373,7 @@ const styles = StyleSheet.create({
   // Cost & Cash tab specific
   budgetPercentBadge: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.primary,
   },
   costSplitRow: {
@@ -4030,10 +3401,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   cashBookCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -4050,7 +3418,7 @@ const styles = StyleSheet.create({
   },
   cashOnHandValue: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
     marginTop: 2,
   },
@@ -4134,10 +3502,7 @@ const styles = StyleSheet.create({
     color: Colors.light.error,
   },
   expenseSummaryCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    ...UiStyles.card,
     padding: Spacing.md,
     ...Shadows.sm,
   },
@@ -4145,24 +3510,22 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.light.backdrop,
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.lg,
   },
   modalCard: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 390,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.xl,
     padding: Spacing.lg,
     ...Shadows.lg,
   },
   datePickerCard: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 380,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.xl,
     padding: Spacing.lg,
     ...Shadows.lg,
   },
@@ -4228,7 +3591,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.light.text,
   },
   modalSubtitle: {
@@ -4317,23 +3680,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalChipPaid: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#16A34A',
+    backgroundColor: Colors.light.successBg,
+    borderColor: Colors.light.success,
   },
   modalChipPaidText: {
-    color: '#16A34A',
+    color: Colors.light.success,
     fontWeight: '700',
   },
   modalChipPending: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#D97706',
+    backgroundColor: Colors.light.warningBg,
+    borderColor: Colors.light.warning,
   },
   modalChipPendingText: {
-    color: '#D97706',
+    color: Colors.light.warning,
     fontWeight: '700',
   },
   modalSummaryBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRadius: Radius.md,
     padding: Spacing.sm,
     borderWidth: 1,
@@ -4357,8 +3720,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.light.text,
   },
+  projectedTotalRow: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.sm,
+  },
+  projectedTotalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  projectedTotalValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.light.brand,
+  },
   modalLaborCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRadius: Radius.md,
     padding: Spacing.sm,
     borderWidth: 1,
@@ -4397,8 +3776,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalLaborRateEditBtnActive: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#16A34A',
+    backgroundColor: Colors.light.successBg,
+    borderColor: Colors.light.success,
   },
   modalLaborRateBadge: {
     flexDirection: 'row',
@@ -4413,7 +3792,7 @@ const styles = StyleSheet.create({
   },
   modalLaborRateBadgeActive: {
     borderColor: Colors.light.brand,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Colors.light.warningBg,
   },
   modalLaborRateCurrency: {
     fontSize: 12,
@@ -4492,36 +3871,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
-  },
-  tableInteractiveRow: {
-    // Interactive press feedback
-  },
-  tableRowPressed: {
-    backgroundColor: '#F1F5F9',
-  },
-  tableRowActionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  tableRowActionBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: Radius.sm,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tableRowDeleteActionBtn: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FEE2E2',
-  },
-  tableRowActionBtnPressed: {
-    opacity: 0.6,
-    transform: [{ scale: 0.92 }],
+    backgroundColor: Colors.light.errorBg,
   },
 });

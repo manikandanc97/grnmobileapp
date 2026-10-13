@@ -1,5 +1,5 @@
-import React, { createContext, useContext } from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp, ScrollViewProps } from 'react-native';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { View, StyleSheet, ViewStyle, StyleProp, ScrollViewProps, Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Spacing, Colors } from '@/constants/theme';
@@ -32,12 +32,28 @@ export function KeyboardAwareForm({
   bottomBar,
   hideBottomBarOnKeyboard = true,
   headerHeight = 64,
-  extraKeyboardSpace = 24,
+  extraKeyboardSpace = 80,
   containerStyle,
   contentContainerStyle,
   ...scrollViewProps
 }: KeyboardAwareFormProps) {
   const insets = useSafeAreaInsets();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const contextValue: FormContextValue = {
     registerField: () => {},
@@ -48,7 +64,8 @@ export function KeyboardAwareForm({
   };
 
   const bottomInset = insets.bottom;
-  const dynamicBottomPadding = bottomInset + (bottomBar ? 80 : Spacing.md);
+  const dynamicBottomPadding = (bottomBar ? 120 : 0) + Math.max(bottomInset, Spacing.md) + Spacing.lg;
+  const showBottomBar = bottomBar && (!hideBottomBarOnKeyboard || !isKeyboardVisible);
 
   return (
     <FormContext.Provider value={contextValue}>
@@ -68,7 +85,7 @@ export function KeyboardAwareForm({
         >
           {children}
         </KeyboardAwareScrollView>
-        {bottomBar && (
+        {showBottomBar && (
           <View style={styles.bottomBarContainer}>{bottomBar}</View>
         )}
       </View>
@@ -79,6 +96,6 @@ export function KeyboardAwareForm({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
   scrollView: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
+  scrollContent: { flexGrow: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
   bottomBarContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
 });

@@ -1,6 +1,6 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, View, Platform, StyleSheet, LogBox } from 'react-native';
+import { View, Platform, StyleSheet, LogBox } from 'react-native';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -22,8 +22,7 @@ LogBox.ignoreLogs([
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  
+
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
@@ -34,12 +33,12 @@ export default function RootLayout() {
         <NotificationProvider>
           <AppLockProvider>
             <ToastProvider>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <ThemeProvider value={DefaultTheme}>
                 <View style={styles.container}>
                   <View style={styles.mobileWrapper}>
                     <OfflineBanner />
                     <NotificationBanner />
-                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.surface } }}>
+                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.light.background } }}>
                       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                       <Stack.Screen name="(app)" options={{ headerShown: false }} />
                     </Stack>

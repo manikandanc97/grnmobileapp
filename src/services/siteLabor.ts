@@ -4,7 +4,10 @@ import { createNotification } from './notifications';
 import { offlineStorage } from './offlineStorage';
 import { offlineQueue } from './offlineQueue';
 import { networkStatus } from './networkStatus';
+import { calculateRecordLaborCount, hasExtraLaborShifts } from '@/lib/laborShifts';
 import { dataSync } from '@/lib/dataSync';
+
+export { WORKER_ROLES, calculateRecordLaborCost, calculateRecordLaborCount } from '@/lib/laborShifts';
 
 export type SiteLaborDailyRow = Database['public']['Tables']['site_labor_daily']['Row'];
 export type SiteLaborDailyInsert = Database['public']['Tables']['site_labor_daily']['Insert'];
@@ -207,11 +210,10 @@ export async function createSiteLabor(data: SiteLaborDailyInsert, userId?: strin
   const insertData = { ...data, owner_id: currentUserId };
 
   const cacheKey = `labor_${insertData.site_id}_${insertData.work_date}`;
-  if (currentUserId) {
+  const isConnected = networkStatus.getNetworkState().isConnected;
+  if (currentUserId && !isConnected) {
     await offlineStorage.set(currentUserId, cacheKey, insertData);
   }
-
-  const isConnected = networkStatus.getNetworkState().isConnected;
 
   if (!isConnected && currentUserId) {
     // Offline: queue mutation
@@ -234,6 +236,7 @@ export async function createSiteLabor(data: SiteLaborDailyInsert, userId?: strin
       .single();
 
     if (error) throw error;
+    if (currentUserId) await offlineStorage.set(currentUserId, cacheKey, result);
     const totalWorkers = calculateRecordLaborCount(insertData);
     createNotification({
       title: 'Daily Labor Recorded',
@@ -251,6 +254,7 @@ export async function createSiteLabor(data: SiteLaborDailyInsert, userId?: strin
       err?.message?.includes('timeout');
 
     if (isNetwork && currentUserId) {
+      await offlineStorage.set(currentUserId, cacheKey, insertData);
       await offlineQueue.enqueue({
         owner_id: currentUserId,
         entity_type: 'site_labor',
@@ -262,6 +266,19 @@ export async function createSiteLabor(data: SiteLaborDailyInsert, userId?: strin
       return insertData as SiteLaborDailyRow;
     }
 
+    if (isMissingColumnError(err) && hasExtraLaborShifts(insertData)) {
+      throw new Error('Unable to save shift details. Update the attendance database before saving half or extra shifts.');
+    }
+    if (isMissingColumnError(err) && String(err.message || '').includes('shift_counts')) {
+      const compatiblePayload = { ...insertData };
+      delete compatiblePayload.shift_counts;
+      const { data: result, error } = await supabase.from('site_labor_daily')
+        .upsert([compatiblePayload], { onConflict: 'site_id,work_date' }).select().single();
+      if (error) throw error;
+      if (currentUserId) await offlineStorage.set(currentUserId, cacheKey, result);
+      dataSync.notify({ entity: 'site_labor', action: 'update', payload: result });
+      return result;
+    }
     if (isMissingColumnError(err)) {
       console.warn('[siteLabor] Database missing extended worker columns, saving base columns:', err?.message || err);
       const basePayload = toBaseInsert(insertData);
@@ -283,13 +300,17 @@ export async function createSiteLabor(data: SiteLaborDailyInsert, userId?: strin
  */
 export async function updateSiteLabor(id: string, data: SiteLaborDailyUpdate, userId?: string): Promise<SiteLaborDailyRow> {
   const currentUserId = await resolveUserId(userId || data.owner_id);
-
-  if (data.site_id && data.work_date && currentUserId) {
-    const cacheKey = `labor_${data.site_id}_${data.work_date}`;
-    await offlineStorage.set(currentUserId, cacheKey, { ...data, id });
-  }
-
   const isConnected = networkStatus.getNetworkState().isConnected;
+  const cacheKey = data.site_id && data.work_date ? `labor_${data.site_id}_${data.work_date}` : null;
+  const previous = cacheKey && currentUserId
+    ? await offlineStorage.get<SiteLaborDailyRow>(currentUserId, cacheKey)
+    : null;
+  const localUpdate = { ...previous?.data, ...data, id };
+
+  if (data.site_id && data.work_date && currentUserId && !isConnected) {
+    const cacheKey = `labor_${data.site_id}_${data.work_date}`;
+    await offlineStorage.set(currentUserId, cacheKey, localUpdate);
+  }
 
   if (!isConnected && currentUserId) {
     await offlineQueue.enqueue({
@@ -300,7 +321,7 @@ export async function updateSiteLabor(id: string, data: SiteLaborDailyUpdate, us
       payload: data,
     });
     dataSync.notify({ entity: 'site_labor', action: 'update', payload: { ...data, id } as any });
-    return { ...data, id } as SiteLaborDailyRow;
+    return localUpdate as SiteLaborDailyRow;
   }
 
   try {
@@ -312,6 +333,9 @@ export async function updateSiteLabor(id: string, data: SiteLaborDailyUpdate, us
       .single();
 
     if (error) throw error;
+    if (data.site_id && data.work_date && currentUserId) {
+      await offlineStorage.set(currentUserId, `labor_${data.site_id}_${data.work_date}`, result);
+    }
     dataSync.notify({ entity: 'site_labor', action: 'update', payload: result });
     return { ...data, ...result };
   } catch (err: any) {
@@ -321,6 +345,9 @@ export async function updateSiteLabor(id: string, data: SiteLaborDailyUpdate, us
       err?.message?.includes('timeout');
 
     if (isNetwork && currentUserId) {
+      if (data.site_id && data.work_date) {
+        await offlineStorage.set(currentUserId, `labor_${data.site_id}_${data.work_date}`, localUpdate);
+      }
       await offlineQueue.enqueue({
         owner_id: currentUserId,
         entity_type: 'site_labor',
@@ -329,9 +356,22 @@ export async function updateSiteLabor(id: string, data: SiteLaborDailyUpdate, us
         payload: data,
       });
       dataSync.notify({ entity: 'site_labor', action: 'update', payload: { ...data, id } as any });
-      return { ...data, id } as SiteLaborDailyRow;
+      return localUpdate as SiteLaborDailyRow;
     }
 
+    if (isMissingColumnError(err) && hasExtraLaborShifts(data)) {
+      throw new Error('Unable to save shift details. Update the attendance database before saving half or extra shifts.');
+    }
+    if (isMissingColumnError(err) && String(err.message || '').includes('shift_counts')) {
+      const compatiblePayload = { ...data };
+      delete compatiblePayload.shift_counts;
+      const { data: result, error } = await supabase.from('site_labor_daily')
+        .update(compatiblePayload).eq('id', id).select().single();
+      if (error) throw error;
+      if (cacheKey && currentUserId) await offlineStorage.set(currentUserId, cacheKey, result);
+      dataSync.notify({ entity: 'site_labor', action: 'update', payload: result });
+      return result;
+    }
     if (isMissingColumnError(err)) {
       console.warn('[siteLabor] Database missing extended worker columns, updating base columns:', err?.message || err);
       const basePayload = toBaseUpdate(data);
@@ -386,42 +426,4 @@ export async function getMostRecentSiteLabor(siteId: string): Promise<SiteLaborD
     flooring_count: data.flooring_count ?? 0,
     flooring_rate: data.flooring_rate ?? 0,
   };
-}
-
-export interface WorkerRoleConfig {
-  key: string;
-  label: string;
-  countKey: keyof SiteLaborDailyRow;
-  rateKey: keyof SiteLaborDailyRow;
-  defaultRate: number;
-}
-
-export const WORKER_ROLES = [
-  { key: 'mason', label: 'Masons', countKey: 'mason_count', rateKey: 'mason_rate', defaultRate: 1200 },
-  { key: 'men_helper', label: 'Men Helpers', countKey: 'men_helper_count', rateKey: 'men_helper_rate', defaultRate: 800 },
-  { key: 'women_helper', label: 'Women Helpers', countKey: 'women_helper_count', rateKey: 'women_helper_rate', defaultRate: 650 },
-  { key: 'painter', label: 'Painters', countKey: 'painter_count', rateKey: 'painter_rate', defaultRate: 1000 },
-  { key: 'carpenter', label: 'Carpenters', countKey: 'carpenter_count', rateKey: 'carpenter_rate', defaultRate: 1100 },
-  { key: 'plumber', label: 'Plumbers', countKey: 'plumber_count', rateKey: 'plumber_rate', defaultRate: 1000 },
-  { key: 'electrician', label: 'Electricians', countKey: 'electrician_count', rateKey: 'electrician_rate', defaultRate: 1000 },
-  { key: 'bar_bender', label: 'Bar Benders', countKey: 'bar_bender_count', rateKey: 'bar_bender_rate', defaultRate: 1050 },
-  { key: 'welder', label: 'Welders', countKey: 'welder_count', rateKey: 'welder_rate', defaultRate: 1000 },
-  { key: 'flooring', label: 'Tile / Flooring', countKey: 'flooring_count', rateKey: 'flooring_rate', defaultRate: 1150 },
-] as const;
-
-export function calculateRecordLaborCost(record: Partial<SiteLaborDailyRow> | null | undefined): number {
-  if (!record) return 0;
-  return WORKER_ROLES.reduce((sum, role) => {
-    const count = Number((record as any)[role.countKey]) || 0;
-    const rate = Number((record as any)[role.rateKey]) || 0;
-    return sum + count * rate;
-  }, 0);
-}
-
-export function calculateRecordLaborCount(record: Partial<SiteLaborDailyRow> | null | undefined): number {
-  if (!record) return 0;
-  return WORKER_ROLES.reduce((sum, role) => {
-    const count = Number((record as any)[role.countKey]) || 0;
-    return sum + count;
-  }, 0);
 }

@@ -72,7 +72,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     ? Colors.light.error
     : isFocused
     ? Colors.light.primary
-    : Colors.light.border;
+    : Colors.light.borderStrong;
 
   return (
     <View
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 52,
   },
   containerFocused: {
     backgroundColor: Colors.light.surface,

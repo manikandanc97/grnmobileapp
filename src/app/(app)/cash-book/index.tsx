@@ -7,7 +7,7 @@ import {
   RefreshControl,
   Pressable,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Plus, BookOpen, TrendingUp, TrendingDown, X } from 'lucide-react-native';
 
 import { useCashBook, CashTransactionWithBalance } from '@/hooks/useCashBook';
@@ -197,6 +197,8 @@ export default function CashBookScreen() {
     );
   }, [summary, periodSummary, hasDateFilter, fromDate, toDate, filterType, transactions.length, handleClearDates, handleFromDateChange, handleToDateChange]);
 
+  if (!siteId) return <Redirect href="/(app)/sites" />;
+
   if (loading && transactions.length === 0) {
     return (
       <ScreenWrapper>
@@ -288,7 +290,7 @@ export default function CashBookScreen() {
       {/* Floating Add button */}
       <View style={styles.fab}>
         <Button
-          title="+ Add Transaction"
+          title="Add Transaction"
           onPress={() =>
             router.push({
               pathname: '/(app)/cash-book/add',
@@ -296,7 +298,7 @@ export default function CashBookScreen() {
             })
           }
           variant="primary"
-          icon={<Plus size={IconSizes.sm} color="#fff" />}
+          icon={<Plus size={IconSizes.sm} color={Colors.light.surface} />}
         />
       </View>
 

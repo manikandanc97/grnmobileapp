@@ -10,17 +10,17 @@ interface ScreenWrapperProps extends ViewProps {
 
 export function ScreenWrapper({ children, style, withBottomInset = false, ...props }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
-  
+
   return (
-    <View 
+    <View
       style={[
-        styles.container, 
-        { 
+        styles.container,
+        {
           paddingTop: insets.top,
-          paddingBottom: withBottomInset ? insets.bottom : 0 
+          paddingBottom: withBottomInset ? insets.bottom : 0
         },
         style
-      ]} 
+      ]}
       {...props}
     >
       {children}

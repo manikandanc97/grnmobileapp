@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { AppState, StyleSheet, View, Text } from 'react-native';
-import { Shield } from 'lucide-react-native';
 import { useAuth } from './AuthProvider';
 import { appLockService, AutoLockTimeout, getTimeoutMs } from '@/services/appLock';
 import { Colors, Spacing, Typography } from '@/constants/theme';
+import { BrandMark } from '@/components/brand/BrandMark';
 import { Button } from '@/components/ui/Button';
 
 type AppLockContextType = {
@@ -40,7 +40,7 @@ export const AppLockProvider = ({ children }: { children: React.ReactNode }) => 
   useEffect(() => {
     appLockService.getSettings().then(setSettings);
   }, []);
-  
+
   const updateSettings = async (newSettings: Partial<typeof settings>) => {
     if (newSettings.enabled !== undefined) {
       await appLockService.setEnabled(newSettings.enabled);
@@ -135,16 +135,16 @@ const LockScreen = ({ onUnlock }: { onUnlock: () => void }) => {
 
   return (
     <View style={styles.lockContainer} accessibilityRole="none">
-      <Shield size={64} color={Colors.light.brand} style={styles.icon} accessibilityLabel="Security Shield" />
+      <View style={styles.icon}><BrandMark size={72} /></View>
       <Text style={styles.title} accessibilityRole="header">GRN</Text>
       <Text style={styles.subtitle}>App Locked</Text>
-      <Text style={styles.prompt}>Authenticate to continue</Text>
-      
+      <Text style={styles.prompt}>Unlock to manage your sites</Text>
+
       {errorMsg ? <Text style={styles.error} accessibilityLiveRegion="polite">{errorMsg}</Text> : null}
-      
-      <Button 
-        title="Try Again" 
-        onPress={handleUnlock} 
+
+      <Button
+        title="Try Again"
+        onPress={handleUnlock}
         style={styles.button}
         accessibilityLabel="Try authentication again"
       />

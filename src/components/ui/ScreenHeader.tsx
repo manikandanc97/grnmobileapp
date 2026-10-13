@@ -1,102 +1,33 @@
-import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { Spacing, TouchTargets, Radius } from '@/constants/theme';
+import { Colors, Spacing, Radius, Typography } from '@/constants/theme';
 
-interface ScreenHeaderProps {
-  title: string;
-  subtitle?: string;
-  actionButton?: React.ReactNode;
-  showBorder?: boolean;
-  showBack?: boolean;
-  onBack?: () => void;
-  style?: StyleProp<ViewStyle>;
-}
-
-export function ScreenHeader({ 
-  title, 
-  subtitle, 
-  actionButton, 
-  showBorder = true, 
-  showBack = false,
-  onBack,
-  style,
-}: ScreenHeaderProps) {
+interface Props { title: string; subtitle?: string; actionButton?: React.ReactNode; showBorder?: boolean; showBack?: boolean; onBack?: () => void; style?: StyleProp<ViewStyle> }
+export function ScreenHeader({ title, subtitle, actionButton, showBorder = true, showBack = false, onBack, style }: Props) {
   const router = useRouter();
-
+  const { width } = useWindowDimensions();
+  const compact = width < 360 && Boolean(actionButton);
   return (
-    <View style={[styles.header, showBorder && styles.headerBorder, style]}>
-      {showBack && (
-        <Pressable
-          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
-          onPress={() => (onBack ? onBack() : router.back())}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <ArrowLeft size={18} color="#0F172A" strokeWidth={2.5} />
-        </Pressable>
-      )}
-      <View style={styles.headerTextContainer}>
-        <Text style={styles.headerTitle}>{title}</Text>
-        {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
+    <View style={[styles.header, showBorder && styles.border, style]}>
+      <View style={styles.row}>
+        {showBack ? <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => onBack ? onBack() : router.canGoBack() ? router.back() : router.replace('/')} style={({ pressed }) => [styles.back, pressed && { opacity: 0.6 }]}><ArrowLeft size={20} color={Colors.light.brand} strokeWidth={1.8} /></Pressable> : <View style={styles.rail} />}
+        <View style={styles.text}><Text style={styles.title} accessibilityRole="header">{title}</Text>{subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}</View>
+        {!compact && actionButton && <View style={styles.action}>{actionButton}</View>}
       </View>
-      {actionButton && (
-        <View style={styles.actionContainer}>
-          {actionButton}
-        </View>
-      )}
+      {compact && <View style={styles.compactAction}>{actionButton}</View>}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    backgroundColor: '#FFFFFF',
-  },
-  headerBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(15, 23, 42, 0.05)',
-  },
-  headerTextContainer: {
-    flex: 1,
-    paddingRight: Spacing.sm,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.4,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
-    marginTop: 2,
-  },
-  actionContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: TouchTargets.min,
-  },
-  backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.md,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  backButtonPressed: {
-    opacity: 0.7,
-    backgroundColor: '#E2E8F0',
-    transform: [{ scale: 0.95 }],
-  },
+  header: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, backgroundColor: Colors.light.background },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  border: { borderBottomWidth: 1, borderBottomColor: Colors.light.border },
+  text: { flex: 1, minWidth: 0 },
+  title: { ...Typography.pageTitle, color: Colors.light.text, fontSize: 22, lineHeight: 28 },
+  subtitle: { fontSize: 13, lineHeight: 19, color: Colors.light.textSecondary, marginTop: 3 },
+  back: { width: 44, height: 44, borderRadius: Radius.md, backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border, alignItems: 'center', justifyContent: 'center' },
+  rail: { width: 3, height: 26, borderRadius: 2, backgroundColor: Colors.light.accent },
+  action: { minHeight: 44, justifyContent: 'center' },
+  compactAction: { marginTop: 12, alignItems: 'flex-end' },
 });

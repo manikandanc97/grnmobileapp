@@ -1,3 +1,5 @@
+import { Radius, Colors } from '@/constants/theme';
+
 import React, { useMemo } from 'react';
 import { Tabs, useRouter, usePathname, useSegments } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
@@ -7,16 +9,17 @@ import {
   MoreHorizontal,
 } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
+import { StartupScreen } from '@/components/brand/StartupScreen';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+
 
 function TabIcon({ focused, IconComponent }: { focused: boolean, IconComponent: any }) {
   return (
     <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
       <IconComponent
         size={22}
-        color={focused ? Colors.light.brand : '#94A3B8'}
+        color={focused ? Colors.light.brand : Colors.light.textSecondary}
         strokeWidth={focused ? 2.5 : 2}
       />
     </View>
@@ -46,17 +49,17 @@ export default function AppLayout() {
       isFormScreen
         ? { display: 'none' as const }
         : {
-            backgroundColor: '#FFFFFF',
-            borderTopColor: 'rgba(15, 23, 42, 0.06)',
+            backgroundColor: Colors.light.surface,
+            borderTopColor: Colors.light.border,
             borderTopWidth: 1,
-            height: 54 + bottomInset,
+            height: 62 + bottomInset,
             paddingBottom: bottomInset,
-            paddingTop: 8,
-            shadowColor: '#07566A',
+            paddingTop: 10,
+            shadowColor: Colors.light.brand,
             shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.06,
+            shadowOpacity: 0.02,
             shadowRadius: 12,
-            elevation: 8,
+            elevation: 1,
           },
     [isFormScreen, bottomInset],
   );
@@ -67,7 +70,7 @@ export default function AppLayout() {
     }
   }, [session, loading, router]);
 
-  if (loading || !session) return null;
+  if (loading || !session) return <StartupScreen />;
 
   return (
     <Tabs
@@ -75,11 +78,11 @@ export default function AppLayout() {
         headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: Colors.light.brand,
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarInactiveTintColor: Colors.light.textMuted,
         tabBarStyle,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
+          fontSize: 12,
+          fontWeight: '600',
           marginTop: 2,
           letterSpacing: 0.2,
         },
@@ -140,12 +143,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     paddingHorizontal: 16,
     paddingVertical: 5,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(7, 86, 106, 0.1)',
+    backgroundColor: Colors.light.brandBg,
   },
 });

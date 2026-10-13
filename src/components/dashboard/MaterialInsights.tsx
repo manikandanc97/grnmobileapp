@@ -1,6 +1,7 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Colors, Spacing, Shadows, Radius } from '@/constants/theme';
+import { Spacing, Shadows, Colors } from '@/constants/theme';
 import { DonutChart, DonutChartSlice } from '@/components/ui/DonutChart';
 import type { MaterialItem } from '@/types/dashboard';
 
@@ -10,14 +11,14 @@ interface MaterialInsightsProps {
 }
 
 const PALETTE = [
-  '#0F5E5C', // brand teal
-  '#0284C7', // sky blue
-  '#D97706', // amber
-  '#8B5CF6', // purple
-  '#16A34A', // green
-  '#EC4899', // pink
-  '#F97316', // orange
-  '#64748B', // slate
+  Colors.light.brand, // brand teal
+  Colors.light.brand, // sky blue
+  Colors.light.warning, // amber
+  Colors.light.brand, // purple
+  Colors.light.success, // green
+  Colors.light.brand, // pink
+  Colors.light.accent, // orange
+  Colors.light.textSecondary, // slate
 ];
 
 export function MaterialInsights({ totalCost, materials = [] }: MaterialInsightsProps) {
@@ -34,7 +35,7 @@ export function MaterialInsights({ totalCost, materials = [] }: MaterialInsights
         {
           label: 'No Materials',
           value: 0,
-          color: '#E2E8F0',
+          color: Colors.light.borderStrong,
           formattedValue: '₹0',
         },
       ];
@@ -75,17 +76,14 @@ export function MaterialInsights({ totalCost, materials = [] }: MaterialInsights
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    ...UiStyles.card,
     padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
     marginBottom: Spacing.md,
     letterSpacing: -0.2,
   },

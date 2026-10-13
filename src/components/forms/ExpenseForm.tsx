@@ -1,3 +1,6 @@
+import { Radius, Spacing, Colors } from '@/constants/theme';
+import { UiStyles } from '@/constants/uiStyles';
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -20,10 +23,11 @@ import {
   ExpenseInsert,
   ExpenseUpdate,
 } from '@/services/expenses';
-import { Spacing } from '@/constants/theme';
+
 
 // Shared UI Architecture
 import { FormScreen } from '@/components/ui/FormScreen';
+import { OptionalDetails } from '@/components/ui/OptionalDetails';
 import { FormField } from '@/components/ui/FormField';
 import { TextField } from '@/components/ui/TextField';
 import { SelectField, SelectOption } from '@/components/ui/SelectField';
@@ -36,10 +40,8 @@ import { toast } from '@/lib/toast';
 
 import {
   ExpenseCategory,
-  PaymentMethod,
   PaymentStatus,
   EXPENSE_CATEGORIES,
-  PAYMENT_METHODS,
   PAYMENT_STATUSES,
   normalizeExpenseCategory,
 } from '@/lib/constants/expenses';
@@ -70,9 +72,6 @@ export function ExpenseForm({
   );
   const [siteId, setSiteId] = useState<string>(initialData?.site_id ?? '');
   const [vendor, setVendor] = useState(initialData?.vendor ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    (initialData?.payment_method as PaymentMethod) ?? 'Cash'
-  );
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     (initialData?.payment_status as PaymentStatus) ?? 'Paid'
   );
@@ -108,8 +107,8 @@ export function ExpenseForm({
     }
   }, [initialData?.site_id]);
 
-  // Derived effective site ID (default to first site if creating and none selected)
-  const effectiveSiteId = siteId || (!isEdit && rawSites.length > 0 ? rawSites[0].id : '');
+  // New entries stay assigned to the site they were opened from.
+  const effectiveSiteId = isEdit ? siteId : (initialData?.site_id || '');
 
   // Fetch initial expense data if editing and not provided
   useEffect(() => {
@@ -125,7 +124,6 @@ export function ExpenseForm({
             setCategory(data.category as ExpenseCategory);
             setSiteId(data.site_id);
             setVendor(data.vendor ?? '');
-            setPaymentMethod(data.payment_method as PaymentMethod);
             setPaymentStatus(data.payment_status as PaymentStatus);
             setReference(data.reference ?? '');
             if (data.expense_date) {
@@ -160,7 +158,7 @@ export function ExpenseForm({
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = 'Expense Title is required';
-    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!amount.trim() || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       newErrors.amount = 'Valid amount is required';
     }
     if (!effectiveSiteId) newErrors.site = 'Site selection is required';
@@ -189,7 +187,6 @@ export function ExpenseForm({
           amount: Number(amount),
           category,
           vendor: vendor.trim() || null,
-          payment_method: paymentMethod as any,
           payment_status: paymentStatus,
           reference: reference.trim() || null,
           notes: notes.trim() || null,
@@ -203,7 +200,7 @@ export function ExpenseForm({
           amount: Number(amount),
           category,
           vendor: vendor.trim() || null,
-          payment_method: paymentMethod as any,
+          payment_method: 'Cash',
           payment_status: paymentStatus,
           reference: reference.trim() || null,
           notes: notes.trim() || null,
@@ -243,7 +240,6 @@ export function ExpenseForm({
     effectiveSiteId,
     category,
     vendor,
-    paymentMethod,
     paymentStatus,
     reference,
     notes,
@@ -256,7 +252,7 @@ export function ExpenseForm({
     router.back();
   }, []);
 
-  const isFormValid = title.trim().length > 0 && amount.trim().length > 0 && siteId.length > 0;
+  const isFormValid = title.trim().length > 0 && amount.trim().length > 0 && Boolean(effectiveSiteId) && Number.isFinite(Number(amount)) && Number(amount) > 0;
 
   if (isLoadingInitial) {
     return (
@@ -266,7 +262,7 @@ export function ExpenseForm({
         showBack
       >
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0B5364" />
+          <ActivityIndicator size="large" color={Colors.light.brand} />
           <Text style={styles.loadingText}>Loading expense information...</Text>
         </View>
       </FormScreen>
@@ -278,8 +274,8 @@ export function ExpenseForm({
       title={isEdit ? 'Edit Expense' : 'Add Expense'}
       subtitle={
         isEdit
-          ? 'Modify expense details, payment status, and categorization.'
-          : 'Record a new project expenditure with receipts and payment status.'
+          ? 'Update the expense details.'
+          : 'Choose a site and record what you spent.'
       }
       showBack
       bottomBar={
@@ -293,7 +289,7 @@ export function ExpenseForm({
           <Button
             title={isEdit ? 'Save Changes' : 'Save Expense'}
             variant="primary"
-            icon={<Check size={18} color="#FFFFFF" />}
+            icon={<Check size={18} color={Colors.light.surface} />}
             onPress={handleSave}
             loading={saving}
             disabled={!isFormValid || saving}
@@ -331,39 +327,25 @@ export function ExpenseForm({
               setAmount(v);
               if (errors.amount) setErrors((e) => ({ ...e, amount: '' }));
             }}
-            leftIcon={<IndianRupee size={18} color="#71808A" />}
+            leftIcon={<IndianRupee size={18} color={Colors.light.textMuted} />}
             error={errors.amount}
             editable={!saving}
           />
         </FormField>
 
         <FormField label="Category" required>
-          <View style={styles.chipGrid}>
-            {EXPENSE_CATEGORIES.map((c) => (
-              <Pressable
-                key={c}
-                style={[styles.chip, category === c && styles.chipActive]}
-                onPress={() => setCategory(c)}
-                disabled={saving}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    category === c && styles.chipTextActive,
-                  ]}
-                >
-                  {c}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <SelectField value={category} options={EXPENSE_CATEGORIES.map(c => ({ label: c, value: c }))} onChange={value => setCategory(value as ExpenseCategory)} placeholder="Select category" />
         </FormField>
       </View>
 
       {/* SITE SELECTION */}
       <View style={styles.section}>
         <FormField id="site" label="Assigned Site" required error={errors.site}>
-          <SelectField
+          {!isEdit ? <TextField
+            value={siteOptions.find(option => option.value === effectiveSiteId)?.label || (sitesLoading ? 'Loading site...' : 'Selected site')}
+            editable={false}
+            leftIcon={<Building2 size={18} color={Colors.light.textMuted} />}
+          /> : <SelectField
             value={effectiveSiteId}
             options={siteOptions}
             onChange={(v) => {
@@ -371,63 +353,16 @@ export function ExpenseForm({
               if (errors.site) setErrors((e) => ({ ...e, site: '' }));
             }}
             placeholder={sitesLoading ? 'Loading sites...' : 'Select a site'}
-            leftIcon={<Building2 size={18} color="#71808A" />}
+            leftIcon={<Building2 size={18} color={Colors.light.textMuted} />}
             error={errors.site}
-          />
+          />}
         </FormField>
 
-        <FormField id="vendor" label="Vendor (Optional)">
-          <TextField
-            ref={vendorInputRef}
-            id="vendor"
-            placeholder="Who was paid?"
-            value={vendor}
-            onChangeText={setVendor}
-            leftIcon={<User size={18} color="#71808A" />}
-            returnKeyType="next"
-            nextFieldRef={referenceInputRef}
-            editable={!saving}
-          />
-        </FormField>
-        
-        <FormField id="reference" label="Reference / Bill Number">
-          <TextField
-            ref={referenceInputRef}
-            id="reference"
-            placeholder="Invoice or receipt number"
-            value={reference}
-            onChangeText={setReference}
-            returnKeyType="next"
-            nextFieldRef={notesInputRef}
-            editable={!saving}
-          />
-        </FormField>
+
       </View>
 
-      {/* PAYMENT DETAILS */}
+      {/* STATUS AND DATE */}
       <View style={styles.section}>
-        <FormField label="Payment Method">
-          <View style={styles.chipGrid}>
-            {PAYMENT_METHODS.map((m) => (
-              <Pressable
-                key={m}
-                style={[styles.chip, paymentMethod === m && styles.chipActive]}
-                onPress={() => setPaymentMethod(m)}
-                disabled={saving}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    paymentMethod === m && styles.chipTextActive,
-                  ]}
-                >
-                  {m}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </FormField>
-
         <FormField label="Payment Status">
           <View style={styles.statusGrid}>
             {PAYMENT_STATUSES.map((s) => (
@@ -467,6 +402,33 @@ export function ExpenseForm({
         </FormField>
       </View>
 
+      <OptionalDetails initiallyOpen={isEdit || Boolean(vendor || reference || notes)}>
+        <FormField id="vendor" label="Vendor (Optional)">
+          <TextField
+            ref={vendorInputRef}
+            id="vendor"
+            placeholder="Who was paid?"
+            value={vendor}
+            onChangeText={setVendor}
+            leftIcon={<User size={18} color={Colors.light.textMuted} />}
+            returnKeyType="next"
+            nextFieldRef={referenceInputRef}
+            editable={!saving}
+          />
+        </FormField>
+
+        <FormField id="reference" label="Reference / Bill Number">
+          <TextField
+            ref={referenceInputRef}
+            id="reference"
+            placeholder="Invoice or receipt number"
+            value={reference}
+            onChangeText={setReference}
+            returnKeyType="next"
+            nextFieldRef={notesInputRef}
+            editable={!saving}
+          />
+        </FormField>
       {/* NOTES */}
       <View style={styles.section}>
         <FormField id="notes" label="Notes">
@@ -482,6 +444,9 @@ export function ExpenseForm({
           />
         </FormField>
       </View>
+
+
+      </OptionalDetails>
 
       {/* Success Dialog */}
       <SuccessDialog
@@ -518,36 +483,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   section: {
+    ...UiStyles.card,
     marginBottom: Spacing.md,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
-  },
-  chipActive: {
-    backgroundColor: '#0F354A',
-    borderColor: '#0F354A',
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7A85',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
   statusGrid: {
     flexDirection: 'row',
@@ -556,31 +496,31 @@ const styles = StyleSheet.create({
   statusChip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.surfaceMuted,
     flex: 1,
     alignItems: 'center',
   },
   statusChipPaid: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#10B981',
+    backgroundColor: Colors.light.successBg,
+    borderColor: Colors.light.success,
   },
   statusChipPending: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#EF4444',
+    backgroundColor: Colors.light.errorBg,
+    borderColor: Colors.light.error,
   },
   statusChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   statusChipTextPaid: {
-    color: '#10B981',
+    color: Colors.light.success,
   },
   statusChipTextPending: {
-    color: '#EF4444',
+    color: Colors.light.error,
   },
   saveBtn: {
     flex: 2,

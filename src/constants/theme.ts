@@ -7,31 +7,34 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 export const BrandColors = {
-  primary: '#E79524',
+  primary: '#07566A',
+  accent: '#C9863F',
+  accentInk: '#865320',
+  accentBg: '#FBF1E4',
   brand: '#07566A',
   brandSecondary: '#0B5364',
-  background: '#F7F9FA',
+  background: '#F5F4EF',
   surface: '#FFFFFF',
-  text: '#0F354A',
-  textSecondary: '#6B7A85',
-  muted: '#8A99A4',
-  success: '#16A57A',
-  warning: '#F59E0B',
-  error: '#DC2626',
-  info: '#2563EB',
+  text: '#173C43',
+  textSecondary: '#607376',
+  muted: '#67797B',
+  success: '#247252',
+  warning: '#94601E',
+  error: '#B8413D',
+  info: '#07566A',
 
   // Subtle backgrounds for status/badges
-  successBg: '#ECFDF5',
-  warningBg: '#FEF3C7',
-  errorBg: '#FEF2F2',
-  infoBg: '#EFF6FF',
-  primaryBg: '#FFF4E5',
-  brandBg: '#E6EEF0',
+  successBg: '#EDF6EF',
+  warningBg: '#FBF1E4',
+  errorBg: '#FCF0EE',
+  infoBg: '#E8F2F2',
+  primaryBg: '#E8F2F2',
+  brandBg: '#E8F2F2',
 
   // Borders
-  border: '#E8ECEF', // default
-  borderSubtle: '#F3F6F8',
-  borderStrong: '#D1D9E0',
+  border: '#DFE7E3',
+  borderSubtle: '#EDF1EE',
+  borderStrong: '#BBCDC8',
 } as const;
 
 export const Colors = {
@@ -43,14 +46,19 @@ export const Colors = {
     
     background: BrandColors.background,
     surface: BrandColors.surface,
-    surfaceMuted: '#F8FAFC', // Subtle surface
+    surfaceMuted: '#F0F4F1',
+    accent: BrandColors.accent,
+    accentInk: BrandColors.accentInk,
+    accentBg: BrandColors.accentBg,
+    onPrimary: '#FFFFFF',
+    backdrop: 'rgba(23, 60, 67, 0.45)',
     
     border: BrandColors.border,
     borderSubtle: BrandColors.borderSubtle,
     borderStrong: BrandColors.borderStrong,
     
     primary: BrandColors.primary,
-    primaryPressed: '#C47A15',
+    primaryPressed: '#064453',
     
     success: BrandColors.success,
     warning: BrandColors.warning,
@@ -82,6 +90,11 @@ export const Colors = {
     textSecondary: '#A7C4CC',
     textMuted: '#71808A',
     
+    accent: BrandColors.accent,
+    accentInk: '#F2C797',
+    accentBg: '#3C3024',
+    onPrimary: '#FFFFFF',
+    backdrop: 'rgba(0, 0, 0, 0.65)',
     background: '#121212',
     surface: '#1E1E1E',
     surfaceMuted: '#2C2C2C',
@@ -144,15 +157,15 @@ export const Fonts = Platform.select({
 });
 
 export const Typography = {
-  display: { fontSize: 32, fontWeight: '800' as const },
-  pageTitle: { fontSize: 24, fontWeight: '700' as const },
-  sectionTitle: { fontSize: 18, fontWeight: '600' as const },
+  display: { fontSize: 32, lineHeight: 40, fontWeight: '700' as const },
+  pageTitle: { fontSize: 24, lineHeight: 32, fontWeight: '700' as const },
+  sectionTitle: { fontSize: 18, lineHeight: 26, fontWeight: '600' as const },
   cardTitle: { fontSize: 16, fontWeight: '600' as const },
-  body: { fontSize: 14, fontWeight: '500' as const },
+  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const },
   secondary: { fontSize: 13, fontWeight: '500' as const },
   caption: { fontSize: 12, fontWeight: '500' as const },
   label: { fontSize: 12, fontWeight: '600' as const },
-  button: { fontSize: 15, fontWeight: '600' as const },
+  button: { fontSize: 15, lineHeight: 22, fontWeight: '600' as const },
 } as const;
 
 export const Spacing = {
@@ -185,10 +198,10 @@ export const Spacing = {
 export const Radius = {
   xs: 6,
   sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 22,
-  '2xl': 28,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
   full: 9999,
 } as const;
 
@@ -203,30 +216,30 @@ export const Shadows = {
   sm: {
     shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    shadowOpacity: 0.025,
+    shadowRadius: 4,
+    elevation: 1,
   },
   md: {
     shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOpacity: 0.035,
+    shadowRadius: 8,
+    elevation: 2,
   },
   lg: {
     shadowColor: '#07566A',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 18,
     elevation: 6,
   },
   glow: {
-    shadowColor: '#E79524',
+    shadowColor: BrandColors.brand,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.04,
     shadowRadius: 12,
-    elevation: 5,
+    elevation: 1,
   },
 } as const;
 

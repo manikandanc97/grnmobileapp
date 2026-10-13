@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View, TextInputProps, Text } from 'react-native';
-import { Spacing, Radius } from '@/constants/theme';
+import { Spacing, Radius , Colors } from '@/constants/theme';
 
 interface PhoneInputProps extends TextInputProps {
   value: string;
@@ -16,16 +16,17 @@ export function PhoneInput({ value, onChangeText, ...props }: PhoneInputProps) {
       isFocused && styles.containerFocused,
     ]}>
       <View style={styles.prefixContainer}>
-        <Text style={styles.flagText}>🇮🇳</Text>
         <Text style={styles.prefixText}>+91</Text>
       </View>
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
+        accessibilityLabel="Mobile number"
+        autoComplete="tel-national"
         keyboardType="phone-pad"
-        placeholder="Enter 10-digit mobile number"
-        placeholderTextColor="#94A3B8"
+        placeholder="10-digit number"
+        placeholderTextColor={Colors.light.textMuted}
         maxLength={10}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
@@ -40,16 +41,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 56,
     borderRadius: Radius.lg,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: 'rgba(15, 23, 42, 0.1)',
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
     overflow: 'hidden',
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
   containerFocused: {
-    borderColor: '#E79524',
-    backgroundColor: '#FFFFFF',
+    borderColor: Colors.light.brand,
+    backgroundColor: Colors.light.surface,
   },
   prefixContainer: {
     flexDirection: 'row',
@@ -57,9 +58,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     height: '100%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(15, 23, 42, 0.08)',
+    borderRightColor: Colors.light.border,
   },
   flagText: {
     fontSize: 18,
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   prefixText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
   },
   input: {
     flex: 1,
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: Colors.light.text,
     letterSpacing: 0.5,
   },
 });

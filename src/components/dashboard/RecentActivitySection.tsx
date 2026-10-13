@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
@@ -97,17 +98,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing['2xl'],
   },
   sectionTitle: {
+    ...UiStyles.sectionTitle,
     ...Typography.sectionTitle,
-    color: Colors.light.brand,
     marginBottom: Spacing.md,
   },
   card: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   activityRow: {

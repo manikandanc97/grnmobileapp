@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getSiteLaborByDate, 
   createSiteLabor, 
@@ -31,8 +31,19 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
   const [error, setError] = useState<Error | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const requestVersion = useRef(0);
+  const loadedScope = useRef('');
 
   const fetchLabor = useCallback(async () => {
+    const version = ++requestVersion.current;
+    const scope = `${userId}:${siteId}:${selectedDate}`;
+    if (loadedScope.current !== scope) {
+      loadedScope.current = scope;
+      setLabor(null);
+      setError(null);
+      setIsCached(false);
+      setLastUpdated(null);
+    }
     if (!siteId) {
       setLoading(false);
       return;
@@ -40,21 +51,24 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
     setLoading(true);
     try {
       const data = await getSiteLaborByDate(siteId, selectedDate, userId);
+      if (version !== requestVersion.current) return;
       setLabor(data);
       setIsCached(isOffline && Boolean(data));
       setLastUpdated(data?.updated_at || null);
       setError(null);
     } catch (err: any) {
+      if (version !== requestVersion.current) return;
       const parsed = parseAppError(err, 'Failed to fetch site labor');
       setError(new Error(parsed.message));
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [siteId, selectedDate, userId, isOffline]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchLabor();
+    return () => { requestVersion.current += 1; };
   }, [fetchLabor]);
 
   useEffect(() => {
@@ -78,7 +92,6 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       dataSync.invalidate('site_budget');
       return newLabor;
     } catch (err: any) {
-      console.error('addLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to create site labor');
     }
   }, [siteId, selectedDate, userId]);
@@ -96,7 +109,6 @@ export function useSiteLabor(siteId: string | undefined, initialDateStr?: string
       dataSync.invalidate('site_budget');
       return updatedLabor;
     } catch (err: any) {
-      console.error('editLabor error:', err);
       throw err instanceof Error ? err : new Error(err?.message || 'Failed to update site labor');
     }
   }, [siteId, selectedDate, userId]);

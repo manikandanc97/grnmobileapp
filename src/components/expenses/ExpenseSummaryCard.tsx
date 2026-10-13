@@ -53,7 +53,7 @@ export function ExpenseSummaryCard({
           onPress={onPressThisMonth}
         >
           <View style={styles.statLabelRow}>
-            <Calendar size={12} color={isThisMonthSelected ? Colors.light.brand : '#64748B'} />
+            <Calendar size={12} color={isThisMonthSelected ? Colors.light.brand : Colors.light.textSecondary} />
             <Text style={[styles.statLabel, isThisMonthSelected && styles.statLabelActive]}>
               This Month
             </Text>
@@ -75,13 +75,13 @@ export function ExpenseSummaryCard({
           onPress={onPressPending}
         >
           <View style={styles.statLabelRow}>
-            <Clock size={12} color={isPendingSelected ? '#EF4444' : '#64748B'} />
-            <Text style={[styles.statLabel, isPendingSelected && { color: '#DC2626', fontWeight: '700' }]}>
+            <Clock size={12} color={isPendingSelected ? Colors.light.error : Colors.light.textSecondary} />
+            <Text style={[styles.statLabel, isPendingSelected && { color: Colors.light.error, fontWeight: '700' }]}>
               Pending
             </Text>
-            {isPendingSelected && <View style={[styles.activeDot, { backgroundColor: '#EF4444' }]} />}
+            {isPendingSelected && <View style={[styles.activeDot, { backgroundColor: Colors.light.error }]} />}
           </View>
-          <Text style={[styles.statValue, { color: '#EF4444' }]}>
+          <Text style={[styles.statValue, { color: Colors.light.error }]}>
             {formatCurrency(pendingAmount)}
           </Text>
         </Pressable>
@@ -92,11 +92,11 @@ export function ExpenseSummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderColor: Colors.light.border,
     ...Shadows.md,
     marginBottom: Spacing.lg,
   },
@@ -111,21 +111,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
     letterSpacing: 0.6,
   },
   totalValue: {
     fontSize: 30,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     letterSpacing: -0.8,
   },
   sitesBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: Colors.light.brandBg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: Radius.full,
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRadius: Radius.lg,
     padding: 6,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderColor: Colors.light.border,
   },
   statItem: {
     flex: 1,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   statItemActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.surface,
     borderWidth: 1,
     borderColor: Colors.light.brand,
     elevation: 2,
@@ -160,11 +160,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   statItemPendingActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.surface,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: Colors.light.error,
     elevation: 2,
-    shadowColor: '#EF4444',
+    shadowColor: Colors.light.error,
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -177,11 +177,11 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
   statLabelActive: {
     color: Colors.light.brand,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   activeDot: {
     width: 6,
@@ -192,12 +192,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   divider: {
     width: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.06)',
+    backgroundColor: Colors.light.border,
     marginVertical: 4,
   },
   pressedState: {

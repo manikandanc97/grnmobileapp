@@ -5,9 +5,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { BrandMark } from '@/components/brand/BrandMark';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
-import { Spacing, Radius } from '@/constants/theme';
+import { Spacing, Radius , Colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -33,7 +34,7 @@ export default function VerifyOtpScreen() {
   const handleVerify = async () => {
     if (otp.length !== 6) return;
     setLoading(true);
-    
+
     const { error } = await supabase.auth.verifyOtp({
       phone: '+91' + phone,
       token: otp,
@@ -51,7 +52,7 @@ export default function VerifyOtpScreen() {
 
   const handleResend = async () => {
     setCountdown(30);
-    
+
     const { error } = await supabase.auth.signInWithOtp({
       phone: '+91' + phone,
     });
@@ -66,8 +67,8 @@ export default function VerifyOtpScreen() {
   };
 
   // Format phone number for display
-  const displayPhone = phone.length === 10 
-    ? `${phone.substring(0, 5)} ${phone.substring(5)}` 
+  const displayPhone = phone.length === 10
+    ? `${phone.substring(0, 5)} ${phone.substring(5)}`
     : phone;
 
   return (
@@ -80,6 +81,7 @@ export default function VerifyOtpScreen() {
             enableOnAndroid={true}
             extraScrollHeight={Platform.OS === 'ios' ? 24 : 60}
           >
+            <BrandMark size={56} />
             <View style={styles.header}>
               <ThemedText type="title" style={styles.title}>Verify your number</ThemedText>
               <ThemedText style={[styles.subtitle, { color: textSecondaryColor }]}>
@@ -146,40 +148,44 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
   },
   header: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: Spacing.xl,
-    marginTop: Spacing.md,
+    marginTop: Spacing.xl,
   },
   title: {
     fontSize: 26,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     marginBottom: 6,
-    textAlign: 'center',
+    textAlign: 'left',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#64748B',
-    textAlign: 'center',
+    color: Colors.light.textSecondary,
+    textAlign: 'left',
     marginBottom: 8,
   },
   phoneText: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     textAlign: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: Radius.full,
     overflow: 'hidden',
   },
   formContainer: {
+    backgroundColor: Colors.light.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-    flex: 1,
   },
   verifyButton: {
     marginTop: Spacing.md,
@@ -192,7 +198,7 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
   actionButton: {
     paddingVertical: 6,

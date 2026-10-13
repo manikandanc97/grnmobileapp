@@ -42,9 +42,9 @@ export function FilterButton({
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={label}
     >
-      <Filter 
-        size={IconSizes.sm} 
-        color={isActive ? Colors.light.brand : Colors.light.textSecondary} 
+      <Filter
+        size={IconSizes.sm}
+        color={isActive ? Colors.light.brand : Colors.light.textSecondary}
         style={styles.icon}
       />
       <Text style={[styles.text, isActive && styles.textActive]}>

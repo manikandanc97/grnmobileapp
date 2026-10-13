@@ -1,4 +1,4 @@
-import { ExpenseCategory, PaymentMethod, PaymentStatus } from '@/lib/constants/expenses';
+import { ExpenseCategory, PaymentStatus } from '@/lib/constants/expenses';
 
 export type MetricItem = {
   id: string;
@@ -11,7 +11,7 @@ export type MetricItem = {
 
 export type SiteType = 'Residential' | 'Commercial' | 'Renovation';
 
-export type SiteStatus = 'On Track' | 'In Progress' | 'Finishing' | 'Delayed';
+export type SiteStatus = 'On Track' | 'In Progress' | 'Finishing' | 'Delayed' | 'Completed' | 'On Hold';
 
 export type SiteItem = {
   id: string;
@@ -57,7 +57,7 @@ export const QUICK_ACTIONS: QuickActionItem[] = [
   },
   {
     id: 'labor-attendance',
-    title: 'Labor Attendance',
+    title: 'Attendance',
     iconName: 'UserCheck',
   },
   {
@@ -108,7 +108,7 @@ export type WorkerItem = {
 
 
 
-export type { ExpenseCategory, PaymentMethod, PaymentStatus };
+export type { ExpenseCategory, PaymentStatus };
 
 export type ExpenseItem = {
   id: string;
@@ -119,7 +119,6 @@ export type ExpenseItem = {
   siteName: string;
   expenseDate: string; // ISO or formatted date string
   vendor: string;
-  paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   reference?: string;
   notes?: string;

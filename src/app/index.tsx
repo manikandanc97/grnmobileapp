@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
+import { StartupScreen } from '@/components/brand/StartupScreen';
 
 export default function Index() {
   const { session, loading } = useAuth();
@@ -16,5 +17,5 @@ export default function Index() {
     }
   }, [session, loading, router]);
 
-  return null;
+  return <StartupScreen />;
 }

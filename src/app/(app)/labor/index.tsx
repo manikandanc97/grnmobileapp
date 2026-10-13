@@ -1,11 +1,15 @@
+import { UiStyles } from '@/constants/uiStyles';
+import { LaborShiftInput } from '@/components/labor/LaborShiftInput';
+import { LaborShiftDraft, readLaborShiftDraft, createLaborDraft, buildLaborPayload, calculateRecordLaborShifts, getRecordRoleShifts, getLaborShiftSummary } from '@/lib/laborShifts';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, Alert, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users } from 'lucide-react-native';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Money } from '@/components/ui/Money';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -16,7 +20,6 @@ import { useSiteLabor } from '@/hooks/useSiteLabor';
 import { useSites } from '@/hooks/useSites';
 import { WORKER_ROLES, calculateRecordLaborCost, calculateRecordLaborCount } from '@/services/siteLabor';
 import { Colors, Spacing, Typography, Radius, Shadows, IconSizes } from '@/constants/theme';
-import { SelectField } from '@/components/ui/SelectField';
 import { toast } from '@/lib/toast';
 
 function formatDateHuman(dateStr: string) {
@@ -34,22 +37,16 @@ function getTodayStr() {
 
 export default function LaborScreen() {
   const { siteId } = useLocalSearchParams<{ siteId: string }>();
-  const { sites, loading: sitesLoading } = useSites();
-  const [selectedSiteId, setSelectedSiteId] = useState<string>(siteId || '');
+  const { sites, loading: sitesLoading, error: sitesError, refetch: refetchSites } = useSites();
+  const selectedSiteId = siteId || '';
+  const [previousSiteId, setPreviousSiteId] = useState(siteId);
 
-  useEffect(() => {
-    if (!selectedSiteId && sites.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedSiteId(sites[0].id);
-    }
-  }, [sites, selectedSiteId]);
-
-  const { 
-    selectedDate, 
-    setSelectedDate, 
-    labor, 
-    loading: laborLoading, 
-    error, 
+  const {
+    selectedDate,
+    setSelectedDate,
+    labor,
+    loading: laborLoading,
+    error,
     isOffline,
     isCached,
     lastUpdated,
@@ -60,7 +57,7 @@ export default function LaborScreen() {
   } = useSiteLabor(selectedSiteId);
 
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // Edit Form State (Supports all worker roles)
   const [counts, setCounts] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -72,36 +69,48 @@ export default function LaborScreen() {
     WORKER_ROLES.forEach((r) => { init[r.key] = String(r.defaultRate); });
     return init;
   });
+  const [shiftCounts, setShiftCounts] = useState<LaborShiftDraft>({});
   const [saving, setSaving] = useState(false);
+  if (siteId !== previousSiteId) {
+    setPreviousSiteId(siteId);
+    setIsEditing(false);
+  }
 
   useEffect(() => {
+    let cancelled = false;
     if (isEditing) {
       if (labor) {
         const nextCounts: Record<string, string> = {};
         const nextRates: Record<string, string> = {};
         WORKER_ROLES.forEach((role) => {
-          nextCounts[role.key] = String((labor as any)[role.countKey] ?? 0);
+          nextCounts[role.key] = readLaborShiftDraft(labor).counts[role.key];
+          nextRates[role.key] = String((labor as any)[role.rateKey] ?? role.defaultRate);
         });
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setCounts(nextCounts);
+        setShiftCounts(readLaborShiftDraft(labor).extras);
         setRates(nextRates);
       } else {
         // PREFILL with recent rates if available
+        const emptyCounts = readLaborShiftDraft(null).counts;
+        setCounts(emptyCounts);
+        setShiftCounts({});
         getRecentRates().then((recent) => {
-          const nextCounts: Record<string, string> = {};
+          if (cancelled) return;
           const nextRates: Record<string, string> = {};
           WORKER_ROLES.forEach((role) => {
-            nextCounts[role.key] = '0';
             nextRates[role.key] = String(
               (recent as any)?.[role.rateKey] ?? role.defaultRate
             );
           });
-          setCounts(nextCounts);
           setRates(nextRates);
+        }).catch(() => {
+          if (!cancelled) toast.error('Unable to load wage rates', 'Try opening attendance again.');
         });
       }
     }
-  }, [isEditing, labor, selectedDate]); // eslint-disable-line
+    return () => { cancelled = true; };
+  }, [isEditing, labor, selectedDate, selectedSiteId, getRecentRates]);
 
   const changeDate = (days: number) => {
     const d = new Date(selectedDate);
@@ -114,13 +123,10 @@ export default function LaborScreen() {
   };
 
   const handleSave = async () => {
+    if (saving || !selectedSiteId) return;
     setSaving(true);
     try {
-      const data: any = {};
-      WORKER_ROLES.forEach((role) => {
-        data[role.countKey] = parseInt(counts[role.key] || '0', 10) || 0;
-        data[role.rateKey] = parseFloat(rates[role.key] || '0') || role.defaultRate;
-      });
+      const data = buildLaborPayload(counts, rates, shiftCounts);
 
       if (labor) {
         await editLabor(labor.id, data);
@@ -141,10 +147,21 @@ export default function LaborScreen() {
     }
   };
 
+  if (!siteId) return <Redirect href="/(app)/sites" />;
+
+  if (!sitesLoading && sitesError && sites.length === 0) {
+    const parsed = parseAppError(sitesError);
+    return <ScreenWrapper><ScreenHeader title="Attendance" showBack /><ErrorState title={parsed.title} message={parsed.message} onRetry={refetchSites} /></ScreenWrapper>;
+  }
+
+  if (!sitesLoading && sites.length === 0) {
+    return <ScreenWrapper><ScreenHeader title="Attendance" showBack /><EmptyState title="Open a site first" description="Attendance is recorded inside a construction site." actionLabel="Open Sites" onAction={() => router.push('/(app)/sites')} /></ScreenWrapper>;
+  }
+
   if (sitesLoading) {
     return (
       <ScreenWrapper>
-        <ScreenHeader title="Labor" showBack />
+        <ScreenHeader title="Attendance" showBack />
         <View style={styles.content}>
           <LoadingSkeleton type="card" height={100} />
         </View>
@@ -154,40 +171,18 @@ export default function LaborScreen() {
 
 
 
-  const calculateTotalWorkers = () => {
-    if (isEditing) {
-      return WORKER_ROLES.reduce(
-        (sum, role) => sum + (parseInt(counts[role.key] || '0', 10) || 0),
-        0
-      );
-    }
-    if (labor) {
-      return calculateRecordLaborCount(labor);
-    }
-    return 0;
-  };
-
-  const calculateTotalCost = () => {
-    if (isEditing) {
-      return WORKER_ROLES.reduce((sum, role) => {
-        const c = parseInt(counts[role.key] || '0', 10) || 0;
-        const r = parseFloat(rates[role.key] || '0') || role.defaultRate;
-        return sum + c * r;
-      }, 0);
-    }
-    if (labor) {
-      return calculateRecordLaborCost(labor);
-    }
-    return 0;
-  };
+  const draftRecord = createLaborDraft(counts, rates, shiftCounts);
+  const displayRecord = isEditing ? draftRecord : labor;
+  const calculateTotalWorkers = () => calculateRecordLaborCount(displayRecord);
+  const calculateTotalCost = () => calculateRecordLaborCost(displayRecord);
 
   return (
     <ScreenWrapper>
-      <ScreenHeader 
-        title="Labor" 
-        showBack 
+      <ScreenHeader
+        title="Attendance"
+        showBack
       />
-      
+
       <KeyboardAwareScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -195,18 +190,11 @@ export default function LaborScreen() {
           extraScrollHeight={Platform.OS === 'ios' ? 24 : 80}
           showsVerticalScrollIndicator={false}
         >
-        
+
         {/* Selectors */}
         <View style={styles.selectorCard}>
-          <Text style={styles.label}>Select Site</Text>
-          <SelectField
-            value={selectedSiteId}
-            options={sites.map(s => ({ label: s.name, value: s.id }))}
-            onChange={(val: string) => {
-              setSelectedSiteId(val);
-              setIsEditing(false);
-            }}
-          />
+          <Text style={styles.label}>Site</Text>
+          <Text style={styles.dateText}>{sites.find(site => site.id === siteId)?.name || 'Selected site'}</Text>
 
           <View style={styles.dateSelectorRow}>
             <Pressable onPress={() => changeDate(-1)} style={styles.dateNavBtn}>
@@ -246,10 +234,10 @@ export default function LaborScreen() {
             )}
             <View style={styles.mainCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{isEditing ? 'EDIT LABOR' : 'DAILY LABOR SUMMARY'}</Text>
+              <Text style={styles.cardTitle}>{isEditing ? 'Edit attendance' : 'Daily attendance'}</Text>
               {!isEditing && (
                 <Pressable onPress={() => setIsEditing(true)} style={styles.editBtn}>
-                  <Text style={styles.editBtnText}>{labor ? 'Edit' : 'Add Labor'}</Text>
+                  <Text style={styles.editBtnText}>{labor ? 'Edit' : 'Record'}</Text>
                 </Pressable>
               )}
             </View>
@@ -259,6 +247,7 @@ export default function LaborScreen() {
               <View style={styles.summaryBox}>
                 <Text style={styles.summaryLabel}>Total Workers</Text>
                 <Text style={styles.summaryVal}>{calculateTotalWorkers()}</Text>
+                <Text style={styles.catSub}>{calculateRecordLaborShifts(displayRecord)} paid shifts</Text>
               </View>
               <View style={styles.summaryBox}>
                 <Text style={styles.summaryLabel}>Total Daily Cost</Text>
@@ -274,7 +263,7 @@ export default function LaborScreen() {
                   No workers recorded for {formatDateHuman(selectedDate)}.
                 </Text>
                 <Button
-                  title="+ Record Attendance"
+                  title="Record Attendance"
                   onPress={() => setIsEditing(true)}
                   style={{ marginTop: 14 }}
                 />
@@ -285,7 +274,7 @@ export default function LaborScreen() {
                   ? parseInt(counts[role.key] || '0', 10) || 0
                   : (labor as any)?.[role.countKey] ?? 0;
                 const rateNum = isEditing
-                  ? parseFloat(rates[role.key] || '0') || role.defaultRate
+                  ? Number(rates[role.key] || '0')
                   : (labor as any)?.[role.rateKey] ?? role.defaultRate;
 
                 if (!isEditing && countNum === 0) {
@@ -300,35 +289,21 @@ export default function LaborScreen() {
                         <Text style={styles.catTitle}>{role.label}</Text>
                         {!isEditing && labor && (
                           <Text style={styles.catSub}>
-                            {countNum} workers × ₹{rateNum}/day
+                            {getLaborShiftSummary(labor, role.key)} · ₹{rateNum}/shift
                           </Text>
                         )}
                       </View>
                       <View style={styles.catTotal}>
-                        {!isEditing && labor && <Money amount={countNum * rateNum} />}
+                        {!isEditing && labor && <Money amount={getRecordRoleShifts(labor, role.key) * rateNum} />}
                       </View>
                     </View>
                     {isEditing && (
                       <View style={styles.editFieldsRow}>
                         <View style={styles.inputWrap}>
-                          <Text style={styles.inputLabel}>Count</Text>
+                          <Text style={styles.inputLabel}>Rate per shift (₹)</Text>
                           <TextInput
                             style={styles.input}
-                            value={counts[role.key] || '0'}
-                            onChangeText={(text) =>
-                              setCounts((prev) => ({
-                                ...prev,
-                                [role.key]: text.replace(/[^0-9]/g, ''),
-                              }))
-                            }
-                            keyboardType="numeric"
-                          />
-                        </View>
-                        <View style={styles.inputWrap}>
-                          <Text style={styles.inputLabel}>Rate (₹)</Text>
-                          <TextInput
-                            style={styles.input}
-                            value={rates[role.key] || String(role.defaultRate)}
+                            value={rates[role.key] ?? String(role.defaultRate)}
                             onChangeText={(text) =>
                               setRates((prev) => ({
                                 ...prev,
@@ -340,6 +315,7 @@ export default function LaborScreen() {
                         </View>
                       </View>
                     )}
+                    {isEditing && <LaborShiftInput roleLabel={role.label} count={counts[role.key] ?? '0'} extras={shiftCounts[role.key]} rate={Number(rates[role.key] || '0')} onCountChange={count => setCounts(prev => ({ ...prev, [role.key]: count }))} onExtrasChange={extras => setShiftCounts(prev => ({ ...prev, [role.key]: extras }))} disabled={saving} />}
                   </React.Fragment>
                 );
               })
@@ -370,24 +346,21 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   selectorCard: {
-    backgroundColor: '#FFFFFF',
+    ...UiStyles.card,
     padding: Spacing.lg,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
     marginBottom: Spacing.lg,
     ...Shadows.sm,
   },
   label: {
     ...Typography.caption,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '700',
     marginBottom: Spacing.xs,
     letterSpacing: 0.3,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderColor: Colors.light.border,
     borderRadius: Radius.md,
     marginBottom: Spacing.md,
   },
@@ -406,7 +379,7 @@ const styles = StyleSheet.create({
     height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
     borderRadius: Radius.md,
   },
   dateDisplay: {
@@ -415,14 +388,14 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   todayBtn: {
     alignSelf: 'center',
     paddingVertical: 7,
     paddingHorizontal: 16,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: Colors.light.brandBg,
     borderRadius: Radius.full,
   },
   todayBtnText: {
@@ -431,13 +404,10 @@ const styles = StyleSheet.create({
     color: Colors.light.brand,
   },
   mainCard: {
-    backgroundColor: '#FFFFFF',
+    ...UiStyles.card,
     padding: Spacing.xl,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
     elevation: 4,
-    shadowColor: '#0F354A',
+    shadowColor: Colors.light.text,
     shadowOpacity: 0.05,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -460,7 +430,7 @@ const styles = StyleSheet.create({
   },
   editBtnText: {
     ...Typography.button,
-    color: '#fff',
+    color: Colors.light.onPrimary,
   },
   summaryTopRow: {
     flexDirection: 'row',
@@ -524,12 +494,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.background,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     height: 48,
-    color: '#111827',
+    color: Colors.light.text,
     fontSize: 16,
     fontWeight: '500',
   },
@@ -542,19 +512,19 @@ const styles = StyleSheet.create({
   cancelBtn: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.surfaceMuted,
   },
   cancelBtnText: {
     ...Typography.button,
-    color: '#374151',
+    color: Colors.light.textSecondary,
   },
   saveBtn: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#0F354A',
-    shadowColor: '#0F354A',
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.text,
+    shadowColor: Colors.light.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -562,7 +532,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     ...Typography.button,
-    color: '#ffffff',
+    color: Colors.light.onPrimary,
   },
   emptyWrap: {
     paddingVertical: Spacing.xl,

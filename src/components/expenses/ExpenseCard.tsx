@@ -1,6 +1,7 @@
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MapPin, Calendar, CreditCard, Pencil, Trash2, FolderOpen } from 'lucide-react-native';
+import { MapPin, Calendar, FolderOpen } from 'lucide-react-native';
 import { ExpenseItem } from '@/types/dashboard';
 import { Money } from '@/components/ui/Money';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -27,7 +28,7 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
     >
       <View style={styles.header}>
         <View style={styles.categoryBadge}>
-          <FolderOpen size={11} color="#64748B" />
+          <FolderOpen size={11} color={Colors.light.textSecondary} />
           <Text style={styles.categoryText}>{expense.category}</Text>
         </View>
         <StatusBadge status={expense.paymentStatus} />
@@ -37,12 +38,12 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
 
       <View style={styles.subtextRow}>
         <View style={styles.detailItem}>
-          <MapPin size={12} color="#64748B" />
+          <MapPin size={12} color={Colors.light.textSecondary} />
           <Text style={styles.detailText} numberOfLines={1}>{expense.siteName}</Text>
         </View>
         <Text style={styles.bulletSeparator}>•</Text>
         <View style={styles.detailItem}>
-          <Calendar size={12} color="#64748B" />
+          <Calendar size={12} color={Colors.light.textSecondary} />
           <Text style={styles.detailText}>{formattedDate}</Text>
         </View>
       </View>
@@ -50,53 +51,9 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
           <Money amount={expense.amount} style={styles.amount} />
-          <View style={styles.paymentMethodPill}>
-            <CreditCard size={11} color="#64748B" />
-            <Text style={styles.paymentMethodText}>{expense.paymentMethod}</Text>
-          </View>
         </View>
 
-        {(onEdit || onDelete) && (
-          <View style={styles.cardActions}>
-            {onEdit && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Edit ${expense.title}`}
-                style={({ pressed }) => [
-                  styles.actionPill,
-                  styles.editPill,
-                  pressed && styles.actionPillPressed,
-                ]}
-                hitSlop={6}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-              >
-                <Pencil size={13} color={Colors.light.brand} strokeWidth={2.2} />
-              </Pressable>
-            )}
-
-            {onDelete && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Delete ${expense.title}`}
-                style={({ pressed }) => [
-                  styles.actionPill,
-                  styles.deletePill,
-                  pressed && styles.actionPillPressed,
-                ]}
-                hitSlop={6}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Trash2 size={13} color={Colors.light.error} strokeWidth={2.2} />
-              </Pressable>
-            )}
-          </View>
-        )}
+        {(onEdit || onDelete) && <EntityActionMenu accessibilityLabel={`Actions for ${expense.title}`} onEdit={onEdit} onDelete={onDelete} />}
       </View>
     </Pressable>
   );
@@ -104,11 +61,11 @@ export function ExpenseCard({ expense, onPress, onEdit, onDelete }: ExpenseCardP
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderColor: Colors.light.border,
     marginBottom: 12,
     ...Shadows.sm,
   },
@@ -125,7 +82,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: Radius.xs,
@@ -134,14 +91,14 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
+    color: Colors.light.textSecondary,
+    textTransform: 'none',
     letterSpacing: 0.4,
   },
   title: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
     marginBottom: 6,
     letterSpacing: -0.3,
   },
@@ -159,19 +116,19 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   bulletSeparator: {
     fontSize: 10,
-    color: '#CBD5E1',
+    color: Colors.light.borderStrong,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(15, 23, 42, 0.05)',
+    borderTopColor: Colors.light.border,
     paddingTop: 10,
   },
   footerLeft: {
@@ -180,18 +137,8 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  paymentMethodPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  paymentMethodText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   cardActions: {
     flexDirection: 'row',
@@ -204,16 +151,16 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.light.surfaceMuted,
   },
   actionPillPressed: {
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
   },
   editPill: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: Colors.light.brandBg,
   },
   deletePill: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
   },
 });

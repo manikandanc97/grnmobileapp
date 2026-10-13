@@ -1,7 +1,7 @@
 import React from 'react';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, TouchableOpacityProps, View, Text } from 'react-native';
-import { Spacing, Radius, Shadows } from '@/constants/theme';
+import { Spacing, Radius , Colors } from '@/constants/theme';
 import { Image } from 'expo-image';
 
 interface GoogleButtonProps extends TouchableOpacityProps {
@@ -16,20 +16,23 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
   }));
-  const handlePressIn = (e: any) => { 
+  const handlePressIn = (e: any) => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 }); 
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
     if (props.onPressIn) props.onPressIn(e);
   };
-  const handlePressOut = (e: any) => { 
+  const handlePressOut = (e: any) => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 }); 
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
     if (props.onPressOut) props.onPressOut(e);
   };
 
   return (
-    <AnimatedTouchableOpacity 
-      onPressIn={handlePressIn} 
+    <AnimatedTouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: loading }}
+      onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
         styles.button,
@@ -42,13 +45,13 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color="#0F172A" />
+        <ActivityIndicator color={Colors.light.text} />
       ) : (
         <View style={styles.contentContainer}>
-          <Image 
-            source={require('@/assets/images/google-icon.png')} 
-            style={styles.icon} 
-            contentFit="contain" 
+          <Image
+            source={require('@/assets/images/google-icon.png')}
+            style={styles.icon}
+            contentFit="contain"
           />
           <Text style={styles.text}>
             {title}
@@ -61,16 +64,16 @@ export function GoogleButton({ title = "Continue with Google", loading = false, 
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 14,
     borderRadius: Radius.lg,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: 'rgba(15, 23, 42, 0.1)',
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     marginBottom: Spacing.md,
-    ...Shadows.sm,
   },
   disabled: {
     opacity: 0.5,
@@ -88,6 +91,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
   },
 });

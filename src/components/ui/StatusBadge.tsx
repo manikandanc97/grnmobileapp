@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Radius } from '@/constants/theme';
+import { Radius , Colors } from '@/constants/theme';
 
 export type BadgeStatus = 'success' | 'warning' | 'error' | 'info';
 
@@ -24,6 +24,8 @@ export function StatusBadge({
   const statusLower = status.toLowerCase();
 
   if (
+    statusLower === 'completed' ||
+    statusLower === 'available' ||
     statusLower.includes('success') ||
     statusLower.includes('on track') ||
     statusLower.includes('active') ||
@@ -32,6 +34,7 @@ export function StatusBadge({
   ) {
     semanticType = 'success';
   } else if (
+    statusLower === 'on hold' ||
     statusLower.includes('warning') ||
     statusLower.includes('in progress') ||
     statusLower.includes('pending') ||
@@ -40,6 +43,7 @@ export function StatusBadge({
   ) {
     semanticType = 'warning';
   } else if (
+    statusLower === 'out of stock' ||
     statusLower.includes('error') ||
     statusLower.includes('delayed') ||
     statusLower.includes('failed') ||
@@ -52,32 +56,32 @@ export function StatusBadge({
     switch (semanticType) {
       case 'success':
         return {
-          bg: '#ECFDF5',
-          border: '#A7F3D0',
-          text: '#059669',
-          dot: '#10B981',
+          bg: Colors.light.successBg,
+          border: Colors.light.successBg,
+          text: Colors.light.success,
+          dot: Colors.light.success,
         };
       case 'warning':
         return {
-          bg: '#FFFBEB',
-          border: '#FDE68A',
-          text: '#D97706',
-          dot: '#F59E0B',
+          bg: Colors.light.warningBg,
+          border: Colors.light.warningBg,
+          text: Colors.light.warning,
+          dot: Colors.light.warning,
         };
       case 'error':
         return {
-          bg: '#FEF2F2',
-          border: '#FECACA',
-          text: '#DC2626',
-          dot: '#EF4444',
+          bg: Colors.light.errorBg,
+          border: Colors.light.errorBg,
+          text: Colors.light.error,
+          dot: Colors.light.error,
         };
       case 'info':
       default:
         return {
-          bg: '#F0F9FF',
-          border: '#BAE6FD',
-          text: '#0284C7',
-          dot: '#0EA5E9',
+          bg: Colors.light.brandBg,
+          border: Colors.light.brandBg,
+          text: Colors.light.brand,
+          dot: Colors.light.brand,
         };
     }
   };

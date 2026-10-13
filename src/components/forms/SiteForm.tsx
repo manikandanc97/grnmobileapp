@@ -1,3 +1,6 @@
+import { Radius, Spacing, Colors } from '@/constants/theme';
+
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
@@ -12,7 +15,7 @@ import { router } from 'expo-router';
 import { MapPin, Check } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { SiteType, SiteStatus } from '@/types/dashboard';
+import { SiteType } from '@/types/dashboard';
 import { SiteRow } from '@/types/database';
 import {
   createSite,
@@ -21,7 +24,7 @@ import {
   CreateSiteParams,
 } from '@/services/sites';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { Spacing } from '@/constants/theme';
+
 
 // Shared UI Architecture
 import { FormScreen } from '@/components/ui/FormScreen';
@@ -37,12 +40,6 @@ import { toast } from '@/lib/toast';
 dayjs.extend(customParseFormat);
 
 const PROJECT_TYPES: SiteType[] = ['Residential', 'Commercial', 'Renovation'];
-const SITE_STATUSES: SiteStatus[] = [
-  'In Progress',
-  'On Track',
-  'Finishing',
-  'Delayed',
-];
 
 function formatIsoToDisplay(iso?: string | null): string {
   if (!iso) return '';
@@ -63,8 +60,6 @@ export interface SiteFormProps {
     startDate?: string;
     expectedCompletion?: string;
     budget?: string;
-    progress?: number;
-    status?: SiteStatus;
   };
   onSuccess?: (site: SiteRow) => void;
 }
@@ -91,12 +86,8 @@ export function SiteForm({
       ? formatIsoToDisplay(initialData.expectedCompletion)
       : ''
   );
-  const [budget, setBudget] = useState(initialData?.budget ?? '');
-  const [progress, setProgress] = useState(
-    initialData?.progress !== undefined ? String(initialData.progress) : '0'
-  );
-  const [status, setStatus] = useState<SiteStatus>(
-    initialData?.status ?? 'In Progress'
+  const [budget, setBudget] = useState(
+    initialData?.budget != null ? String(initialData.budget) : ''
   );
 
   const [isLoadingInitial, setIsLoadingInitial] = useState(isEdit && !initialData);
@@ -109,7 +100,6 @@ export function SiteForm({
   // Field refs for focus chaining
   const locationInputRef = useRef<TextInput>(null);
   const budgetInputRef = useRef<TextInput>(null);
-  const progressInputRef = useRef<TextInput>(null);
 
   // Fetch initial site data if editing and not provided
   useEffect(() => {
@@ -125,9 +115,7 @@ export function SiteForm({
             setProjectType(data.type as SiteType);
             setStartDate(formatIsoToDisplay(data.start_date));
             setExpectedCompletion(formatIsoToDisplay(data.expected_completion));
-            setBudget(data.budget !== null ? String(data.budget) : '');
-            setProgress(String(data.progress ?? 0));
-            setStatus((data.status as SiteStatus) || 'In Progress');
+            setBudget(data.budget != null ? String(data.budget) : '');
           }
         } catch (err) {
           console.error('[SiteForm] Load error:', err);
@@ -165,14 +153,8 @@ export function SiteForm({
     if (!location.trim()) newErrors.location = 'Location is required';
     if (!budget.trim()) {
       newErrors.budget = 'Project Budget is required';
-    } else if (isNaN(Number(budget)) || Number(budget) <= 0) {
+    } else if (!Number.isFinite(Number(budget)) || Number(budget) <= 0) {
       newErrors.budget = 'Please enter a valid positive budget';
-    }
-    if (isEdit) {
-      const progNum = Number(progress);
-      if (isNaN(progNum) || progNum < 0 || progNum > 100) {
-        newErrors.progress = 'Progress must be a number between 0 and 100';
-      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -197,8 +179,6 @@ export function SiteForm({
           startDate: startDate.trim() || undefined,
           expectedCompletion: expectedCompletion.trim() || undefined,
           budget: budget.trim() || undefined,
-          progress: Number(progress) || 0,
-          status,
         });
       } else {
         const payload: CreateSiteParams = {
@@ -250,7 +230,7 @@ export function SiteForm({
         showBack
       >
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0B5364" />
+          <ActivityIndicator size="large" color={Colors.light.brand} />
           <Text style={styles.loadingText}>Loading site details...</Text>
         </View>
       </FormScreen>
@@ -262,8 +242,8 @@ export function SiteForm({
       title={isEdit ? 'Edit Site' : 'Create Site'}
       subtitle={
         isEdit
-          ? 'Update the project specifications and site status.'
-          : 'Set up the basic information for your construction site.'
+          ? 'Update your site details.'
+          : 'Add your site name, location and budget.'
       }
       showBack
       bottomBar={
@@ -277,7 +257,7 @@ export function SiteForm({
           <Button
             title={isEdit ? 'Save Changes' : 'Create Site'}
             variant="primary"
-            icon={<Check size={18} color="#FFFFFF" />}
+            icon={<Check size={18} color={Colors.light.surface} />}
             onPress={handleSubmit}
             loading={isSubmitting}
             disabled={!isFormValid || isSubmitting}
@@ -286,7 +266,7 @@ export function SiteForm({
         </BottomActionBar>
       }
     >
-      {/* PROJECT DETAILS */}
+      {/* Site details */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>PROJECT DETAILS</Text>
 
@@ -337,7 +317,7 @@ export function SiteForm({
 
       {/* LOCATION */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>LOCATION</Text>
+        <Text style={styles.sectionTitle}>Location</Text>
 
         <FormField
           id="location"
@@ -354,71 +334,16 @@ export function SiteForm({
               setLocation(v);
               if (errors.location) setErrors((e) => ({ ...e, location: '' }));
             }}
-            leftIcon={<MapPin size={18} color="#71808A" />}
+            leftIcon={<MapPin size={18} color={Colors.light.textMuted} />}
             editable={!isSubmitting}
             error={errors.location}
           />
         </FormField>
       </View>
 
-      {/* STATUS & PROGRESS (Edit Mode) */}
-      {isEdit && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PROGRESS & STATUS</Text>
-
-          <FormField
-            id="progress"
-            label="Progress (%)"
-            error={errors.progress}
-          >
-            <TextField
-              ref={progressInputRef}
-              id="progress"
-              placeholder="e.g. 45"
-              value={progress}
-              onChangeText={(v) => {
-                setProgress(v);
-                if (errors.progress) setErrors((e) => ({ ...e, progress: '' }));
-              }}
-              keyboardType="numeric"
-              editable={!isSubmitting}
-              error={errors.progress}
-            />
-          </FormField>
-
-          <FormField label="Site Status">
-            <View style={styles.statusChipsContainer}>
-              {SITE_STATUSES.map((st) => {
-                const isActive = st === status;
-                return (
-                  <Pressable
-                    key={st}
-                    style={[
-                      styles.statusChip,
-                      isActive && styles.statusChipActive,
-                    ]}
-                    onPress={() => setStatus(st)}
-                    disabled={isSubmitting}
-                  >
-                    <Text
-                      style={[
-                        styles.statusChipText,
-                        isActive && styles.statusChipTextActive,
-                      ]}
-                    >
-                      {st}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </FormField>
-        </View>
-      )}
-
       {/* TIMELINE & BUDGET */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>PROJECT INFORMATION</Text>
+        <Text style={styles.sectionTitle}>Budget and dates</Text>
 
         <View style={styles.row}>
           <View style={styles.col}>
@@ -510,16 +435,14 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7A85',
+    color: Colors.light.textSecondary,
   },
   section: {
+    ...UiStyles.card,
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#71808A',
-    letterSpacing: 0.8,
+    ...UiStyles.sectionTitle,
     marginBottom: Spacing.md,
   },
   row: {
@@ -538,49 +461,22 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
-    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.light.surfaceMuted,
+    backgroundColor: Colors.light.surface,
   },
   typeOptionActive: {
-    borderColor: '#E79524',
-    backgroundColor: '#FFF8F0',
+    borderColor: Colors.light.brand,
+    backgroundColor: Colors.light.brandBg,
   },
   typeOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#71808A',
+    color: Colors.light.textMuted,
   },
   typeOptionTextActive: {
-    color: '#E79524',
-    fontWeight: '700',
-  },
-  statusChipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  statusChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EEF2F6',
-  },
-  statusChipActive: {
-    backgroundColor: '#0F354A',
-    borderColor: '#0F354A',
-  },
-  statusChipText: {
-    fontSize: 13,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  statusChipTextActive: {
-    color: '#FFFFFF',
+    color: Colors.light.brand,
     fontWeight: '700',
   },
   actionBtn: {

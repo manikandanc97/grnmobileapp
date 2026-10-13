@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import {
@@ -7,7 +8,7 @@ import {
   IndianRupee,
 } from 'lucide-react-native';
 import { QuickActionItem, QUICK_ACTIONS } from '@/types/dashboard';
-import { Colors, Typography, Spacing, Radius, Shadows, BrandColors, TouchTargets, IconSizes } from '@/constants/theme';
+import { Colors, Typography, Spacing, Radius, BrandColors, TouchTargets, IconSizes } from '@/constants/theme';
 
 interface QuickActionsSectionProps {
   actions?: QuickActionItem[];
@@ -33,8 +34,8 @@ export function QuickActionsSection({
         };
       case 'UserCheck':
         return {
-          icon: <UserCheck {...iconProps} color={Colors.light.success} />,
-          bg: Colors.light.successBg,
+          icon: <UserCheck {...iconProps} color={Colors.light.brand} />,
+          bg: Colors.light.brandBg,
         };
       case 'IndianRupee':
       case 'Receipt':
@@ -52,7 +53,7 @@ export function QuickActionsSection({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <Text style={styles.sectionTitle}>Add an entry</Text>
 
       <View style={styles.grid}>
         {actions.map((action) => {
@@ -85,11 +86,11 @@ export function QuickActionsSection({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   sectionTitle: {
+    ...UiStyles.sectionTitle,
     ...Typography.sectionTitle,
-    color: Colors.light.brand,
     marginBottom: Spacing.md,
   },
   grid: {
@@ -98,16 +99,17 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   actionTile: {
-    flexBasis: '22%',
+    flexBasis: '46%',
     flexGrow: 1,
     backgroundColor: Colors.light.surface,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xs,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    gap: 10,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.light.border,
-    ...Shadows.sm,
     minHeight: TouchTargets.min,
   },
   actionTilePressed: {
@@ -115,18 +117,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.surfaceMuted,
   },
   iconBox: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
   },
   actionLabel: {
-    ...Typography.caption,
+    ...Typography.body,
+    flex: 1,
     fontWeight: '600',
     color: Colors.light.text,
-    textAlign: 'center',
-    lineHeight: 15,
+    textAlign: 'left',
+    lineHeight: 20,
   },
 });

@@ -1,7 +1,8 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Calendar, CreditCard, User, FileText, FolderOpen } from 'lucide-react-native';
+import { MapPin, Calendar, User, FileText, FolderOpen } from 'lucide-react-native';
 
 import { useExpenseDetails } from '@/hooks/useExpenses';
 import { softDeleteExpense, getExpenseSiteName } from '@/services/expenses';
@@ -29,7 +30,7 @@ function formatDate(dateStr?: string | null): string {
 
 export default function ExpenseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  
+
   const { expense, loading, error, refetch } = useExpenseDetails(id);
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -60,7 +61,8 @@ export default function ExpenseDetailScreen() {
 
   const handleDeleteSuccessClose = () => {
     setShowDeleteSuccess(false);
-    router.replace('/(app)/expenses');
+    if (expense?.site_id) router.replace({ pathname: '/(app)/expenses', params: { siteId: expense.site_id } });
+    else router.replace('/(app)/sites');
   };
 
   if (isDeleted && showDeleteSuccess) {
@@ -94,9 +96,9 @@ export default function ExpenseDetailScreen() {
       <ScreenWrapper>
         <ScreenHeader title="Expense Details" showBack={true} />
         <View style={styles.centerContainer}>
-          <ErrorState 
-            title="Expense not found" 
-            message={error ?? 'The expense you are looking for does not exist or has been deleted.'} 
+          <ErrorState
+            title="Expense not found"
+            message={error ?? 'The expense you are looking for does not exist or has been deleted.'}
             onRetry={error ? refetch : undefined}
           />
         </View>
@@ -123,7 +125,7 @@ export default function ExpenseDetailScreen() {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        
+
         {/* Main Identity Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroHeader}>
@@ -133,7 +135,7 @@ export default function ExpenseDetailScreen() {
             </View>
             <StatusBadge status={expense.payment_status} />
           </View>
-          
+
           <Text style={styles.title}>{expense.title}</Text>
           <Money amount={expense.amount || 0} style={styles.amount} />
         </View>
@@ -190,17 +192,6 @@ export default function ExpenseDetailScreen() {
             </>
           )}
 
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconBox}>
-              <CreditCard size={20} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValue}>{expense.payment_method || 'Cash'}</Text>
-            </View>
-          </View>
         </View>
 
         {/* Notes */}
@@ -263,11 +254,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   heroCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     marginBottom: Spacing.xl,
     alignItems: 'center',
     ...Shadows.sm,
@@ -294,7 +282,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     fontWeight: '600',
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'none',
   },
   title: {
     ...Typography.cardTitle,
@@ -308,17 +296,14 @@ const styles = StyleSheet.create({
     color: Colors.light.brand,
   },
   sectionTitle: {
+    ...UiStyles.sectionTitle,
     ...Typography.sectionTitle,
-    color: Colors.light.text,
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
   },
   detailsCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     marginBottom: Spacing.xl,
     ...Shadows.sm,
   },
@@ -356,11 +341,8 @@ const styles = StyleSheet.create({
     marginLeft: 60,
   },
   notesCard: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
+    ...UiStyles.card,
     padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.sm,
   },
   notesText: {

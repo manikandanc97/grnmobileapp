@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.xl,
     borderWidth: 2,
-    borderColor: '#FDE68A', // Fallback
+    borderColor: Colors.light.warningBg, // Fallback
   },
   title: {
     ...Typography.sectionTitle,

@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { TrendingUp, TrendingDown, IndianRupee, FileText } from 'lucide-react-native';
 
 import { createCashTransaction, getTodayLocalDate, TransactionType } from '@/services/cashBook';
@@ -56,8 +56,8 @@ export default function AddCashTransactionScreen() {
     if (!particulars.trim()) {
       newErrors.particulars = 'Particulars are required.';
     }
-    const amt = parseFloat(amountStr.replace(/[₹,\s]/g, ''));
-    if (isNaN(amt) || amt <= 0) {
+    const amt = Number(amountStr.replace(/[₹,\s]/g, ''));
+    if (!Number.isFinite(amt) || amt <= 0) {
       newErrors.amount = 'Enter a valid amount greater than zero.';
     }
 
@@ -66,10 +66,10 @@ export default function AddCashTransactionScreen() {
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    if (saving || !validate()) return;
     if (!siteId) return;
 
-    const amt = parseFloat(amountStr.replace(/[₹,\s]/g, ''));
+    const amt = Number(amountStr.replace(/[₹,\s]/g, ''));
 
     setSaving(true);
     setSaveError(null);
@@ -95,6 +95,8 @@ export default function AddCashTransactionScreen() {
   };
 
   const isInward = transactionType === 'INWARD';
+
+  if (!siteId) return <Redirect href="/(app)/sites" />;
 
   return (
     <ScreenWrapper>
@@ -234,13 +236,13 @@ export default function AddCashTransactionScreen() {
           </FormField>
 
           {/* Preview box */}
-          {Boolean(particulars.trim() && amountStr && parseFloat(amountStr.replace(/[₹,\s]/g, '')) > 0) && (
+          {Boolean(particulars.trim() && amountStr && Number(amountStr.replace(/[₹,\s]/g, '')) > 0) && (
             <View style={[styles.preview, isInward ? styles.previewInward : styles.previewOutward]}>
               <Text style={styles.previewLabel}>Transaction Preview</Text>
               <Text style={styles.previewParticulars}>{particulars.trim()}</Text>
               <Text style={[styles.previewAmount, isInward ? styles.previewAmountInward : styles.previewAmountOutward]}>
                 {isInward ? '+ ₹' : '− ₹'}
-                {parseFloat(amountStr.replace(/[₹,\s]/g, '')).toLocaleString('en-IN')}
+                {Number(amountStr.replace(/[₹,\s]/g, '')).toLocaleString('en-IN')}
               </Text>
             </View>
           )}
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...Typography.label,
     color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'none',
     letterSpacing: 0.5,
   },
   typeRow: {
@@ -400,7 +402,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.light.textSecondary,
     fontWeight: '600',
-    textTransform: 'uppercase',
+    textTransform: 'none',
     letterSpacing: 0.4,
   },
   previewParticulars: {
@@ -410,7 +412,7 @@ const styles = StyleSheet.create({
   },
   previewAmount: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   previewAmountInward: {
     color: Colors.light.success,

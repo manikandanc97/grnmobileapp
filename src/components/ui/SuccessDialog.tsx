@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -223,13 +224,12 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.light.text,
   },
   dialogCard: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 340,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.xl,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
     paddingHorizontal: Spacing.lg,

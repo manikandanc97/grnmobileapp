@@ -23,8 +23,6 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 
-export const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Card', 'Cheque'] as const;
-export type PaymentMethod = typeof PAYMENT_METHODS[number];
 
 export const PAYMENT_STATUSES = ['Paid', 'Pending'] as const;
 export type PaymentStatus = typeof PAYMENT_STATUSES[number];

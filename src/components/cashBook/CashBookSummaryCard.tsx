@@ -38,7 +38,7 @@ export function CashBookSummaryCard({
       <View style={styles.metricsRow}>
         <View style={styles.metricItem}>
           <View style={styles.metricIconWrap}>
-            <TrendingUp size={16} color="#059669" strokeWidth={2.5} />
+            <TrendingUp size={16} color={Colors.light.success} strokeWidth={2.5} />
           </View>
           <View style={styles.metricTextWrap}>
             <Text style={styles.metricLabel}>Total Inward</Text>
@@ -50,7 +50,7 @@ export function CashBookSummaryCard({
 
         <View style={styles.metricItem}>
           <View style={styles.metricIconWrapOutward}>
-            <TrendingDown size={16} color="#DC2626" strokeWidth={2.5} />
+            <TrendingDown size={16} color={Colors.light.error} strokeWidth={2.5} />
           </View>
           <View style={styles.metricTextWrap}>
             <Text style={styles.metricLabel}>Total Outward</Text>
@@ -69,13 +69,13 @@ export function CashBookSummaryCard({
           </View>
           <View style={styles.periodRow}>
             <Text style={styles.periodLabel}>Period Inward</Text>
-            <Text style={[styles.periodValue, { color: '#059669' }]}>
+            <Text style={[styles.periodValue, { color: Colors.light.success }]}>
               + {formatCurrency(periodSummary.periodInward)}
             </Text>
           </View>
           <View style={styles.periodRow}>
             <Text style={styles.periodLabel}>Period Outward</Text>
-            <Text style={[styles.periodValue, { color: '#DC2626' }]}>
+            <Text style={[styles.periodValue, { color: Colors.light.error }]}>
               − {formatCurrency(periodSummary.periodOutward)}
             </Text>
           </View>
@@ -93,10 +93,10 @@ export function CashBookSummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderColor: Colors.light.border,
     padding: 20,
     marginBottom: Spacing.md,
     ...Shadows.md,
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: Radius.md,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: Colors.light.brandBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -120,30 +120,30 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
     letterSpacing: 0.6,
     marginBottom: 2,
   },
   heroAmount: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.6,
   },
   heroAmountPositive: {
-    color: '#0F172A',
+    color: Colors.light.text,
   },
   heroAmountNegative: {
-    color: '#DC2626',
+    color: Colors.light.error,
   },
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     borderRadius: Radius.lg,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderColor: Colors.light.border,
   },
   metricItem: {
     flex: 1,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: Radius.md,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: Colors.light.successBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: Radius.md,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -173,36 +173,36 @@ const styles = StyleSheet.create({
   metricDivider: {
     width: 1,
     height: 34,
-    backgroundColor: 'rgba(15, 23, 42, 0.08)',
+    backgroundColor: Colors.light.border,
     marginHorizontal: 12,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     marginBottom: 2,
   },
   metricInward: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#059669',
+    fontWeight: '700',
+    color: Colors.light.success,
   },
   metricOutward: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#DC2626',
+    fontWeight: '700',
+    color: Colors.light.error,
   },
   periodContainer: {
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(15, 23, 42, 0.06)',
+    borderTopColor: Colors.light.border,
     gap: 8,
   },
   periodTitle: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
     letterSpacing: 0.6,
     marginBottom: 4,
   },
@@ -213,27 +213,27 @@ const styles = StyleSheet.create({
   },
   periodLabel: {
     fontSize: 13,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   periodValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
   },
   periodClosingRow: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(15, 23, 42, 0.06)',
+    borderTopColor: Colors.light.border,
     paddingTop: 8,
     marginTop: 4,
   },
   periodClosingLabel: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   periodClosingValue: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

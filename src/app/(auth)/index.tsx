@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Platform, Alert } from 'react-native';
+import { StyleSheet, Text, View, Platform, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
@@ -12,7 +12,7 @@ import { AuthHeader } from '@/components/auth/AuthHeader';
 import { PhoneInput } from '@/components/auth/PhoneInput';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { GoogleButton } from '@/components/auth/GoogleButton';
-import { Spacing } from '@/constants/theme';
+import { Spacing , Colors, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
@@ -34,7 +34,7 @@ export default function LoginScreen() {
   const handleContinueWithMobile = async () => {
     if (mobileNumber.length !== 10) return;
     setLoading(true);
-    
+
     const { error } = await supabase.auth.signInWithOtp({
       phone: '+91' + mobileNumber,
     });
@@ -74,6 +74,9 @@ export default function LoginScreen() {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
 
@@ -87,8 +90,14 @@ export default function LoginScreen() {
     // Native implementation
     try {
       await GoogleSignin.hasPlayServices();
+      // Clear previous cached session so Google account picker always appears with all accounts
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // Safe to ignore if not signed in previously
+      }
       const response = await GoogleSignin.signIn();
-      
+
       if (response.type === 'success') {
         const idToken = response.data.idToken;
         if (idToken) {
@@ -137,18 +146,20 @@ export default function LoginScreen() {
             extraScrollHeight={Platform.OS === 'ios' ? 24 : 60}
           >
             <AuthHeader
-              title="Welcome back"
-              subtitle="Manage your construction sites, materials and workforce in one place."
+              title="Your sites.
+One simple place."
+              subtitle="Sign in to manage your sites and daily entries."
             />
 
             <View style={styles.formContainer}>
+              <Text style={styles.fieldLabel}>Mobile number</Text>
               <PhoneInput
                 value={mobileNumber}
                 onChangeText={(text) => setMobileNumber(text.replace(/[^0-9]/g, ''))}
               />
 
               <PrimaryButton
-                title="Continue with Mobile"
+                title="Continue"
                 onPress={handleContinueWithMobile}
                 loading={loading}
                 disabled={mobileNumber.length < 10}
@@ -196,12 +207,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     justifyContent: 'center',
   },
-  formContainer: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    flex: 1,
-  },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.light.text, marginBottom: 8 },
+  formContainer: { width: '100%', maxWidth: 400, alignSelf: 'center', backgroundColor: Colors.light.surface, padding: 20, borderWidth: 1, borderColor: Colors.light.border, borderRadius: Radius.xl },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -217,7 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   footer: {
-    marginTop: Spacing.six,
+    marginTop: Spacing.lg,
     alignItems: 'center',
     paddingTop: Spacing.four,
   },

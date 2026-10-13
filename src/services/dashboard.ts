@@ -46,16 +46,12 @@ export async function getDashboardMetricsWithCache(userId?: string): Promise<Das
       const firstDayOfNextMonthStr = `${nextMonthYear}-${String(nextMonthNum).padStart(2, '0')}-01`;
 
       const fetchThisMonthExpenses = async () => {
-        try {
           return await supabase
             .from('expenses')
             .select('amount')
             .gte('expense_date', firstDayOfMonthStr)
             .lt('expense_date', firstDayOfNextMonthStr)
             .is('deleted_at', null);
-        } catch {
-          return { data: [], error: null };
-        }
       };
 
       const [
@@ -72,6 +68,8 @@ export async function getDashboardMetricsWithCache(userId?: string): Promise<Das
 
       if (totalProjectsResult.error) throw totalProjectsResult.error;
       if (activeSitesResult.error) throw activeSitesResult.error;
+      if (expensesResult.error) throw expensesResult.error;
+      if (laborResult.error) throw laborResult.error;
 
       const thisMonthExpenses = expensesResult.data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
       const totalActiveLabor = laborResult.data?.reduce((sum, item) => {

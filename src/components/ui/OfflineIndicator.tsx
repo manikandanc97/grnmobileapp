@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { CloudOff, RefreshCw } from 'lucide-react-native';
-import { Typography, Radius } from '@/constants/theme';
+import { Typography, Radius , Colors } from '@/constants/theme';
 
 export interface OfflineIndicatorProps {
   lastUpdated?: string | null;
@@ -33,7 +33,7 @@ export function OfflineIndicator({
   return (
     <View style={[styles.container, style]}>
       <View style={styles.left}>
-        <CloudOff size={14} color="#D97706" />
+        <CloudOff size={14} color={Colors.light.warning} />
         <Text style={styles.text}>
           Offline • Saved at {formatRelativeTime(lastUpdated)}
         </Text>
@@ -49,7 +49,7 @@ export function OfflineIndicator({
         >
           <RefreshCw
             size={12}
-            color="#D97706"
+            color={Colors.light.warning}
             style={isRefreshing ? styles.spinning : undefined}
           />
           <Text style={styles.refreshText}>{isRefreshing ? 'Retrying…' : 'Retry'}</Text>
@@ -64,8 +64,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FEF3C7', // Amber 100
-    borderColor: '#FDE68A',     // Amber 200
+    backgroundColor: Colors.light.warningBg, // Amber 100
+    borderColor: Colors.light.warningBg,     // Amber 200
     borderWidth: 1,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   text: {
     ...Typography.caption,
     fontSize: 12,
-    color: '#92400E', // Amber 800
+    color: Colors.light.warning, // Amber 800
     fontWeight: '600',
   },
   refreshButton: {
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: Radius.sm,
-    backgroundColor: 'rgba(217, 119, 6, 0.1)',
+    backgroundColor: Colors.light.accentBg,
   },
   refreshPressed: {
     opacity: 0.7,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   refreshText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#D97706',
+    color: Colors.light.warning,
   },
   spinning: {
     opacity: 0.6,

@@ -1,3 +1,4 @@
+import { Colors } from '@/constants/theme';
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: Colors.light.brand,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,

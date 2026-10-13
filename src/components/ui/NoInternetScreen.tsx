@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
@@ -68,21 +69,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   card: {
+    ...UiStyles.card,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.xl,
     paddingVertical: Spacing['2xl'],
     paddingHorizontal: Spacing.xl,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: Radius.full,
-    backgroundColor: 'rgba(7, 86, 106, 0.08)',
+    backgroundColor: Colors.light.brandBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,

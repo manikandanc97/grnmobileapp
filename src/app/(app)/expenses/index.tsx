@@ -5,10 +5,10 @@ import {
   FlatList,
   RefreshControl,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Plus, IndianRupee } from 'lucide-react-native';
 
-import { ExpenseCategory, ExpenseItem, PaymentMethod, PaymentStatus } from '@/types/dashboard';
+import { ExpenseCategory, ExpenseItem, PaymentStatus } from '@/types/dashboard';
 import { ExpenseSummaryCard } from '@/components/expenses/ExpenseSummaryCard';
 import { ExpenseFilter } from '@/components/expenses/ExpenseFilter';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
@@ -49,6 +49,12 @@ export default function ExpensesScreen() {
     period?: string;
     status?: string;
   }>();
+
+  if (!siteId) return <Redirect href="/(app)/sites" />;
+  return <SiteExpensesScreen key={siteId} siteId={siteId} period={period} status={status} />;
+}
+
+function SiteExpensesScreen({ siteId, period, status }: { siteId: string; period?: string; status?: string }) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | ExpenseCategory>('All');
@@ -137,7 +143,6 @@ export default function ExpensesScreen() {
       siteName: getExpenseSiteName(e),
       expenseDate: e.expense_date,
       vendor: e.vendor ?? '',
-      paymentMethod: e.payment_method as PaymentMethod,
       paymentStatus: e.payment_status as PaymentStatus,
       reference: e.reference ?? undefined,
       notes: e.notes ?? undefined,
@@ -230,22 +235,20 @@ export default function ExpensesScreen() {
       <ScreenHeader
         title="Expenses"
         subtitle={siteId ? "Project expenses" : "Track all project spending"}
-        showBack={Boolean(siteId)}
-        actionButton={
+        showBack
+        actionButton={siteId ?
           <View style={{ width: 140 }}>
             <Button
               title="Add Expense"
               onPress={() =>
                 router.push(
-                  siteId
-                    ? ({ pathname: '/(app)/expenses/add', params: { siteId } } as any)
-                    : ('/(app)/expenses/add' as any)
+                  { pathname: '/(app)/expenses/add', params: { siteId } }
                 )
               }
               icon={<Plus size={IconSizes.sm} color={Colors.light.surface} strokeWidth={2.5} />}
               style={{ height: 40 }}
             />
-          </View>
+          </View> : undefined
         }
       />
 
@@ -295,10 +298,10 @@ export default function ExpensesScreen() {
           }
           return (
             <View style={styles.centerContainer}>
-              <ErrorState 
-                title={parsed.title} 
-                message={parsed.message} 
-                onRetry={refetch} 
+              <ErrorState
+                title={parsed.title}
+                message={parsed.message}
+                onRetry={refetch}
               />
             </View>
           );
@@ -306,10 +309,10 @@ export default function ExpensesScreen() {
       ) : (
         <>
           {isCached && (
-            <OfflineIndicator 
-              lastUpdated={lastUpdated} 
-              onRetry={onRefresh} 
-              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }} 
+            <OfflineIndicator
+              lastUpdated={lastUpdated}
+              onRetry={onRefresh}
+              style={{ marginHorizontal: Spacing.md, marginBottom: Spacing.sm }}
             />
           )}
           <FlatList
@@ -332,11 +335,11 @@ export default function ExpensesScreen() {
                 <EmptyState
                   icon={<IndianRupee size={48} color={Colors.light.textMuted} />}
                   title={expenses.length === 0 ? "No expenses found" : "No results matching criteria"}
-                  description={expenses.length === 0 
-                    ? "Record your first project expense to start tracking."
+                  description={expenses.length === 0
+                    ? (siteId ? "Record an expense for this site." : "Open a site to add expenses.")
                     : "Try adjusting your search or filters to find what you're looking for."}
-                  actionLabel={expenses.length === 0 ? "Add Expense" : "Reset Filters"}
-                  onAction={expenses.length === 0 ? () => router.push('/(app)/expenses/add') : () => {
+                  actionLabel={expenses.length === 0 ? (siteId ? "Add Expense" : "Open Sites") : "Reset Filters"}
+                  onAction={expenses.length === 0 ? () => siteId ? router.push({ pathname: '/(app)/expenses/add', params: { siteId } }) : router.push('/(app)/sites') : () => {
                     setSearchQuery('');
                     setSelectedPeriod('All Time');
                     setSelectedCategory('All');

@@ -1,10 +1,11 @@
 import { Stack, Redirect } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
+import { StartupScreen } from '@/components/brand/StartupScreen';
 
 export default function AuthLayout() {
   const { session, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <StartupScreen />;
 
   if (session) {
     return <Redirect href="/(app)" />;

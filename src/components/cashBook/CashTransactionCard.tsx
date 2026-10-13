@@ -1,6 +1,7 @@
+import { EntityActionMenu } from '@/components/actions/EntityActionMenu';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { TrendingUp, TrendingDown, Pencil, Trash2 } from 'lucide-react-native';
+import { TrendingUp, TrendingDown } from 'lucide-react-native';
 import { CashTransactionRow, formatDisplayDate } from '@/services/cashBook';
 import { formatCurrency } from '@/lib/finance';
 import { Colors, Radius, Shadows } from '@/constants/theme';
@@ -37,9 +38,9 @@ export function CashTransactionCard({
         <View style={styles.topRow}>
           <View style={[styles.typeBadge, isInward ? styles.typeBadgeInward : styles.typeBadgeOutward]}>
             {isInward ? (
-              <TrendingUp size={11} color="#059669" strokeWidth={2.5} />
+              <TrendingUp size={11} color={Colors.light.success} strokeWidth={2.5} />
             ) : (
-              <TrendingDown size={11} color="#DC2626" strokeWidth={2.5} />
+              <TrendingDown size={11} color={Colors.light.error} strokeWidth={2.5} />
             )}
             <Text style={[styles.typeText, isInward ? styles.typeTextInward : styles.typeTextOutward]}>
               {isInward ? 'INWARD' : 'OUTWARD'}
@@ -69,30 +70,7 @@ export function CashTransactionCard({
             )}
           </View>
 
-          {(onEdit || onDelete) && (
-            <View style={styles.actions}>
-              {onEdit && (
-                <Pressable
-                  style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
-                  onPress={onEdit}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel="Edit transaction"
-                >
-                  <Pencil size={13} color={Colors.light.brand} strokeWidth={2.2} />
-                </Pressable>
-              )}
-              {onDelete && (
-                <Pressable
-                  style={({ pressed }) => [styles.actionBtn, styles.deleteBtn, pressed && styles.actionBtnPressed]}
-                  onPress={onDelete}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel="Delete transaction"
-                >
-                  <Trash2 size={13} color={Colors.light.error} strokeWidth={2.2} />
-                </Pressable>
-              )}
-            </View>
-          )}
+          {(onEdit || onDelete) && <EntityActionMenu accessibilityLabel="Transaction actions" onEdit={onEdit} onDelete={onDelete} />}
         </View>
       </View>
     </Pressable>
@@ -102,10 +80,10 @@ export function CashTransactionCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.xl,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.06)',
+    borderColor: Colors.light.border,
     marginBottom: 10,
     overflow: 'hidden',
     ...Shadows.sm,
@@ -121,10 +99,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   accentInward: {
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.light.success,
   },
   accentOutward: {
-    backgroundColor: '#EF4444',
+    backgroundColor: Colors.light.error,
   },
   body: {
     flex: 1,
@@ -146,31 +124,31 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   typeBadgeInward: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: Colors.light.successBg,
   },
   typeBadgeOutward: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
   },
   typeText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   typeTextInward: {
-    color: '#059669',
+    color: Colors.light.success,
   },
   typeTextOutward: {
-    color: '#DC2626',
+    color: Colors.light.error,
   },
   dateText: {
     fontSize: 12,
-    color: '#64748B',
+    color: Colors.light.textSecondary,
     fontWeight: '500',
   },
   particulars: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: Colors.light.text,
     marginBottom: 10,
     letterSpacing: -0.2,
   },
@@ -184,16 +162,16 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   amountInward: {
-    color: '#059669',
+    color: Colors.light.success,
   },
   amountOutward: {
-    color: '#DC2626',
+    color: Colors.light.error,
   },
   balancePill: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.light.background,
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -203,7 +181,7 @@ const styles = StyleSheet.create({
   runningBalance: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: Colors.light.textSecondary,
   },
   actions: {
     flexDirection: 'row',
@@ -214,12 +192,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: Radius.md,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: Colors.light.brandBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteBtn: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.light.errorBg,
   },
   actionBtnPressed: {
     opacity: 0.7,

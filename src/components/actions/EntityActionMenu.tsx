@@ -1,3 +1,4 @@
+import { UiStyles } from '@/constants/uiStyles';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -116,7 +117,7 @@ export function EntityActionMenu({
           styles.triggerButton,
           pressed && styles.triggerButtonPressed,
         ]}
-        onPress={openMenu}
+        onPress={(event) => { event.stopPropagation(); openMenu(); }}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         accessibilityHint="Opens action menu with edit and delete options"
@@ -259,17 +260,14 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.light.text,
   },
   menuCard: {
+    ...UiStyles.card,
     position: 'absolute',
     right: Spacing.md,
     width: 190,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.lg,
     paddingVertical: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     ...Shadows.lg,
   },
   menuItem: {
