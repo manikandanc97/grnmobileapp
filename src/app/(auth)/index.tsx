@@ -13,10 +13,16 @@ import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import { Lock, ShieldCheck } from 'lucide-react-native';
 
-// Configure Google Sign-In with the Web OAuth Client ID
-GoogleSignin.configure({
-  webClientId: '527081633062-rda933l9me8ev46nd8olcjventdeb40k.apps.googleusercontent.com',
-});
+// Configure Google Sign-In with the Web OAuth Client ID safely
+if (Platform.OS !== 'web') {
+  try {
+    GoogleSignin.configure({
+      webClientId: '527081633062-rda933l9me8ev46nd8olcjventdeb40k.apps.googleusercontent.com',
+    });
+  } catch (e) {
+    console.warn('GoogleSignin.configure skipped or failed:', e);
+  }
+}
 
 export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);

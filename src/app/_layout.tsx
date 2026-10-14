@@ -1,6 +1,6 @@
-import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DefaultTheme, ThemeProvider, Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { View, Platform, StyleSheet, LogBox } from 'react-native';
+import { View, Platform, StyleSheet, LogBox, Text, Pressable } from 'react-native';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -20,6 +20,25 @@ LogBox.ignoreLogs([
 ]);
 
 SplashScreen.preventAutoHideAsync();
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+      ? error
+      : (error as any)?.message || JSON.stringify(error) || 'An unexpected error occurred';
+
+  return (
+    <View style={styles.errorBoundaryContainer}>
+      <Text style={styles.errorBoundaryTitle}>Something went wrong</Text>
+      <Text style={styles.errorBoundaryMessage}>{errorMessage}</Text>
+      <Pressable onPress={retry} style={styles.errorBoundaryRetryBtn}>
+        <Text style={styles.errorBoundaryRetryText}>Try Again</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export default function RootLayout() {
 
@@ -76,5 +95,36 @@ const styles = StyleSheet.create({
           borderColor: Colors.light.borderStrong,
         }
       : {}),
+  },
+  errorBoundaryContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: Colors.light.background,
+  },
+  errorBoundaryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.light.error,
+    marginBottom: 8,
+  },
+  errorBoundaryMessage: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  errorBoundaryRetryBtn: {
+    backgroundColor: Colors.light.brand,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  errorBoundaryRetryText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
