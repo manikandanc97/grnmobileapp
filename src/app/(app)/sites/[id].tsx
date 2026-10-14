@@ -262,14 +262,19 @@ export default function SiteDetailsScreen() {
     setWorkerRates(nextRates);
   }, [labor, cachedRecentRates, selectedDate, showLabourModal, isEditingAttendance]);
 
-  // Handle Date Navigation
+  // Handle Date Navigation (restricted up to today)
   const changeDate = (days: number) => {
     const current = new Date(selectedDate);
     current.setDate(current.getDate() + days);
     const y = current.getFullYear();
     const m = String(current.getMonth() + 1).padStart(2, '0');
     const d = String(current.getDate()).padStart(2, '0');
-    setSelectedDate(`${y}-${m}-${d}`);
+    const nextDateStr = `${y}-${m}-${d}`;
+    const todayStr = getTodayStr();
+    if (days > 0 && nextDateStr > todayStr) {
+      return;
+    }
+    setSelectedDate(nextDateStr);
     setIsEditingAttendance(false);
   };
 
@@ -1062,18 +1067,68 @@ export default function SiteDetailsScreen() {
                   <Text style={styles.dateCenterText}>
                     {formatDateDisplay(selectedDate)}
                   </Text>
+                  {selectedDate === getTodayStr() && (
+                    <View style={styles.todayBadge}>
+                      <Text style={styles.todayBadgeText}>TODAY</Text>
+                    </View>
+                  )}
                 </Pressable>
 
                 <Pressable
-                  style={styles.dateNavArrow}
+                  style={[styles.dateNavArrow, selectedDate >= getTodayStr() && styles.dateNavArrowDisabled]}
                   onPress={() => changeDate(1)}
+                  disabled={selectedDate >= getTodayStr()}
                   hitSlop={8}
                 >
-                  <ChevronRight size={20} color={Colors.light.brand} />
+                  <ChevronRight
+                    size={20}
+                    color={selectedDate >= getTodayStr() ? Colors.light.textMuted : Colors.light.brand}
+                  />
                 </Pressable>
               </View>
 
+              {/* Quick Date Switcher Chips */}
+              <View style={styles.quickDateChipsRow}>
+                <Pressable
+                  style={[
+                    styles.quickDateChip,
+                    selectedDate === getTodayStr() && styles.quickDateChipActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedDate(getTodayStr());
+                    setIsEditingAttendance(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.quickDateChipText,
+                      selectedDate === getTodayStr() && styles.quickDateChipTextActive,
+                    ]}
+                  >
+                    Today
+                  </Text>
+                </Pressable>
 
+                <Pressable
+                  style={[
+                    styles.quickDateChip,
+                    selectedDate === getYesterdayStr() && styles.quickDateChipActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedDate(getYesterdayStr());
+                    setIsEditingAttendance(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.quickDateChipText,
+                      selectedDate === getYesterdayStr() && styles.quickDateChipTextActive,
+                    ]}
+                  >
+                    Yesterday
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Daily entries for the selected site and date */}
@@ -1354,15 +1409,22 @@ export default function SiteDetailsScreen() {
               <Pressable onPress={() => changeDate(-1)} style={styles.dateNavBtn}>
                 <ChevronLeft size={IconSizes.md} color={Colors.light.text} />
               </Pressable>
-              <View style={styles.dateDisplayWrap}>
+              <Pressable onPress={() => setShowDatePickerModal(true)} style={styles.dateDisplayWrap}>
                 <CalendarIcon size={16} color={Colors.light.brand} style={{ marginRight: 6 }} />
                 <Text style={styles.dateDisplayText}>
                   {selectedDate === getTodayStr() ? 'Today • ' : ''}
                   {formatDateHuman(selectedDate)}
                 </Text>
-              </View>
-              <Pressable onPress={() => changeDate(1)} style={styles.dateNavBtn}>
-                <ChevronRight size={IconSizes.md} color={Colors.light.text} />
+              </Pressable>
+              <Pressable
+                onPress={() => changeDate(1)}
+                style={[styles.dateNavBtn, selectedDate >= getTodayStr() && styles.dateNavBtnDisabled]}
+                disabled={selectedDate >= getTodayStr()}
+              >
+                <ChevronRight
+                  size={IconSizes.md}
+                  color={selectedDate >= getTodayStr() ? Colors.light.textMuted : Colors.light.text}
+                />
               </Pressable>
             </View>
 
@@ -2412,6 +2474,7 @@ export default function SiteDetailsScreen() {
               <DateTimePicker
                 mode="single"
                 date={dayjs(selectedDate).toDate()}
+                maxDate={dayjs().toDate()}
                 styles={datePickerStyles}
                 components={{
                   IconNext: <ChevronRight size={18} color={Colors.light.text} />,
@@ -2420,7 +2483,8 @@ export default function SiteDetailsScreen() {
                 onChange={(params: any) => {
                   if (params.date) {
                     const chosen = dayjs(params.date).format('YYYY-MM-DD');
-                    setSelectedDate(chosen);
+                    const today = getTodayStr();
+                    setSelectedDate(chosen > today ? today : chosen);
                     setIsEditingAttendance(false);
                     setShowDatePickerModal(false);
                   }
@@ -2546,6 +2610,10 @@ const styles = StyleSheet.create({
     backgroundColor: `${Colors.light.brand}12`,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dateNavArrowDisabled: {
+    backgroundColor: Colors.light.surfaceMuted,
+    opacity: 0.35,
   },
   dateCenterBtn: {
     flexDirection: 'row',
@@ -3252,6 +3320,9 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: Radius.md,
     backgroundColor: Colors.light.surfaceMuted,
+  },
+  dateNavBtnDisabled: {
+    opacity: 0.35,
   },
   dateDisplayWrap: {
     flexDirection: 'row',

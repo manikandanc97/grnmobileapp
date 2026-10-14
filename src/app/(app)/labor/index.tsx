@@ -118,7 +118,11 @@ export default function LaborScreen() {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    setSelectedDate(`${year}-${month}-${day}`);
+    const nextDate = `${year}-${month}-${day}`;
+    if (days > 0 && nextDate > getTodayStr()) {
+      return;
+    }
+    setSelectedDate(nextDate);
     setIsEditing(false);
   };
 
@@ -204,8 +208,15 @@ export default function LaborScreen() {
               <CalendarIcon size={IconSizes.sm} color={Colors.light.brand} style={{marginRight: 8}} />
               <Text style={styles.dateText}>{formatDateHuman(selectedDate)}</Text>
             </View>
-            <Pressable onPress={() => changeDate(1)} style={styles.dateNavBtn}>
-              <ChevronRight size={IconSizes.md} color={Colors.light.text} />
+            <Pressable
+              onPress={() => changeDate(1)}
+              style={[styles.dateNavBtn, selectedDate >= getTodayStr() && { opacity: 0.35 }]}
+              disabled={selectedDate >= getTodayStr()}
+            >
+              <ChevronRight
+                size={IconSizes.md}
+                color={selectedDate >= getTodayStr() ? Colors.light.textMuted : Colors.light.text}
+              />
             </Pressable>
           </View>
           <Pressable onPress={() => { setSelectedDate(getTodayStr()); setIsEditing(false); }} style={styles.todayBtn}>

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Platform, Alert } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View, Platform, Alert, ScrollView } from 'react-native';
 import { ScreenWrapper } from '@/components/ui/ScreenWrapper';
 import * as Linking from 'expo-linking';
 import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
@@ -9,12 +7,11 @@ import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { AuthHeader } from '@/components/auth/AuthHeader';
-import { PhoneInput } from '@/components/auth/PhoneInput';
-import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { GoogleButton } from '@/components/auth/GoogleButton';
-import { Spacing , Colors, Radius } from '@/constants/theme';
+import { Spacing, Colors, Radius, Shadows } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+import { Lock, ShieldCheck } from 'lucide-react-native';
 
 // Configure Google Sign-In with the Web OAuth Client ID
 GoogleSignin.configure({
@@ -22,45 +19,10 @@ GoogleSignin.configure({
 });
 
 export default function LoginScreen() {
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const router = useRouter();
 
   const theme = useTheme();
-  const borderColor = theme.border;
   const textSecondaryColor = theme.textSecondary;
-
-  const handleContinueWithMobile = async () => {
-    if (mobileNumber.length !== 10) return;
-    setLoading(true);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: '+91' + mobileNumber,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      if (
-        error.message?.toLowerCase().includes('phone provider') ||
-        error.message?.toLowerCase().includes('sms')
-      ) {
-        Alert.alert(
-          'SMS Gateway Required',
-          'Phone OTP requires an SMS provider configured in Supabase (Auth > Providers > Phone) or adding a test phone number in Supabase Dashboard. Please use Google Login or add test credentials.'
-        );
-      } else {
-        Alert.alert('Error', error.message || 'Failed to send OTP. Please try again.');
-      }
-      return;
-    }
-
-    router.push({
-      pathname: '/(auth)/verify-otp' as any,
-      params: { phone: mobileNumber }
-    });
-  };
 
   const handleContinueWithGoogle = async () => {
     setGoogleLoading(true);
@@ -138,53 +100,50 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScreenWrapper style={styles.safeArea}>
-        <KeyboardAwareScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            enableOnAndroid={true}
-            extraScrollHeight={Platform.OS === 'ios' ? 24 : 60}
-          >
-            <AuthHeader
-              title="Your sites.
-One simple place."
-              subtitle="Sign in to manage your sites and daily entries."
-            />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <AuthHeader
+            title={"Your sites.\nOne simple place."}
+            subtitle="Sign in to manage your sites, labor wages, and daily entries."
+          />
 
-            <View style={styles.formContainer}>
-              <Text style={styles.fieldLabel}>Mobile number</Text>
-              <PhoneInput
-                value={mobileNumber}
-                onChangeText={(text) => setMobileNumber(text.replace(/[^0-9]/g, ''))}
-              />
-
-              <PrimaryButton
-                title="Continue"
-                onPress={handleContinueWithMobile}
-                loading={loading}
-                disabled={mobileNumber.length < 10}
-              />
-
-              <View style={styles.dividerContainer}>
-                <View style={[styles.divider, { backgroundColor: borderColor }]} />
-                <ThemedText style={[styles.dividerText, { color: textSecondaryColor }]}>OR</ThemedText>
-                <View style={[styles.divider, { backgroundColor: borderColor }]} />
+          <View style={styles.formContainer}>
+            <View style={styles.cardHeader}>
+              <View style={styles.badge}>
+                <ShieldCheck size={14} color={Colors.light.brand} />
+                <Text style={styles.badgeText}>Team Portal</Text>
               </View>
+              <Text style={styles.cardTitle}>Sign in to your account</Text>
+              <Text style={styles.cardSubtitle}>
+                Continue with your authorized Google account to manage construction projects and records.
+              </Text>
+            </View>
 
+            <View style={styles.buttonWrapper}>
               <GoogleButton
                 title="Continue with Google"
                 onPress={handleContinueWithGoogle}
                 loading={googleLoading}
-                disabled={loading}
               />
             </View>
 
-            <View style={styles.footer}>
-              <ThemedText style={[styles.footerText, { color: textSecondaryColor }]}>
-                Secure access for GRN Constructions team
-              </ThemedText>
+            <View style={styles.securityNote}>
+              <Lock size={12} color={Colors.light.textMuted} />
+              <Text style={styles.securityText}>
+                Authorized access for GRN Constructions team
+              </Text>
             </View>
-        </KeyboardAwareScrollView>
+          </View>
+
+          <View style={styles.footer}>
+            <ThemedText style={[styles.footerText, { color: textSecondaryColor }]}>
+              Secure access for GRN Constructions team
+            </ThemedText>
+          </View>
+        </ScrollView>
       </ScreenWrapper>
     </ThemedView>
   );
@@ -197,9 +156,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  keyboardView: {
-    flex: 1,
-  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
@@ -207,20 +163,61 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     justifyContent: 'center',
   },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: Colors.light.text, marginBottom: 8 },
-  formContainer: { width: '100%', maxWidth: 400, alignSelf: 'center', backgroundColor: Colors.light.surface, padding: 20, borderWidth: 1, borderColor: Colors.light.border, borderRadius: Radius.xl },
-  dividerContainer: {
+  formContainer: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    backgroundColor: Colors.light.surface,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: Radius.xl,
+    ...Shadows.sm,
+  },
+  cardHeader: {
+    marginBottom: Spacing.three,
+  },
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.three,
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.light.brandBg,
+    marginBottom: Spacing.two,
   },
-  divider: {
-    flex: 1,
-    height: 1,
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.light.brand,
+    letterSpacing: 0.3,
   },
-  dividerText: {
-    marginHorizontal: Spacing.three,
-    fontSize: 14,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: 6,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.light.textSecondary,
+  },
+  buttonWrapper: {
+    marginTop: Spacing.one,
+  },
+  securityNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  securityText: {
+    fontSize: 12,
+    color: Colors.light.textMuted,
     fontWeight: '500',
   },
   footer: {
